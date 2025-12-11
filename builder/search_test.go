@@ -34,55 +34,55 @@ func prepareSearchTestData(t *testing.T, esClient *client.Client, indexName stri
 	// 插入测试数据
 	documents := []map[string]interface{}{
 		{
-			"title":    "iPhone 15 Pro Max",
-			"content":  "最新款苹果手机，性能强劲",
-			"category": "electronics",
-			"tags":     []string{"phone", "apple", "5g"},
-			"price":    1299.99,
-			"views":    1000,
-			"rating":   4.8,
+			"title":     "iPhone 15 Pro Max",
+			"content":   "最新款苹果手机，性能强劲",
+			"category":  "electronics",
+			"tags":      []string{"phone", "apple", "5g"},
+			"price":     1299.99,
+			"views":     1000,
+			"rating":    4.8,
 			"published": true,
-			"location": map[string]float64{"lat": 37.7749, "lon": -122.4194},
+			"location":  map[string]float64{"lat": 37.7749, "lon": -122.4194},
 		},
 		{
-			"title":    "Samsung Galaxy S24",
-			"content":  "三星旗舰手机",
-			"category": "electronics",
-			"tags":     []string{"phone", "samsung", "5g"},
-			"price":    999.99,
-			"views":    800,
-			"rating":   4.6,
+			"title":     "Samsung Galaxy S24",
+			"content":   "三星旗舰手机",
+			"category":  "electronics",
+			"tags":      []string{"phone", "samsung", "5g"},
+			"price":     999.99,
+			"views":     800,
+			"rating":    4.6,
 			"published": true,
-			"location": map[string]float64{"lat": 37.7749, "lon": -122.4194},
+			"location":  map[string]float64{"lat": 37.7749, "lon": -122.4194},
 		},
 		{
-			"title":    "iPad Air",
-			"content":  "轻薄的平板电脑",
-			"category": "tablets",
-			"tags":     []string{"tablet", "apple"},
-			"price":    599.99,
-			"views":    600,
-			"rating":   4.7,
-			"published": true,
-		},
-		{
-			"title":    "MacBook Pro",
-			"content":  "专业级笔记本电脑",
-			"category": "computers",
-			"tags":     []string{"laptop", "apple", "m3"},
-			"price":    1999.99,
-			"views":    500,
-			"rating":   4.9,
+			"title":     "iPad Air",
+			"content":   "轻薄的平板电脑",
+			"category":  "tablets",
+			"tags":      []string{"tablet", "apple"},
+			"price":     599.99,
+			"views":     600,
+			"rating":    4.7,
 			"published": true,
 		},
 		{
-			"title":    "Apple Watch Series 9",
-			"content":  "智能手表",
-			"category": "wearables",
-			"tags":     []string{"watch", "apple"},
-			"price":    399.99,
-			"views":    400,
-			"rating":   4.5,
+			"title":     "MacBook Pro",
+			"content":   "专业级笔记本电脑",
+			"category":  "computers",
+			"tags":      []string{"laptop", "apple", "m3"},
+			"price":     1999.99,
+			"views":     500,
+			"rating":    4.9,
+			"published": true,
+		},
+		{
+			"title":     "Apple Watch Series 9",
+			"content":   "智能手表",
+			"category":  "wearables",
+			"tags":      []string{"watch", "apple"},
+			"price":     399.99,
+			"views":     400,
+			"rating":    4.5,
 			"published": false,
 		},
 	}
@@ -105,9 +105,9 @@ func TestSearchBuilder_Match(t *testing.T) {
 
 	indexName := "test_search_match"
 	prepareSearchTestData(t, client, indexName)
-	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
-	}()
+	// defer func() {
+	// 	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	// }()
 
 	resp, err := NewSearchBuilder(client, indexName).
 		Match("title", "iPhone").

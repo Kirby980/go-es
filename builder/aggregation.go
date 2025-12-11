@@ -408,6 +408,12 @@ func (b *AggregationBuilder) Build() map[string]interface{} {
 	return body
 }
 
+func (b *AggregationBuilder) Debug() string {
+	body := b.Build()
+	date, _ := json.MarshalIndent(body, "", " ")
+	return string(date)
+}
+
 // Do 执行聚合
 func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, error) {
 	path := fmt.Sprintf("/%s/_search", b.index)

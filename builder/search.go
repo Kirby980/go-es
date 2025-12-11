@@ -328,7 +328,13 @@ func (b *SearchBuilder) Highlight(fields ...string) *SearchBuilder {
 type SearchResponse struct {
 	Took     int  `json:"took"`
 	TimedOut bool `json:"timed_out"`
-	Hits     struct {
+	Shards   struct {
+		Total      int `json:"total"`
+		Successful int `json:"successful"`
+		Skipped    int `json:"skipped"`
+		Failed     int `json:"failed"`
+	} `json:"_shards"`
+	Hits struct {
 		Total struct {
 			Value    int    `json:"value"`
 			Relation string `json:"relation"`
@@ -411,6 +417,13 @@ func (b *SearchBuilder) Build() map[string]interface{} {
 	}
 
 	return body
+}
+
+// Debug 打印调试信息
+func (b *SearchBuilder) Debug() string {
+	body := b.Build()
+	date, _ := json.MarshalIndent(body, "", " ")
+	return string(date)
 }
 
 // Do 执行搜索

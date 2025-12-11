@@ -369,6 +369,15 @@ func TestIndexBuilder_WithFields(t *testing.T) {
 			WithSubField("keyword", "keyword", WithIgnoreAbove(256)),
 			WithSubField("raw", "keyword"),
 		).
+		// 使用 WithSubProperties 添加嵌套对象（必须是 object 或 nested 类型）
+		AddProperty("author", "object",
+			WithSubProperties("name", "text"),
+			WithSubProperties("email", "keyword"),
+			WithSubProperties("profile", "object",
+				WithSubProperties("age", "integer"),
+				WithSubProperties("city", "keyword"),
+			),
+		).
 		AddProperty("description", "text",
 			WithSubField("keyword", "keyword"),
 		).
@@ -387,9 +396,9 @@ func TestIndexBuilder_WithFields(t *testing.T) {
 	t.Logf("索引映射信息: %s", info.PrettyJSON())
 
 	// 清理
-	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
-	}()
+	// defer func() {
+	// 	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	// }()
 }
 
 // TestIndexBuilder_MultiplePropertyOptions 测试组合使用多个 PropertyOption

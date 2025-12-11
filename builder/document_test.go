@@ -590,3 +590,179 @@ func TestDocumentBuilder_MGet(t *testing.T) {
 		t.Logf("  - ID=%s, Found=%v", doc.ID, doc.Found)
 	}
 }
+
+// TestDocumentBuilder_Refresh 测试 Refresh 参数
+func TestDocumentBuilder_Refresh(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_doc_refresh"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 测试 1: 使用 refresh=true 立即刷新
+	t.Run("refresh=true", func(t *testing.T) {
+		resp, err := NewDocumentBuilder(client, indexName).
+			ID("refresh-test-1").
+			Set("title", "立即刷新测试").
+			Set("content", "使用 refresh=true").
+			Refresh("true").
+			Do(ctx)
+
+		if err != nil {
+			t.Fatalf("索引文档失败: %v", err)
+		}
+		t.Logf("✓ 文档索引成功 (refresh=true): ID=%s, Result=%s", resp.ID, resp.Result)
+
+		// 立即搜索应该能找到（因为使用了 refresh=true）
+		searchResp, err := NewSearchBuilder(client, indexName).
+			Match("title", "立即刷新测试").
+			Do(ctx)
+
+		if err != nil {
+			t.Fatalf("搜索失败: %v", err)
+		}
+
+		if searchResp.Hits.Total.Value < 1 {
+			t.Errorf("使用 refresh=true 后立即搜索应该能找到文档")
+		} else {
+			t.Logf("✓ 使用 refresh=true 后立即找到了文档")
+		}
+	})
+
+	// 测试 2: 使用 refresh=wait_for 等待刷新
+	t.Run("refresh=wait_for", func(t *testing.T) {
+		resp, err := NewDocumentBuilder(client, indexName).
+			ID("refresh-test-2").
+			Set("title", "等待刷新测试").
+			Set("content", "使用 refresh=wait_for").
+			Refresh("wait_for").
+			Do(ctx)
+
+		if err != nil {
+			t.Fatalf("索引文档失败: %v", err)
+		}
+		t.Logf("✓ 文档索引成功 (refresh=wait_for): ID=%s, Result=%s", resp.ID, resp.Result)
+
+		// 等待刷新完成后搜索应该能找到
+		searchResp, err := NewSearchBuilder(client, indexName).
+			Match("title", "等待刷新测试").
+			Do(ctx)
+
+		if err != nil {
+			t.Fatalf("搜索失败: %v", err)
+		}
+
+		if searchResp.Hits.Total.Value < 1 {
+			t.Errorf("使用 refresh=wait_for 后搜索应该能找到文档")
+		} else {
+			t.Logf("✓ 使用 refresh=wait_for 后找到了文档")
+		}
+	})
+
+	// 测试 3: 不使用 refresh（默认行为）
+	t.Run("no refresh", func(t *testing.T) {
+		resp, err := NewDocumentBuilder(client, indexName).
+			ID("refresh-test-3").
+			Set("title", "默认刷新测试").
+			Set("content", "不使用 refresh 参数").
+			Do(ctx)
+
+		if err != nil {
+			t.Fatalf("索引文档失败: %v", err)
+		}
+		t.Logf("✓ 文档索引成功 (no refresh): ID=%s, Result=%s", resp.ID, resp.Result)
+
+		// 立即搜索可能找不到（需要等待自动刷新）
+		searchResp, _ := NewSearchBuilder(client, indexName).
+			Match("title", "默认刷新测试").
+			Do(ctx)
+
+		if searchResp != nil && searchResp.Hits.Total.Value > 0 {
+			t.Logf("  立即搜索找到了文档（可能已自动刷新）")
+		} else {
+			t.Logf("  立即搜索未找到文档（等待自动刷新）")
+		}
+
+		// 等待一段时间后应该能找到
+		time.Sleep(1 * time.Second)
+		searchResp, err = NewSearchBuilder(client, indexName).
+			Match("title", "默认刷新测试").
+			Do(ctx)
+
+		if err != nil {
+			t.Fatalf("搜索失败: %v", err)
+		}
+
+		if searchResp.Hits.Total.Value < 1 {
+			t.Errorf("等待后搜索应该能找到文档")
+		} else {
+			t.Logf("✓ 等待自动刷新后找到了文档")
+		}
+	})
+
+	// 测试 4: Update 操作使用 refresh
+	t.Run("Update with refresh", func(t *testing.T) {
+		// 先创建文档
+		_, _ = NewDocumentBuilder(client, indexName).
+			ID("update-refresh-test").
+			Set("title", "更新前").
+			Set("views", 100).
+			Refresh("true").
+			Do(ctx)
+
+		// 更新文档并立即刷新
+		resp, err := NewDocumentBuilder(client, indexName).
+			ID("update-refresh-test").
+			Set("views", 200).
+			Refresh("true").
+			Update(ctx)
+
+		if err != nil {
+			t.Fatalf("更新文档失败: %v", err)
+		}
+		t.Logf("✓ 更新文档成功 (refresh=true): Result=%s, Version=%d", resp.Result, resp.Version)
+
+		// 立即获取应该能看到更新
+		getResp, _ := NewDocumentBuilder(client, indexName).
+			ID("update-refresh-test").
+			Get(ctx)
+
+		if getResp != nil && getResp.Source["views"] == float64(200) {
+			t.Logf("✓ 立即获取到了更新后的数据")
+		}
+	})
+
+	// 测试 5: Delete 操作使用 refresh
+	t.Run("Delete with refresh", func(t *testing.T) {
+		// 先创建文档
+		_, _ = NewDocumentBuilder(client, indexName).
+			ID("delete-refresh-test").
+			Set("title", "待删除").
+			Refresh("true").
+			Do(ctx)
+
+		// 删除文档并立即刷新
+		resp, err := NewDocumentBuilder(client, indexName).
+			ID("delete-refresh-test").
+			Refresh("true").
+			Delete(ctx)
+
+		if err != nil {
+			t.Fatalf("删除文档失败: %v", err)
+		}
+		t.Logf("✓ 删除文档成功 (refresh=true): Result=%s", resp.Result)
+
+		// 立即搜索应该找不到
+		searchResp, _ := NewSearchBuilder(client, indexName).
+			Match("title", "待删除").
+			Do(ctx)
+
+		if searchResp == nil || searchResp.Hits.Total.Value == 0 {
+			t.Logf("✓ 使用 refresh=true 删除后立即确认文档已删除")
+		}
+	})
+}

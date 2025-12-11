@@ -11,11 +11,12 @@ import (
 
 // DocumentBuilder 文档构建器
 type DocumentBuilder struct {
-	client *client.Client
-	index  string
-	id     string
-	doc    map[string]interface{}
-	script map[string]interface{}
+	client  *client.Client
+	index   string
+	id      string
+	doc     map[string]interface{}
+	script  map[string]interface{}
+	refresh string // refresh 参数: true, false, wait_for
 }
 
 // NewDocumentBuilder 创建文档构建器
@@ -52,6 +53,23 @@ func (b *DocumentBuilder) SetStruct(data interface{}) *DocumentBuilder {
 	jsonData, _ := json.Marshal(data)
 	json.Unmarshal(jsonData, &b.doc)
 	return b
+}
+
+// Refresh 设置刷新策略
+// - "true": 立即刷新，操作后文档立即可见
+// - "false": 不刷新，等待自动刷新（默认）
+// - "wait_for": 等待刷新完成后再返回
+func (b *DocumentBuilder) Refresh(refresh string) *DocumentBuilder {
+	b.refresh = refresh
+	return b
+}
+
+// buildPath 构建带查询参数的路径
+func (b *DocumentBuilder) buildPath(basePath string) string {
+	if b.refresh != "" {
+		return fmt.Sprintf("%s?refresh=%s", basePath, b.refresh)
+	}
+	return basePath
 }
 
 // Script 设置脚本更新
@@ -101,6 +119,9 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 		method = http.MethodPost
 	}
 
+	// 添加查询参数
+	path = b.buildPath(path)
+
 	respBody, err := b.client.Do(ctx, method, path, b.doc)
 	if err != nil {
 		return nil, err
@@ -121,6 +142,8 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	path := fmt.Sprintf("/%s/_create/%s", b.index, b.id)
+	path = b.buildPath(path)
+
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.doc)
 	if err != nil {
 		return nil, err
@@ -141,6 +164,7 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	path := fmt.Sprintf("/%s/_update/%s", b.index, b.id)
+	path = b.buildPath(path)
 
 	updateBody := make(map[string]interface{})
 	if b.script != nil {
@@ -169,6 +193,8 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	path := fmt.Sprintf("/%s/_update/%s", b.index, b.id)
+	path = b.buildPath(path)
+
 	updateBody := map[string]interface{}{
 		"doc":           b.doc,
 		"doc_as_upsert": true,
@@ -214,6 +240,8 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
+	path = b.buildPath(path)
+
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return nil, err

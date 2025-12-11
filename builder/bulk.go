@@ -133,8 +133,8 @@ func (b *BulkBuilder) UpdateFromStruct(index, id string, data interface{}) *Bulk
 
 // BulkResponse 批量操作响应
 type BulkResponse struct {
-	Took   int  `json:"took"`
-	Errors bool `json:"errors"`
+	Took   int                           `json:"took"`
+	Errors bool                          `json:"errors"`
 	Items  []map[string]BulkItemResponse `json:"items"`
 }
 
@@ -204,6 +204,12 @@ func (b *BulkBuilder) Build() []byte {
 	}
 
 	return buf.Bytes()
+}
+
+func (b *BulkBuilder) Debug() string {
+	body := b.Build()
+	date, _ := json.MarshalIndent(body, "", " ")
+	return string(date)
 }
 
 // Do 执行批量操作

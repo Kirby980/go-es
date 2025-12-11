@@ -125,6 +125,26 @@ func WithSubField(name string, fieldType string, options ...PropertyOption) Prop
 	}
 }
 
+// WithSubProperties 添加子属性（嵌套属性）
+func WithSubProperties(name string, fileType string, options ...PropertyOption) PropertyOption {
+	return func(m map[string]interface{}) {
+		if m["properties"] == nil {
+			m["properties"] = make(map[string]interface{})
+		}
+
+		subField := map[string]interface{}{
+			"type": fileType,
+		}
+
+		// 应用子字段选项
+		for _, opt := range options {
+			opt(subField)
+		}
+
+		m["properties"].(map[string]interface{})[name] = subField
+	}
+}
+
 // WithIgnoreAbove 设置 keyword 类型的 ignore_above 参数
 func WithIgnoreAbove(limit int) PropertyOption {
 	return func(field map[string]interface{}) {
@@ -159,6 +179,13 @@ func (b *IndexBuilder) Build() map[string]interface{} {
 	}
 
 	return body
+}
+
+// Debug 打印调试信息
+func (b *IndexBuilder) Debug() string {
+	body := b.Build()
+	date, _ := json.MarshalIndent(body, "", " ")
+	return string(date)
 }
 
 // Do 执行创建索引
