@@ -1,0 +1,205 @@
+package builder
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"go-es/client"
+)
+
+// IndexBuilder 索引构建器
+type IndexBuilder struct {
+	client   *client.Client
+	index    string
+	settings map[string]interface{}
+	mappings map[string]interface{}
+	aliases  map[string]interface{}
+}
+
+// NewIndexBuilder 创建索引构建器
+func NewIndexBuilder(c *client.Client, index string) *IndexBuilder {
+	return &IndexBuilder{
+		client:   c,
+		index:    index,
+		settings: make(map[string]interface{}),
+		mappings: make(map[string]interface{}),
+		aliases:  make(map[string]interface{}),
+	}
+}
+
+// Shards 设置分片数
+func (b *IndexBuilder) Shards(shards int) *IndexBuilder {
+	b.settings["number_of_shards"] = shards
+	return b
+}
+
+// Replicas 设置副本数
+func (b *IndexBuilder) Replicas(replicas int) *IndexBuilder {
+	b.settings["number_of_replicas"] = replicas
+	return b
+}
+
+// RefreshInterval 设置刷新间隔
+func (b *IndexBuilder) RefreshInterval(interval string) *IndexBuilder {
+	b.settings["refresh_interval"] = interval
+	return b
+}
+
+// AddProperty 添加字段映射
+func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...PropertyOption) *IndexBuilder {
+	if b.mappings["properties"] == nil {
+		b.mappings["properties"] = make(map[string]interface{})
+	}
+
+	properties := b.mappings["properties"].(map[string]interface{})
+	field := map[string]interface{}{
+		"type": fieldType,
+	}
+
+	// 应用选项
+	for _, opt := range options {
+		opt(field)
+	}
+
+	properties[name] = field
+	return b
+}
+
+// PropertyOption 字段选项
+type PropertyOption func(map[string]interface{})
+
+// WithAnalyzer 设置分词器
+func WithAnalyzer(analyzer string) PropertyOption {
+	return func(field map[string]interface{}) {
+		field["analyzer"] = analyzer
+	}
+}
+
+// WithIndex 设置是否索引
+func WithIndex(index bool) PropertyOption {
+	return func(field map[string]interface{}) {
+		field["index"] = index
+	}
+}
+
+// WithStore 设置是否存储
+func WithStore(store bool) PropertyOption {
+	return func(field map[string]interface{}) {
+		field["store"] = store
+	}
+}
+
+// WithFormat 设置日期格式
+func WithFormat(format string) PropertyOption {
+	return func(field map[string]interface{}) {
+		field["format"] = format
+	}
+}
+
+// WithFields 添加多字段
+func WithFields(fields map[string]interface{}) PropertyOption {
+	return func(field map[string]interface{}) {
+		field["fields"] = fields
+	}
+}
+
+// AddAlias 添加别名
+func (b *IndexBuilder) AddAlias(alias string, filter map[string]interface{}) *IndexBuilder {
+	aliasConfig := make(map[string]interface{})
+	if filter != nil {
+		aliasConfig["filter"] = filter
+	}
+	b.aliases[alias] = aliasConfig
+	return b
+}
+
+// Build 构建索引定义
+func (b *IndexBuilder) Build() map[string]interface{} {
+	body := make(map[string]interface{})
+
+	if len(b.settings) > 0 {
+		body["settings"] = b.settings
+	}
+
+	if len(b.mappings) > 0 {
+		body["mappings"] = b.mappings
+	}
+
+	if len(b.aliases) > 0 {
+		body["aliases"] = b.aliases
+	}
+
+	return body
+}
+
+// Do 执行创建索引
+func (b *IndexBuilder) Do(ctx context.Context) error {
+	path := fmt.Sprintf("/%s", b.index)
+	body := b.Build()
+
+	_, err := b.client.Do(ctx, http.MethodPut, path, body)
+	return err
+}
+
+// Delete 删除索引
+func (b *IndexBuilder) Delete(ctx context.Context) error {
+	path := fmt.Sprintf("/%s", b.index)
+	_, err := b.client.Do(ctx, http.MethodDelete, path, nil)
+	return err
+}
+
+// Exists 检查索引是否存在
+func (b *IndexBuilder) Exists(ctx context.Context) (bool, error) {
+	path := fmt.Sprintf("/%s", b.index)
+	_, err := b.client.Do(ctx, http.MethodHead, path, nil)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// IndexInfo 索引信息
+type IndexInfo struct {
+	Aliases  map[string]interface{} `json:"aliases"`
+	Mappings map[string]interface{} `json:"mappings"`
+	Settings map[string]interface{} `json:"settings"`
+}
+
+// JSON 返回 JSON 格式字符串（紧凑）
+func (info *IndexInfo) JSON() string {
+	data, _ := json.Marshal(info)
+	return string(data)
+}
+
+// PrettyJSON 返回格式化的 JSON 字符串
+func (info *IndexInfo) PrettyJSON() string {
+	data, _ := json.MarshalIndent(info, "", "  ")
+	return string(data)
+}
+
+// String 实现 Stringer 接口，默认返回格式化 JSON
+func (info *IndexInfo) String() string {
+	return info.PrettyJSON()
+}
+
+// Get 获取索引信息
+func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
+	path := fmt.Sprintf("/%s", b.index)
+	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]*IndexInfo
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+
+	if info, ok := result[b.index]; ok {
+		return info, nil
+	}
+
+	return nil, fmt.Errorf("索引 %s 不存在", b.index)
+}
