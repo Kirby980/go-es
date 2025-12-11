@@ -105,6 +105,33 @@ func WithFields(fields map[string]interface{}) PropertyOption {
 	}
 }
 
+// WithSubField 添加子字段（多字段映射）
+func WithSubField(name string, fieldType string, options ...PropertyOption) PropertyOption {
+	return func(field map[string]interface{}) {
+		if field["fields"] == nil {
+			field["fields"] = make(map[string]interface{})
+		}
+
+		subField := map[string]interface{}{
+			"type": fieldType,
+		}
+
+		// 应用子字段选项
+		for _, opt := range options {
+			opt(subField)
+		}
+
+		field["fields"].(map[string]interface{})[name] = subField
+	}
+}
+
+// WithIgnoreAbove 设置 keyword 类型的 ignore_above 参数
+func WithIgnoreAbove(limit int) PropertyOption {
+	return func(field map[string]interface{}) {
+		field["ignore_above"] = limit
+	}
+}
+
 // AddAlias 添加别名
 func (b *IndexBuilder) AddAlias(alias string, filter map[string]interface{}) *IndexBuilder {
 	aliasConfig := make(map[string]interface{})
