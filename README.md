@@ -49,7 +49,7 @@ err := builder.NewIndexBuilder(esClient, "products").
     Shards(1).
     Replicas(0).
     RefreshInterval("1s").
-    AddProperty("name", "text", builder.WithAnalyzer("standard")).
+    AddProperty("name", "text", builder.WithAnalyzer("ik_smart")).
     AddProperty("price", "float").
     AddProperty("category", "keyword").
     AddProperty("created_at", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).

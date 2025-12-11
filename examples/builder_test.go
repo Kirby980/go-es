@@ -34,7 +34,7 @@ func TestBuilder(t *testing.T) {
 	// err = builder.NewIndexBuilder(esClient, "products").
 	// 	Shards(1).
 	// 	Replicas(0).
-	// 	AddProperty("name", "text", builder.WithAnalyzer("standard")).
+	// 	AddProperty("name", "text", builder.WithAnalyzer("ik_smart")).
 	// 	AddProperty("price", "float").
 	// 	AddProperty("category", "keyword").
 	// 	AddProperty("created_at", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).

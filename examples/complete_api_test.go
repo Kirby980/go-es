@@ -35,8 +35,8 @@ func TestCompleteAPI(t *testing.T) {
 			Shards(1).
 			Replicas(0).
 			RefreshInterval("1s").
-			AddProperty("name", "text", builder.WithAnalyzer("standard")).
-			AddProperty("description", "text", builder.WithAnalyzer("standard")).
+			AddProperty("name", "text", builder.WithAnalyzer("ik_smart")).
+			AddProperty("description", "text", builder.WithAnalyzer("ik_smart")).
 			AddProperty("price", "float").
 			AddProperty("quantity", "integer").
 			AddProperty("category", "keyword").

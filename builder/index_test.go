@@ -39,8 +39,8 @@ func TestIndexBuilder_CreateIndex(t *testing.T) {
 		Shards(1).
 		Replicas(0).
 		RefreshInterval("1s").
-		AddProperty("title", "text", WithAnalyzer("standard")).
-		AddProperty("content", "text", WithAnalyzer("standard")).
+		AddProperty("title", "text", WithAnalyzer("ik_smart")).
+		AddProperty("content", "text", WithAnalyzer("ik_smart")).
 		AddProperty("author", "keyword").
 		AddProperty("views", "integer").
 		AddProperty("price", "float").
@@ -191,7 +191,7 @@ func TestIndexBuilder_PropertyOptions(t *testing.T) {
 		Shards(1).
 		Replicas(0).
 		// 文本字段带分词器
-		AddProperty("description", "text", WithAnalyzer("standard")).
+		AddProperty("description", "text", WithAnalyzer("ik_smart")).
 		// 关键字字段
 		AddProperty("keyword_field", "keyword").
 		// 数值字段
@@ -365,7 +365,7 @@ func TestIndexBuilder_WithFields(t *testing.T) {
 		Shards(1).
 		Replicas(0).
 		AddProperty("title", "text",
-			WithAnalyzer("standard"),
+			WithAnalyzer("ik_smart"),
 			WithSubField("keyword", "keyword", WithIgnoreAbove(256)),
 			WithSubField("raw", "keyword"),
 		).
@@ -416,7 +416,7 @@ func TestIndexBuilder_MultiplePropertyOptions(t *testing.T) {
 		Replicas(0).
 		// 组合使用多个选项
 		AddProperty("multi_option_field", "text",
-			WithAnalyzer("standard"),
+			WithAnalyzer("ik_smart"),
 			WithStore(true),
 			WithSubField("keyword", "keyword"),
 		).
@@ -427,7 +427,7 @@ func TestIndexBuilder_MultiplePropertyOptions(t *testing.T) {
 		).
 		// 文本字段组合选项
 		AddProperty("content", "text",
-			WithAnalyzer("standard"),
+			WithAnalyzer("ik_smart"),
 			WithIndex(true),
 			WithStore(false),
 		).
@@ -523,7 +523,7 @@ func TestIndexBuilder_AllPropertyOptions(t *testing.T) {
 		Shards(1).
 		Replicas(0).
 		// WithAnalyzer
-		AddProperty("analyzed_field", "text", WithAnalyzer("standard")).
+		AddProperty("analyzed_field", "text", WithAnalyzer("ik_smart")).
 		// WithIndex - 测试 true 和 false
 		AddProperty("indexed_field", "text", WithIndex(true)).
 		AddProperty("not_indexed_field", "text", WithIndex(false)).

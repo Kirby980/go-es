@@ -17,8 +17,8 @@ func prepareSearchTestData(t *testing.T, esClient *client.Client, indexName stri
 	_ = NewIndexBuilder(esClient, indexName).
 		Shards(1).
 		Replicas(0).
-		AddProperty("title", "text", WithAnalyzer("standard")).
-		AddProperty("content", "text", WithAnalyzer("standard")).
+		AddProperty("title", "text", WithAnalyzer("ik_smart")).
+		AddProperty("content", "text", WithAnalyzer("ik_smart")).
 		AddProperty("category", "keyword").
 		AddProperty("tags", "keyword").
 		AddProperty("price", "float").
@@ -109,8 +109,9 @@ func TestSearchBuilder_Match(t *testing.T) {
 	// 	_ = NewIndexBuilder(client, indexName).Delete(ctx)
 	// }()
 
+	t.Log(NewSearchBuilder(client, indexName).MatchPhrase("content", "手机").Debug())
 	resp, err := NewSearchBuilder(client, indexName).
-		Match("title", "iPhone").
+		MatchPhrase("content", "手机").
 		Do(ctx)
 
 	if err != nil {
