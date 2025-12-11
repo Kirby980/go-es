@@ -417,7 +417,3 @@ esClient, err := client.New(
     config.WithDebug(true),                              // 调试模式
 )
 ```
-
-## 许可证
-
-MIT License
