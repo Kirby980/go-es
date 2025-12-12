@@ -16,7 +16,7 @@
 ### 安装
 
 ```bash
-go get go-es
+go get github.com/Kirby980/go-es
 ```
 
 ### 创建客户端
