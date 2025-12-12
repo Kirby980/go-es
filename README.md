@@ -10,6 +10,7 @@
 - ✅ **易于使用**: 简洁的 API，降低学习成本
 - ✅ **高性能**: 支持批量操作和连接池
 - ✅ **错误处理**: 完善的错误处理和重试机制
+- ✅ **链式Debug**: 类似GORM的Debug模式，局部控制日志输出
 
 ## 快速开始
 
@@ -223,6 +224,18 @@ complexResp, _ := builder.NewSearchBuilder(esClient, "products").
 geoResp, _ := builder.NewSearchBuilder(esClient, "stores").
     GeoDistance("location", 37.7749, -122.4194, "10km").
     Do(ctx)
+
+// 最小评分过滤
+minScoreResp, _ := builder.NewSearchBuilder(esClient, "products").
+    Match("name", "iPhone").
+    MinScore(0.5).
+    Do(ctx)
+
+// 快速计数（不返回文档内容，只返回数量）
+count, _ := builder.NewSearchBuilder(esClient, "products").
+    Match("status", "active").
+    Count(ctx)
+fmt.Printf("活跃商品数量: %d\n", count)
 ```
 
 ### 5. 聚合分析 (AggregationBuilder)
@@ -292,7 +305,100 @@ cumulativeResp, _ := builder.NewAggregationBuilder(esClient, "sales").
     Do(ctx)
 ```
 
-### 6. 集群管理 (ClusterBuilder)
+### 6. 按条件批量更新 (UpdateByQueryBuilder)
+
+```go
+// 按条件批量更新文档
+resp, err := builder.NewUpdateByQueryBuilder(esClient, "products").
+    Term("status", "pending").
+    Set("status", "processed").
+    Set("updated_at", time.Now().Unix()).
+    Do(ctx)
+
+fmt.Printf("更新了 %d 个文档\n", resp.Updated)
+
+// 使用脚本更新
+resp, _ := builder.NewUpdateByQueryBuilder(esClient, "products").
+    Range("price", nil, 100).
+    Script("ctx._source.discount = ctx._source.price * 0.9", nil).
+    Do(ctx)
+```
+
+### 7. 按条件批量删除 (DeleteByQueryBuilder)
+
+```go
+// 按条件批量删除文档
+resp, err := builder.NewDeleteByQueryBuilder(esClient, "products").
+    Term("status", "expired").
+    Range("created_at", nil, "2020-01-01").
+    Do(ctx)
+
+fmt.Printf("删除了 %d 个文档\n", resp.Deleted)
+
+// 删除特定分类的商品
+resp, _ := builder.NewDeleteByQueryBuilder(esClient, "products").
+    Terms("category", "discontinued", "obsolete").
+    Do(ctx)
+```
+
+### 8. 深度分页遍历 (ScrollBuilder)
+
+```go
+// 创建scroll查询
+scroll := builder.NewScrollBuilder(esClient, "products").
+    Match("status", "active").
+    Size(1000).
+    KeepAlive("5m")
+
+// 第一次查询
+resp, err := scroll.Do(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// 处理第一批数据
+for _, hit := range resp.Hits.Hits {
+    fmt.Printf("处理文档: %s\n", hit.ID)
+}
+
+// 持续获取下一批数据
+for scroll.HasMore(resp) {
+    resp, err = scroll.Next(ctx)
+    if err != nil {
+        break
+    }
+
+    for _, hit := range resp.Hits.Hits {
+        fmt.Printf("处理文档: %s\n", hit.ID)
+    }
+}
+
+// 清理scroll上下文
+scroll.Clear(ctx)
+```
+
+### 9. Debug调试模式
+
+```go
+// 启用Debug模式查看请求和响应（类似GORM）
+resp, err := builder.NewSearchBuilder(esClient, "products").
+    Debug().  // 启用调试，会打印请求和响应JSON
+    Match("name", "iPhone").
+    Do(ctx)
+
+// 不带Debug的查询（不会打印任何东西）
+resp2, err := builder.NewSearchBuilder(esClient, "products").
+    Match("name", "Samsung").
+    Do(ctx)
+
+// 所有Builder都支持Debug
+builder.NewDocumentBuilder(esClient, "products").Debug().ID("1").Get(ctx)
+builder.NewBulkBuilder(esClient).Debug().Add(...).Do(ctx)
+builder.NewIndexBuilder(esClient, "index").Debug().Do(ctx)
+builder.NewClusterBuilder(esClient).Debug().Health(ctx)
+```
+
+### 10. 集群管理 (ClusterBuilder)
 
 ```go
 clusterBuilder := builder.NewClusterBuilder(esClient)
@@ -334,6 +440,10 @@ err := clusterBuilder.UpdateSettings(ctx,
 | 创建索引 | PUT /index | NewIndexBuilder(client, "index").Shards(1).Do(ctx) |
 | 索引文档 | PUT /index/_doc/1 | NewDocumentBuilder(client, "index").ID("1").Set("field", value).Do(ctx) |
 | 搜索 | POST /index/_search | NewSearchBuilder(client, "index").Match("field", "value").Do(ctx) |
+| 计数 | POST /index/_count | NewSearchBuilder(client, "index").Match("field", "value").Count(ctx) |
+| 按条件更新 | POST /index/_update_by_query | NewUpdateByQueryBuilder(client, "index").Term("status", "old").Set("status", "new").Do(ctx) |
+| 按条件删除 | POST /index/_delete_by_query | NewDeleteByQueryBuilder(client, "index").Range("date", nil, "2020-01-01").Do(ctx) |
+| Scroll遍历 | POST /index/_search?scroll=5m | NewScrollBuilder(client, "index").Size(1000).Do(ctx) |
 | 聚合 | POST /index/_search (with aggs) | NewAggregationBuilder(client, "index").Avg("name", "field").Do(ctx) |
 | 批量操作 | POST /_bulk | NewBulkBuilder(client).Add(...).Update(...).Do(ctx) |
 
@@ -380,6 +490,8 @@ go test -v ./examples -run TestCompleteAPI
 - ✅ 分页 (From, Size)
 - ✅ 高亮 (Highlight)
 - ✅ 字段过滤 (Source)
+- ✅ 最小评分 (MinScore)
+- ✅ 快速计数 (Count)
 
 ### AggregationBuilder
 - ✅ 指标聚合 (Avg, Sum, Min, Max, Count, Stats, Cardinality, Percentiles)
@@ -403,6 +515,23 @@ go test -v ./examples -run TestCompleteAPI
 - ✅ 任务管理 (Tasks)
 - ✅ 集群设置 (GetSettings, UpdateSettings)
 - ✅ 分配解释 (AllocationExplain)
+
+### UpdateByQueryBuilder
+- ✅ 按条件批量更新 (Term, Range, Match查询)
+- ✅ 脚本更新 (Script)
+- ✅ 简化字段更新 (Set)
+
+### DeleteByQueryBuilder
+- ✅ 按条件批量删除 (Term, Range, Match查询)
+- ✅ 安全检查 (必须提供查询条件)
+
+### ScrollBuilder
+- ✅ 深度分页遍历 (Do, Next)
+- ✅ 游标管理 (KeepAlive, Clear)
+- ✅ 批量处理 (Size, HasMore)
+
+### 通用功能
+- ✅ 链式Debug模式 (所有Builder支持)
 
 ## 配置选项
 

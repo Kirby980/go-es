@@ -24,7 +24,8 @@ type SearchBuilder struct {
 	aggs      map[string]interface{}
 	source    []string
 	highlight map[string]interface{}
-	debug     bool // 调试模式标志
+	minScore  *float64 // 最小评分
+	debug     bool     // 调试模式标志
 }
 
 // NewSearchBuilder 创建搜索构建器
@@ -243,7 +244,7 @@ func (b *SearchBuilder) Nested(path string, query map[string]interface{}) *Searc
 
 // MinScore 设置最小评分
 func (b *SearchBuilder) MinScore(score float64) *SearchBuilder {
-	// 将在 Build 时处理
+	b.minScore = &score
 	return b
 }
 
@@ -393,6 +394,11 @@ func (b *SearchBuilder) Build() map[string]interface{} {
 		}
 	}
 
+	// 最小评分
+	if b.minScore != nil {
+		body["min_score"] = *b.minScore
+	}
+
 	// 分页
 	body["from"] = b.from
 	body["size"] = b.size
@@ -469,4 +475,63 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	}
 
 	return &resp, nil
+}
+
+// CountResponse 计数响应
+type CountResponse struct {
+	Count int `json:"count"`
+	Shards struct {
+		Total      int `json:"total"`
+		Successful int `json:"successful"`
+		Skipped    int `json:"skipped"`
+		Failed     int `json:"failed"`
+	} `json:"_shards"`
+}
+
+// Count 执行计数查询（只返回匹配文档数量，不返回文档内容）
+func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
+	path := fmt.Sprintf("/%s/_count", b.index)
+
+	// 构建查询条件（不需要分页、排序等）
+	body := make(map[string]interface{})
+	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
+		boolQuery := make(map[string]interface{})
+		if len(b.must) > 0 {
+			boolQuery["must"] = b.must
+		}
+		if len(b.filters) > 0 {
+			boolQuery["filter"] = b.filters
+		}
+		if len(b.should) > 0 {
+			boolQuery["should"] = b.should
+		}
+		if len(b.mustNot) > 0 {
+			boolQuery["must_not"] = b.mustNot
+		}
+		body["query"] = map[string]interface{}{
+			"bool": boolQuery,
+		}
+	}
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("POST", path, body)
+	}
+
+	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	if err != nil {
+		return 0, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
+	}
+
+	var resp CountResponse
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return 0, fmt.Errorf("解析响应失败: %w", err)
+	}
+
+	return int64(resp.Count), nil
 }
