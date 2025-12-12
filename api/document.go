@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-es/client"
+	"github.com/Kirby980/go-es/client"
 )
 
 // DocumentAPI 文档操作 API

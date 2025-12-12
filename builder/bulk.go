@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-es/client"
+	"github.com/Kirby980/go-es/client"
 )
 
 // BulkBuilder 批量操作构建器

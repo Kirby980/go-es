@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go-es/client"
+	"github.com/Kirby980/go-es/client"
 )
 
 // 准备搜索测试数据

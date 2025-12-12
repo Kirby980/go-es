@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go-es/client"
+	"github.com/Kirby980/go-es/client"
 )
 
 // 准备测试索引
@@ -471,10 +471,10 @@ func TestDocumentBuilder_SetMap(t *testing.T) {
 
 	// 使用 SetMap 批量设置
 	data := map[string]interface{}{
-		"title":   "批量设置测试",
-		"author":  "王五",
-		"views":   300,
-		"price":   29.99,
+		"title":     "批量设置测试",
+		"author":    "王五",
+		"views":     300,
+		"price":     29.99,
 		"published": true,
 	}
 
@@ -514,10 +514,10 @@ func TestDocumentBuilder_SetStruct(t *testing.T) {
 
 	// 定义结构体
 	type Article struct {
-		Title   string   `json:"title"`
-		Author  string   `json:"author"`
-		Views   int      `json:"views"`
-		Tags    []string `json:"tags"`
+		Title  string   `json:"title"`
+		Author string   `json:"author"`
+		Views  int      `json:"views"`
+		Tags   []string `json:"tags"`
 	}
 
 	article := Article{
@@ -564,7 +564,7 @@ func TestDocumentBuilder_MGet(t *testing.T) {
 	// 创建多个文档
 	for i := 1; i <= 5; i++ {
 		_, _ = NewDocumentBuilder(client, indexName).
-			ID(string(rune('0' + i))).
+			ID(string(rune('0'+i))).
 			Set("title", "文档"+string(rune('0'+i))).
 			Do(ctx)
 	}

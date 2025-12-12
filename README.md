@@ -23,9 +23,9 @@ go get go-es
 
 ```go
 import (
-    "go-es/builder"
-    "go-es/client"
-    "go-es/config"
+    "github.com/Kirby980/go-es/builder"
+    "github.com/Kirby980/go-es/client"
+    "github.com/Kirby980/go-es/config"
 )
 
 esClient, err := client.New(
@@ -329,7 +329,7 @@ err := clusterBuilder.UpdateSettings(ctx,
 
 ## API 对比表
 
-| 功能 | Elasticsearch REST API | go-es 链式调用 |
+| 功能 | Elasticsearch REST API | github.com/Kirby980/go-es 链式调用 |
 |------|------------------------|----------------|
 | 创建索引 | PUT /index | NewIndexBuilder(client, "index").Shards(1).Do(ctx) |
 | 索引文档 | PUT /index/_doc/1 | NewDocumentBuilder(client, "index").ID("1").Set("field", value).Do(ctx) |

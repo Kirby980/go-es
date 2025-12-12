@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-es/client"
+	"github.com/Kirby980/go-es/client"
 )
 
 // DocumentBuilder 文档构建器

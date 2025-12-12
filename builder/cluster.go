@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-es/client"
+	"github.com/Kirby980/go-es/client"
 )
 
 // ClusterBuilder 集群管理构建器
@@ -115,14 +115,14 @@ type ClusterStatsResponse struct {
 	Timestamp   int64  `json:"timestamp"`
 	Status      string `json:"status"`
 	Indices     struct {
-		Count       int `json:"count"`
-		Shards      map[string]interface{} `json:"shards"`
-		Docs        map[string]interface{} `json:"docs"`
-		Store       map[string]interface{} `json:"store"`
-		FieldData   map[string]interface{} `json:"fielddata"`
-		QueryCache  map[string]interface{} `json:"query_cache"`
-		Completion  map[string]interface{} `json:"completion"`
-		Segments    map[string]interface{} `json:"segments"`
+		Count      int                    `json:"count"`
+		Shards     map[string]interface{} `json:"shards"`
+		Docs       map[string]interface{} `json:"docs"`
+		Store      map[string]interface{} `json:"store"`
+		FieldData  map[string]interface{} `json:"fielddata"`
+		QueryCache map[string]interface{} `json:"query_cache"`
+		Completion map[string]interface{} `json:"completion"`
+		Segments   map[string]interface{} `json:"segments"`
 	} `json:"indices"`
 	Nodes map[string]interface{} `json:"nodes"`
 }
@@ -258,13 +258,13 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 
 // AllocationExplainResponse 分配解释响应
 type AllocationExplainResponse struct {
-	Index                string                 `json:"index"`
-	Shard                int                    `json:"shard"`
-	Primary              bool                   `json:"primary"`
-	CurrentState         string                 `json:"current_state"`
-	UnassignedInfo       map[string]interface{} `json:"unassigned_info,omitempty"`
-	CanAllocate          string                 `json:"can_allocate,omitempty"`
-	AllocateExplanation  string                 `json:"allocate_explanation,omitempty"`
+	Index                   string                   `json:"index"`
+	Shard                   int                      `json:"shard"`
+	Primary                 bool                     `json:"primary"`
+	CurrentState            string                   `json:"current_state"`
+	UnassignedInfo          map[string]interface{}   `json:"unassigned_info,omitempty"`
+	CanAllocate             string                   `json:"can_allocate,omitempty"`
+	AllocateExplanation     string                   `json:"allocate_explanation,omitempty"`
 	NodeAllocationDecisions []map[string]interface{} `json:"node_allocation_decisions,omitempty"`
 }
 

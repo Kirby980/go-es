@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"go-es/builder"
-	"go-es/client"
-	"go-es/config"
+	"github.com/Kirby980/go-es/client"
+	"github.com/Kirby980/go-es/config"
+
+	"github.com/Kirby980/go-es/builder"
 )
 
 func TestBuilder(t *testing.T) {

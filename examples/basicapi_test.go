@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"go-es/api"
-	"go-es/client"
-	"go-es/config"
+	"github.com/Kirby980/go-es/api"
+	"github.com/Kirby980/go-es/client"
+	"github.com/Kirby980/go-es/config"
 )
 
 func TestBasicAPI(t *testing.T) {

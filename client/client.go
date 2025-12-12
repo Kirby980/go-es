@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"go-es/config"
+	"github.com/Kirby980/go-es/config"
 )
 
 // Client Elasticsearch 客户端

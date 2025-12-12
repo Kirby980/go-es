@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"go-es/builder"
-	"go-es/client"
-	"go-es/config"
+	"github.com/Kirby980/go-es/builder"
+	"github.com/Kirby980/go-es/client"
+	"github.com/Kirby980/go-es/config"
 )
 
 func TestCompleteAPI(t *testing.T) {

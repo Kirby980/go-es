@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"go-es/client"
-	"go-es/config"
+	"github.com/Kirby980/go-es/client"
+	"github.com/Kirby980/go-es/config"
 )
 
 // 创建测试客户端
