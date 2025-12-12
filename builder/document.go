@@ -17,6 +17,7 @@ type DocumentBuilder struct {
 	doc     map[string]interface{}
 	script  map[string]interface{}
 	refresh string // refresh 参数: true, false, wait_for
+	debug   bool   // 调试模式标志
 }
 
 // NewDocumentBuilder 创建文档构建器
@@ -72,6 +73,29 @@ func (b *DocumentBuilder) buildPath(basePath string) string {
 	return basePath
 }
 
+// Debug 启用调试模式（链式调用）
+func (b *DocumentBuilder) Debug() *DocumentBuilder {
+	b.debug = true
+	return b
+}
+
+// printDebug 打印请求调试信息
+func (b *DocumentBuilder) printDebug(method, path string, body interface{}) {
+	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
+	if body != nil {
+		data, _ := json.MarshalIndent(body, "", "  ")
+		fmt.Printf("Request Body:\n%s\n", string(data))
+	}
+}
+
+// printResponse 打印响应调试信息
+func (b *DocumentBuilder) printResponse(respBody []byte) {
+	var pretty interface{}
+	json.Unmarshal(respBody, &pretty)
+	data, _ := json.MarshalIndent(pretty, "", "  ")
+	fmt.Printf("Response:\n%s\n\n", string(data))
+}
+
 // Script 设置脚本更新
 func (b *DocumentBuilder) Script(source string, params map[string]interface{}) *DocumentBuilder {
 	b.script = map[string]interface{}{
@@ -122,9 +146,19 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	// 添加查询参数
 	path = b.buildPath(path)
 
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug(method, path, b.doc)
+	}
+
 	respBody, err := b.client.Do(ctx, method, path, b.doc)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -144,9 +178,19 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	path := fmt.Sprintf("/%s/_create/%s", b.index, b.id)
 	path = b.buildPath(path)
 
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("PUT", path, b.doc)
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.doc)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -173,9 +217,19 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 		updateBody["doc"] = b.doc
 	}
 
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("POST", path, updateBody)
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -200,9 +254,19 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 		"doc_as_upsert": true,
 	}
 
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("POST", path, updateBody)
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -220,9 +284,20 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 	}
 
 	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("GET", path, nil)
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp GetResponse
@@ -242,9 +317,19 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
 	path = b.buildPath(path)
 
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("DELETE", path, nil)
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse

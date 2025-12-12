@@ -573,7 +573,7 @@ func TestSearchBuilder_GeoDistance(t *testing.T) {
 		_ = NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := NewSearchBuilder(client, indexName).Debug().
 		GeoDistance("location", 37.7749, -122.4194, "50km").
 		Do(ctx)
 

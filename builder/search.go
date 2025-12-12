@@ -24,6 +24,7 @@ type SearchBuilder struct {
 	aggs      map[string]interface{}
 	source    []string
 	highlight map[string]interface{}
+	debug     bool // 调试模式标志
 }
 
 // NewSearchBuilder 创建搜索构建器
@@ -419,11 +420,27 @@ func (b *SearchBuilder) Build() map[string]interface{} {
 	return body
 }
 
-// Debug 打印调试信息
-func (b *SearchBuilder) Debug() string {
-	body := b.Build()
-	date, _ := json.MarshalIndent(body, "", " ")
-	return string(date)
+// Debug 启用调试模式（链式调用）
+func (b *SearchBuilder) Debug() *SearchBuilder {
+	b.debug = true
+	return b
+}
+
+// printDebug 打印请求调试信息
+func (b *SearchBuilder) printDebug(method, path string, body interface{}) {
+	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
+	if body != nil {
+		data, _ := json.MarshalIndent(body, "", "  ")
+		fmt.Printf("Request Body:\n%s\n", string(data))
+	}
+}
+
+// printResponse 打印响应调试信息
+func (b *SearchBuilder) printResponse(respBody []byte) {
+	var pretty interface{}
+	json.Unmarshal(respBody, &pretty)
+	data, _ := json.MarshalIndent(pretty, "", "  ")
+	fmt.Printf("Response:\n%s\n\n", string(data))
 }
 
 // Do 执行搜索
@@ -431,9 +448,19 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	path := fmt.Sprintf("/%s/_search", b.index)
 	body := b.Build()
 
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("POST", path, body)
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp SearchResponse

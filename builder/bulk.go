@@ -15,6 +15,7 @@ type BulkBuilder struct {
 	client     *client.Client
 	index      string
 	operations []bulkOperation
+	debug      bool // 调试模式标志
 }
 
 // bulkOperation 批量操作项
@@ -206,10 +207,27 @@ func (b *BulkBuilder) Build() []byte {
 	return buf.Bytes()
 }
 
-func (b *BulkBuilder) Debug() string {
-	body := b.Build()
-	date, _ := json.MarshalIndent(body, "", " ")
-	return string(date)
+// Debug 启用调试模式（链式调用）
+func (b *BulkBuilder) Debug() *BulkBuilder {
+	b.debug = true
+	return b
+}
+
+// printDebug 打印请求调试信息
+func (b *BulkBuilder) printDebug(method, path string, body []byte) {
+	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
+	if body != nil {
+		// Bulk API 使用 NDJSON 格式，直接打印
+		fmt.Printf("Request Body (NDJSON):\n%s\n", string(body))
+	}
+}
+
+// printResponse 打印响应调试信息
+func (b *BulkBuilder) printResponse(respBody []byte) {
+	var pretty interface{}
+	json.Unmarshal(respBody, &pretty)
+	data, _ := json.MarshalIndent(pretty, "", "  ")
+	fmt.Printf("Response:\n%s\n\n", string(data))
 }
 
 // Do 执行批量操作
@@ -220,6 +238,11 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 
 	path := "/_bulk"
 	body := b.Build()
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("POST", path, body)
+	}
 
 	// 创建请求
 	url := b.client.GetAddress() + path
@@ -235,6 +258,11 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	respBody, err := b.client.DoRequest(ctx, req)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp BulkResponse

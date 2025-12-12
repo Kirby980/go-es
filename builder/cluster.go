@@ -12,13 +12,43 @@ import (
 // ClusterBuilder 集群管理构建器
 type ClusterBuilder struct {
 	client *client.Client
+	debug  bool // 调试模式标志
 }
 
 // NewClusterBuilder 创建集群构建器
 func NewClusterBuilder(c *client.Client) *ClusterBuilder {
 	return &ClusterBuilder{
 		client: c,
+		debug:  false,
 	}
+}
+
+// Debug 启用调试模式（链式调用）
+func (b *ClusterBuilder) Debug() *ClusterBuilder {
+	b.debug = true
+	return b
+}
+
+// printDebug 打印请求调试信息
+func (b *ClusterBuilder) printDebug(method, path string, body interface{}) {
+	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
+	if body != nil {
+		data, _ := json.MarshalIndent(body, "", "  ")
+		fmt.Printf("Request Body:\n%s\n", string(data))
+	}
+}
+
+// printResponse 打印响应调试信息
+func (b *ClusterBuilder) printResponse(respBody []byte) {
+	var pretty interface{}
+	json.Unmarshal(respBody, &pretty)
+	data, _ := json.MarshalIndent(pretty, "", "  ")
+	fmt.Printf("Response:\n%s\n\n", string(data))
+}
+
+// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
+func (b *ClusterBuilder) resetDebug() {
+	b.debug = false
 }
 
 // ========== 集群健康 ==========
@@ -45,9 +75,21 @@ type ClusterHealthResponse struct {
 // Health 获取集群健康状态
 func (b *ClusterBuilder) Health(ctx context.Context) (*ClusterHealthResponse, error) {
 	path := "/_cluster/health"
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("GET", path, nil)
+		defer b.resetDebug()
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp ClusterHealthResponse
@@ -130,9 +172,21 @@ type ClusterStatsResponse struct {
 // Stats 获取集群统计信息
 func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, error) {
 	path := "/_cluster/stats"
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("GET", path, nil)
+		defer b.resetDebug()
+	}
+
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
 	}
 
 	var resp ClusterStatsResponse
@@ -250,8 +304,23 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 		body["transient"] = transient
 	}
 
-	_, err := b.client.Do(ctx, http.MethodPut, path, body)
-	return err
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("PUT", path, body)
+		defer b.resetDebug()
+	}
+
+	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
+	if err != nil {
+		return err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
+	}
+
+	return nil
 }
 
 // ========== 分配解释 ==========
