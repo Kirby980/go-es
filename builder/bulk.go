@@ -15,7 +15,8 @@ type BulkBuilder struct {
 	client     *client.Client
 	index      string
 	operations []bulkOperation
-	debug      bool // 调试模式标志
+	currentOp  *bulkOperation // 当前正在构建的操作（用于链式调用）
+	debug      bool           // 调试模式标志
 }
 
 // bulkOperation 批量操作项
@@ -39,8 +40,22 @@ func (b *BulkBuilder) Index(index string) *BulkBuilder {
 	return b
 }
 
+// commitCurrent 提交当前正在构建的操作到操作列表
+func (b *BulkBuilder) commitCurrent() {
+	if b.currentOp != nil {
+		// 如果是 update 操作，需要包装成 {"doc": {...}}
+		if b.currentOp.action == "update" && b.currentOp.doc != nil {
+			b.currentOp.doc = map[string]interface{}{"doc": b.currentOp.doc}
+		}
+		b.operations = append(b.operations, *b.currentOp)
+		b.currentOp = nil
+	}
+}
+
 // Add 添加索引操作
 func (b *BulkBuilder) Add(index, id string, doc map[string]interface{}) *BulkBuilder {
+	b.commitCurrent() // 先提交链式构建的操作（如果有）
+
 	if index == "" {
 		index = b.index
 	}
@@ -62,6 +77,8 @@ func (b *BulkBuilder) Add(index, id string, doc map[string]interface{}) *BulkBui
 
 // Create 添加创建操作（文档已存在则失败）
 func (b *BulkBuilder) Create(index, id string, doc map[string]interface{}) *BulkBuilder {
+	b.commitCurrent() // 先提交链式构建的操作（如果有）
+
 	if index == "" {
 		index = b.index
 	}
@@ -81,6 +98,8 @@ func (b *BulkBuilder) Create(index, id string, doc map[string]interface{}) *Bulk
 
 // Update 添加更新操作
 func (b *BulkBuilder) Update(index, id string, doc map[string]interface{}) *BulkBuilder {
+	b.commitCurrent() // 先提交链式构建的操作（如果有）
+
 	if index == "" {
 		index = b.index
 	}
@@ -100,6 +119,8 @@ func (b *BulkBuilder) Update(index, id string, doc map[string]interface{}) *Bulk
 
 // Delete 添加删除操作
 func (b *BulkBuilder) Delete(index, id string) *BulkBuilder {
+	b.commitCurrent() // 先提交链式构建的操作（如果有）
+
 	if index == "" {
 		index = b.index
 	}
@@ -113,6 +134,134 @@ func (b *BulkBuilder) Delete(index, id string) *BulkBuilder {
 		action: "delete",
 		meta:   meta,
 	})
+	return b
+}
+
+// ========== 链式调用 API ==========
+
+// AddDoc 开始添加索引操作（链式调用）
+func (b *BulkBuilder) AddDoc(id string) *BulkBuilder {
+	return b.AddDocWithIndex("", id)
+}
+
+// AddDocWithIndex 开始添加索引操作并指定索引（链式调用）
+func (b *BulkBuilder) AddDocWithIndex(index, id string) *BulkBuilder {
+	b.commitCurrent()
+
+	if index == "" {
+		index = b.index
+	}
+
+	meta := map[string]interface{}{
+		"_index": index,
+	}
+	if id != "" {
+		meta["_id"] = id
+	}
+
+	b.currentOp = &bulkOperation{
+		action: "index",
+		meta:   meta,
+		doc:    make(map[string]interface{}),
+	}
+	return b
+}
+
+// CreateDoc 开始添加创建操作（链式调用）
+func (b *BulkBuilder) CreateDoc(id string) *BulkBuilder {
+	return b.CreateDocWithIndex("", id)
+}
+
+// CreateDocWithIndex 开始添加创建操作并指定索引（链式调用）
+func (b *BulkBuilder) CreateDocWithIndex(index, id string) *BulkBuilder {
+	b.commitCurrent()
+
+	if index == "" {
+		index = b.index
+	}
+
+	meta := map[string]interface{}{
+		"_index": index,
+		"_id":    id,
+	}
+
+	b.currentOp = &bulkOperation{
+		action: "create",
+		meta:   meta,
+		doc:    make(map[string]interface{}),
+	}
+	return b
+}
+
+// UpdateDoc 开始添加更新操作（链式调用）
+func (b *BulkBuilder) UpdateDoc(id string) *BulkBuilder {
+	return b.UpdateDocWithIndex("", id)
+}
+
+// UpdateDocWithIndex 开始添加更新操作并指定索引（链式调用）
+func (b *BulkBuilder) UpdateDocWithIndex(index, id string) *BulkBuilder {
+	b.commitCurrent()
+
+	if index == "" {
+		index = b.index
+	}
+
+	meta := map[string]interface{}{
+		"_index": index,
+		"_id":    id,
+	}
+
+	b.currentOp = &bulkOperation{
+		action: "update",
+		meta:   meta,
+		doc:    make(map[string]interface{}),
+	}
+	return b
+}
+
+// DeleteDoc 添加删除操作（链式调用）
+func (b *BulkBuilder) DeleteDoc(id string) *BulkBuilder {
+	return b.DeleteDocWithIndex("", id)
+}
+
+// DeleteDocWithIndex 添加删除操作并指定索引（链式调用）
+func (b *BulkBuilder) DeleteDocWithIndex(index, id string) *BulkBuilder {
+	b.commitCurrent()
+
+	if index == "" {
+		index = b.index
+	}
+
+	meta := map[string]interface{}{
+		"_index": index,
+		"_id":    id,
+	}
+
+	// Delete 不需要 doc，直接添加到 operations
+	b.operations = append(b.operations, bulkOperation{
+		action: "delete",
+		meta:   meta,
+	})
+	return b
+}
+
+// Set 设置字段值（链式调用，需要先调用 AddDoc/CreateDoc/UpdateDoc）
+func (b *BulkBuilder) Set(key string, value interface{}) *BulkBuilder {
+	if b.currentOp == nil {
+		// 如果没有当前操作，抛出 panic 提示用户
+		panic("Set() must be called after AddDoc/CreateDoc/UpdateDoc")
+	}
+	b.currentOp.doc[key] = value
+	return b
+}
+
+// SetFromStruct 从结构体设置字段（链式调用）
+func (b *BulkBuilder) SetFromStruct(data interface{}) *BulkBuilder {
+	if b.currentOp == nil {
+		panic("SetFromStruct() must be called after AddDoc/CreateDoc/UpdateDoc")
+	}
+	jsonData, _ := json.Marshal(data)
+	json.Unmarshal(jsonData, &b.currentOp.doc)
 	return b
 }
 
@@ -185,6 +334,8 @@ func (r *BulkResponse) SuccessCount() int {
 
 // Build 构建批量操作请求体
 func (b *BulkBuilder) Build() []byte {
+	b.commitCurrent() // 提交链式构建的操作（如果有）
+
 	var buf bytes.Buffer
 
 	for _, op := range b.operations {
@@ -237,6 +388,8 @@ func (b *BulkBuilder) resetDebug() {
 
 // Do 执行批量操作
 func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
+	b.commitCurrent() // 提交链式构建的操作（如果有）
+
 	if len(b.operations) == 0 {
 		return nil, fmt.Errorf("没有待执行的批量操作")
 	}

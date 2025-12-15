@@ -372,3 +372,172 @@ func TestBulkBuilder_ErrorHandling(t *testing.T) {
 	t.Logf("批量操作结果: 成功=%d, 失败=%d",
 		resp.SuccessCount(), len(resp.FailedItems()))
 }
+
+// TestBulkBuilder_ChainedAPI 测试链式调用 API
+func TestBulkBuilder_ChainedAPI(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_chained"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 使用链式调用添加文档
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		AddDoc("chain1").
+		Set("title", "链式文档1").
+		Set("views", 100).
+		AddDoc("chain2").
+		Set("title", "链式文档2").
+		Set("views", 200).
+		AddDoc("chain3").
+		Set("title", "链式文档3").
+		Set("views", 300).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("链式调用批量索引失败: %v", err)
+	}
+
+	if resp.SuccessCount() != 3 {
+		t.Errorf("期望成功 3 个, 实际=%d", resp.SuccessCount())
+	}
+
+	t.Logf("✓ 链式调用批量索引成功: 成功=%d, 失败=%d",
+		resp.SuccessCount(), len(resp.FailedItems()))
+}
+
+// TestBulkBuilder_ChainedMixedOperations 测试链式调用混合操作
+func TestBulkBuilder_ChainedMixedOperations(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_chained_mixed"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 先创建一些文档
+	_, _ = NewDocumentBuilder(client, indexName).
+		ID("mix1").
+		Set("title", "原始文档1").
+		Set("views", 100).
+		Do(ctx)
+
+	_, _ = NewDocumentBuilder(client, indexName).
+		ID("mix2").
+		Set("title", "原始文档2").
+		Set("views", 200).
+		Do(ctx)
+
+	time.Sleep(1 * time.Second)
+
+	// 使用链式调用进行混合操作
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		AddDoc("mix3").
+		Set("title", "新文档3").
+		Set("views", 300).
+		UpdateDoc("mix1").
+		Set("views", 150).
+		DeleteDoc("mix2").
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("链式调用混合操作失败: %v", err)
+	}
+
+	t.Logf("✓ 链式调用混合操作成功: 成功=%d, 失败=%d",
+		resp.SuccessCount(), len(resp.FailedItems()))
+
+	if resp.HasErrors() {
+		for _, item := range resp.FailedItems() {
+			t.Logf("  失败项: ID=%s, 错误=%s", item.ID, item.Error.Reason)
+		}
+	}
+}
+
+// TestBulkBuilder_ChainedWithStruct 测试链式调用使用结构体
+func TestBulkBuilder_ChainedWithStruct(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_chained_struct"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	type Doc struct {
+		Title string `json:"title"`
+		Views int    `json:"views"`
+	}
+
+	// 使用链式调用和 SetFromStruct
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		AddDoc("struct1").
+		SetFromStruct(Doc{Title: "结构体1", Views: 100}).
+		AddDoc("struct2").
+		SetFromStruct(Doc{Title: "结构体2", Views: 200}).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("链式调用结构体失败: %v", err)
+	}
+
+	if resp.SuccessCount() != 2 {
+		t.Errorf("期望成功 2 个, 实际=%d", resp.SuccessCount())
+	}
+
+	t.Logf("✓ 链式调用结构体成功: 成功=%d", resp.SuccessCount())
+}
+
+// TestBulkBuilder_MixedAPIStyles 测试混用两种 API 风格
+func TestBulkBuilder_MixedAPIStyles(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_mixed_styles"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 混用传统 map 方式和链式调用方式
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		Add("", "map1", map[string]interface{}{
+			"title": "Map方式1",
+			"views": 100,
+		}).
+		AddDoc("chain1").
+		Set("title", "链式方式1").
+		Set("views", 200).
+		Add("", "map2", map[string]interface{}{
+			"title": "Map方式2",
+			"views": 300,
+		}).
+		AddDoc("chain2").
+		Set("title", "链式方式2").
+		Set("views", 400).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("混用 API 风格失败: %v", err)
+	}
+
+	if resp.SuccessCount() != 4 {
+		t.Errorf("期望成功 4 个, 实际=%d", resp.SuccessCount())
+	}
+
+	t.Logf("✓ 混用 API 风格成功: 成功=%d", resp.SuccessCount())
+}
