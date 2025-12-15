@@ -112,6 +112,11 @@ func (b *DeleteByQueryBuilder) printResponse(respBody []byte) {
 	fmt.Printf("Response:\n%s\n\n", string(data))
 }
 
+// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
+func (b *DeleteByQueryBuilder) resetDebug() {
+	b.debug = false
+}
+
 // Build 构建请求体
 func (b *DeleteByQueryBuilder) Build() map[string]interface{} {
 	body := make(map[string]interface{})
@@ -171,6 +176,7 @@ func (b *DeleteByQueryBuilder) Do(ctx context.Context) (*DeleteByQueryResponse, 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("POST", path, body)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)

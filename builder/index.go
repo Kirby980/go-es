@@ -209,6 +209,11 @@ func (b *IndexBuilder) printResponse(respBody []byte) {
 	fmt.Printf("Response:\n%s\n\n", string(data))
 }
 
+// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
+func (b *IndexBuilder) resetDebug() {
+	b.debug = false
+}
+
 // Do 执行创建索引
 func (b *IndexBuilder) Do(ctx context.Context) error {
 	path := fmt.Sprintf("/%s", b.index)
@@ -217,6 +222,7 @@ func (b *IndexBuilder) Do(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("PUT", path, body)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
@@ -239,6 +245,7 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("DELETE", path, nil)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
@@ -295,6 +302,7 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("GET", path, nil)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)

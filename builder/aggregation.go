@@ -432,6 +432,11 @@ func (b *AggregationBuilder) printResponse(respBody []byte) {
 	fmt.Printf("Response:\n%s\n\n", string(data))
 }
 
+// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
+func (b *AggregationBuilder) resetDebug() {
+	b.debug = false
+}
+
 // Do 执行聚合
 func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, error) {
 	path := fmt.Sprintf("/%s/_search", b.index)
@@ -440,6 +445,7 @@ func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, erro
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("POST", path, body)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)

@@ -96,6 +96,11 @@ func (b *DocumentBuilder) printResponse(respBody []byte) {
 	fmt.Printf("Response:\n%s\n\n", string(data))
 }
 
+// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
+func (b *DocumentBuilder) resetDebug() {
+	b.debug = false
+}
+
 // Script 设置脚本更新
 func (b *DocumentBuilder) Script(source string, params map[string]interface{}) *DocumentBuilder {
 	b.script = map[string]interface{}{
@@ -149,6 +154,7 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug(method, path, b.doc)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, method, path, b.doc)
@@ -181,6 +187,7 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("PUT", path, b.doc)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.doc)
@@ -220,6 +227,7 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("POST", path, updateBody)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
@@ -257,6 +265,7 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("POST", path, updateBody)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
@@ -288,6 +297,7 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("GET", path, nil)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -320,6 +330,7 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
 		b.printDebug("DELETE", path, nil)
+		defer b.resetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
