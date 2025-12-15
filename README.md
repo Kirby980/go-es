@@ -238,6 +238,89 @@ count, _ := builder.NewSearchBuilder(esClient, "products").
 fmt.Printf("活跃商品数量: %d\n", count)
 ```
 
+#### 搜索逻辑关系说明
+
+Elasticsearch 的搜索条件有明确的逻辑关系，理解这些逻辑关系非常重要：
+
+| 方法类型 | 逻辑关系 | 说明 | 示例 |
+|---------|---------|------|------|
+| `Match()`, `Term()`, `Range()` 等 | **AND（且）** | 所有条件都必须满足 | `Match("title", "ES").Term("status", "ok")` → 标题包含ES **且** 状态是ok |
+| `MatchShould()`, `TermShould()`, `RangeShould()` | **OR（或）** | 至少满足一个条件 | `MatchShould("cat", "tech").MatchShould("cat", "prog")` → 分类是tech **或** 分类是prog |
+| `MatchMustNot()`, `TermMustNot()`, `RangeMustNot()` | **NOT（非）** | 必须不匹配 | `MatchMustNot("title", "old")` → 标题不能包含old |
+| `MinimumShouldMatch()` | **OR 数量控制** | 控制至少匹配几个 should 条件 | `MinimumShouldMatch(2)` → should条件中至少匹配2个 |
+
+**完整示例：**
+
+```go
+// 需求：搜索符合以下条件的商品
+// 1. 必须是 "electronics" 分类 (AND)
+// 2. 必须是 "active" 状态 (AND)
+// 3. 价格在 100-1000 之间 (AND)
+// 4. 品牌是 "Apple" 或 "Samsung" 或 "Huawei"（至少匹配2个）(OR)
+// 5. 标题不能包含 "refurbished" (NOT)
+
+resp, err := builder.NewSearchBuilder(esClient, "products").
+    // ===== AND 条件（所有都要满足）=====
+    Term("category", "electronics").        // AND: 必须是 electronics 分类
+    Term("status", "active").               // AND: 必须是 active 状态
+    Range("price", 100, 1000).              // AND: 必须在 100-1000 价格区间
+
+    // ===== OR 条件（至少满足2个）=====
+    MatchShould("brand", "Apple").          // OR: 可能是 Apple
+    MatchShould("brand", "Samsung").        // OR: 可能是 Samsung
+    MatchShould("brand", "Huawei").         // OR: 可能是 Huawei
+    MinimumShouldMatch(2).                  // 上面3个OR条件至少要满足2个
+
+    // ===== NOT 条件（必须不满足）=====
+    MatchMustNot("title", "refurbished").   // NOT: 标题不能包含 refurbished
+
+    From(0).
+    Size(20).
+    Do(ctx)
+```
+
+**等价的 SQL 逻辑：**
+
+```sql
+SELECT * FROM products
+WHERE
+    category = 'electronics'           -- AND
+    AND status = 'active'              -- AND
+    AND price BETWEEN 100 AND 1000     -- AND
+    AND (                              -- OR (至少2个)
+        (brand = 'Apple') +
+        (brand = 'Samsung') +
+        (brand = 'Huawei')
+    ) >= 2
+    AND title NOT LIKE '%refurbished%' -- NOT
+LIMIT 20;
+```
+
+**OR 条件数量控制：**
+
+```go
+// 场景1：至少匹配1个 OR 条件（默认）
+builder.MatchShould("color", "red").
+        MatchShould("color", "blue").
+        MatchShould("color", "green")
+// 等价于: color='red' OR color='blue' OR color='green'
+
+// 场景2：至少匹配2个 OR 条件
+builder.MatchShould("feature", "waterproof").
+        MatchShould("feature", "wireless").
+        MatchShould("feature", "fast-charging").
+        MinimumShouldMatch(2)
+// 等价于: 上面3个特性至少要有2个
+
+// 场景3：至少匹配75%的 OR 条件
+builder.MatchShould("tag", "new").
+        MatchShould("tag", "popular").
+        MatchShould("tag", "recommended").
+        MatchShould("tag", "trending").
+        MinimumShouldMatch("75%")
+// 等价于: 4个标签至少要匹配3个（75%）
+```
+
 ### 5. 聚合分析 (AggregationBuilder)
 
 #### 指标聚合

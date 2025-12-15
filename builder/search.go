@@ -11,21 +11,22 @@ import (
 
 // SearchBuilder 搜索构建器
 type SearchBuilder struct {
-	client    *client.Client
-	index     string
-	query     map[string]interface{}
-	filters   []map[string]interface{}
-	must      []map[string]interface{}
-	should    []map[string]interface{}
-	mustNot   []map[string]interface{}
-	from      int
-	size      int
-	sort      []map[string]interface{}
-	aggs      map[string]interface{}
-	source    []string
-	highlight map[string]interface{}
-	minScore  *float64 // 最小评分
-	debug     bool     // 调试模式标志
+	client              *client.Client
+	index               string
+	query               map[string]interface{}
+	filters             []map[string]interface{}
+	must                []map[string]interface{}
+	should              []map[string]interface{}
+	mustNot             []map[string]interface{}
+	minimumShouldMatch  interface{} // 最少匹配 should 条件数量
+	from                int
+	size                int
+	sort                []map[string]interface{}
+	aggs                map[string]interface{}
+	source              []string
+	highlight           map[string]interface{}
+	minScore            *float64 // 最小评分
+	debug               bool     // 调试模式标志
 }
 
 // NewSearchBuilder 创建搜索构建器
@@ -248,6 +249,15 @@ func (b *SearchBuilder) MinScore(score float64) *SearchBuilder {
 	return b
 }
 
+// MinimumShouldMatch 设置最少匹配 should 条件数量
+// 参数可以是：
+// - 整数：至少匹配的 should 条件数量，如 2 表示至少匹配2个条件
+// - 字符串：百分比或表达式，如 "75%" 表示至少匹配75%的条件
+func (b *SearchBuilder) MinimumShouldMatch(value interface{}) *SearchBuilder {
+	b.minimumShouldMatch = value
+	return b
+}
+
 // Should 添加 should 条件（至少匹配一个）
 func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilder {
 	for _, condition := range conditions {
@@ -266,7 +276,48 @@ func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilde
 	return b
 }
 
-// MustNot 添加 must_not 条件
+// ========== Should 条件（更友好的 API）==========
+
+// MatchShould 添加 match 查询到 should 条件
+func (b *SearchBuilder) MatchShould(field string, value interface{}) *SearchBuilder {
+	b.should = append(b.should, map[string]interface{}{
+		"match": map[string]interface{}{
+			field: value,
+		},
+	})
+	return b
+}
+
+// TermShould 添加 term 查询到 should 条件
+func (b *SearchBuilder) TermShould(field string, value interface{}) *SearchBuilder {
+	b.should = append(b.should, map[string]interface{}{
+		"term": map[string]interface{}{
+			field: value,
+		},
+	})
+	return b
+}
+
+// RangeShould 添加范围查询到 should 条件
+func (b *SearchBuilder) RangeShould(field string, gte, lte interface{}) *SearchBuilder {
+	rangeQuery := make(map[string]interface{})
+	if gte != nil {
+		rangeQuery["gte"] = gte
+	}
+	if lte != nil {
+		rangeQuery["lte"] = lte
+	}
+	b.should = append(b.should, map[string]interface{}{
+		"range": map[string]interface{}{
+			field: rangeQuery,
+		},
+	})
+	return b
+}
+
+// ========== Must Not 条件（更友好的 API）==========
+
+// MustNot 添加 must_not 条件（term 查询）
 func (b *SearchBuilder) MustNot(field string, value interface{}) *SearchBuilder {
 	b.mustNot = append(b.mustNot, map[string]interface{}{
 		"term": map[string]interface{}{
@@ -276,7 +327,40 @@ func (b *SearchBuilder) MustNot(field string, value interface{}) *SearchBuilder 
 	return b
 }
 
-// From 设置分页起始位置
+// MatchMustNot 添加 match 查询到 must_not 条件
+func (b *SearchBuilder) MatchMustNot(field string, value interface{}) *SearchBuilder {
+	b.mustNot = append(b.mustNot, map[string]interface{}{
+		"match": map[string]interface{}{
+			field: value,
+		},
+	})
+	return b
+}
+
+// TermMustNot 添加 term 查询到 must_not 条件（等同于 MustNot，提供别名以保持一致性）
+func (b *SearchBuilder) TermMustNot(field string, value interface{}) *SearchBuilder {
+	return b.MustNot(field, value)
+}
+
+// RangeMustNot 添加范围查询到 must_not 条件
+func (b *SearchBuilder) RangeMustNot(field string, gte, lte interface{}) *SearchBuilder {
+	rangeQuery := make(map[string]interface{})
+	if gte != nil {
+		rangeQuery["gte"] = gte
+	}
+	if lte != nil {
+		rangeQuery["lte"] = lte
+	}
+	b.mustNot = append(b.mustNot, map[string]interface{}{
+		"range": map[string]interface{}{
+			field: rangeQuery,
+		},
+	})
+	return b
+}
+
+// ========== 分页和排序 ==========
+
 func (b *SearchBuilder) From(from int) *SearchBuilder {
 	b.from = from
 	return b
@@ -353,23 +437,6 @@ type SearchResponse struct {
 	Aggregations map[string]interface{} `json:"aggregations,omitempty"`
 }
 
-// JSON 返回 JSON 格式字符串（紧凑）
-func (r *SearchResponse) JSON() string {
-	data, _ := json.Marshal(r)
-	return string(data)
-}
-
-// PrettyJSON 返回格式化的 JSON 字符串
-func (r *SearchResponse) PrettyJSON() string {
-	data, _ := json.MarshalIndent(r, "", "  ")
-	return string(data)
-}
-
-// String 实现 Stringer 接口，默认返回格式化 JSON
-func (r *SearchResponse) String() string {
-	return r.PrettyJSON()
-}
-
 // Build 构建查询 DSL
 func (b *SearchBuilder) Build() map[string]interface{} {
 	body := make(map[string]interface{})
@@ -388,6 +455,10 @@ func (b *SearchBuilder) Build() map[string]interface{} {
 		}
 		if len(b.mustNot) > 0 {
 			boolQuery["must_not"] = b.mustNot
+		}
+		// 最少匹配 should 条件数量
+		if b.minimumShouldMatch != nil {
+			boolQuery["minimum_should_match"] = b.minimumShouldMatch
 		}
 		body["query"] = map[string]interface{}{
 			"bool": boolQuery,

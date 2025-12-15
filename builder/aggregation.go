@@ -383,18 +383,6 @@ type AggregationResponse struct {
 	Aggregations map[string]interface{} `json:"aggregations"`
 }
 
-// JSON 返回 JSON 格式字符串
-func (r *AggregationResponse) JSON() string {
-	data, _ := json.Marshal(r)
-	return string(data)
-}
-
-// PrettyJSON 返回格式化的 JSON 字符串
-func (r *AggregationResponse) PrettyJSON() string {
-	data, _ := json.MarshalIndent(r, "", "  ")
-	return string(data)
-}
-
 // Build 构建聚合请求
 func (b *AggregationBuilder) Build() map[string]interface{} {
 	body := map[string]interface{}{

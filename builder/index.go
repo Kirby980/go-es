@@ -278,23 +278,6 @@ type IndexInfo struct {
 	Settings map[string]interface{} `json:"settings"`
 }
 
-// JSON 返回 JSON 格式字符串（紧凑）
-func (info *IndexInfo) JSON() string {
-	data, _ := json.Marshal(info)
-	return string(data)
-}
-
-// PrettyJSON 返回格式化的 JSON 字符串
-func (info *IndexInfo) PrettyJSON() string {
-	data, _ := json.MarshalIndent(info, "", "  ")
-	return string(data)
-}
-
-// String 实现 Stringer 接口，默认返回格式化 JSON
-func (info *IndexInfo) String() string {
-	return info.PrettyJSON()
-}
-
 // Get 获取索引信息
 func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	path := fmt.Sprintf("/%s", b.index)
