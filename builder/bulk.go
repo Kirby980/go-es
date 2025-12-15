@@ -265,6 +265,41 @@ func (b *BulkBuilder) SetFromStruct(data interface{}) *BulkBuilder {
 	return b
 }
 
+// SetObject 设置嵌套对象（链式调用）
+func (b *BulkBuilder) SetObject(key string, builder func(*NestedObject)) *BulkBuilder {
+	if b.currentOp == nil {
+		panic("SetObject() must be called after AddDoc/CreateDoc/UpdateDoc")
+	}
+	nested := &NestedObject{data: make(map[string]interface{})}
+	builder(nested)
+	b.currentOp.doc[key] = nested.data
+	return b
+}
+
+// SetArray 设置数组字段（链式调用）
+func (b *BulkBuilder) SetArray(key string, values ...interface{}) *BulkBuilder {
+	if b.currentOp == nil {
+		panic("SetArray() must be called after AddDoc/CreateDoc/UpdateDoc")
+	}
+	b.currentOp.doc[key] = values
+	return b
+}
+
+// SetObjectArray 设置对象数组（链式调用）
+func (b *BulkBuilder) SetObjectArray(key string, builders ...func(*NestedObject)) *BulkBuilder {
+	if b.currentOp == nil {
+		panic("SetObjectArray() must be called after AddDoc/CreateDoc/UpdateDoc")
+	}
+	arr := make([]map[string]interface{}, len(builders))
+	for i, builder := range builders {
+		nested := &NestedObject{data: make(map[string]interface{})}
+		builder(nested)
+		arr[i] = nested.data
+	}
+	b.currentOp.doc[key] = arr
+	return b
+}
+
 // AddFromStruct 从结构体添加索引操作
 func (b *BulkBuilder) AddFromStruct(index, id string, data interface{}) *BulkBuilder {
 	doc := make(map[string]interface{})

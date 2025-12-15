@@ -541,3 +541,202 @@ func TestBulkBuilder_MixedAPIStyles(t *testing.T) {
 
 	t.Logf("✓ 混用 API 风格成功: 成功=%d", resp.SuccessCount())
 }
+
+// TestBulkBuilder_ChainedWithNestedObject 测试链式调用嵌套对象
+func TestBulkBuilder_ChainedWithNestedObject(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_nested"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 使用链式调用添加嵌套对象
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		AddDoc("nested1").
+		Set("title", "嵌套文档1").
+		SetObject("user", func(obj *NestedObject) {
+			obj.Set("name", "张三").
+				Set("age", 25).
+				SetObject("address", func(addr *NestedObject) {
+					addr.Set("city", "北京").
+						Set("street", "长安街")
+				})
+		}).
+		AddDoc("nested2").
+		Set("title", "嵌套文档2").
+		SetObject("user", func(obj *NestedObject) {
+			obj.Set("name", "李四").
+				Set("age", 30).
+				SetObject("address", func(addr *NestedObject) {
+					addr.Set("city", "上海").
+						Set("street", "南京路")
+				})
+		}).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("链式调用嵌套对象失败: %v", err)
+	}
+
+	if resp.SuccessCount() != 2 {
+		t.Errorf("期望成功 2 个, 实际=%d", resp.SuccessCount())
+	}
+
+	t.Logf("✓ 链式调用嵌套对象成功: 成功=%d", resp.SuccessCount())
+
+	// 验证嵌套对象
+	time.Sleep(1 * time.Second)
+	getResp, _ := NewDocumentBuilder(client, indexName).
+		ID("nested1").
+		Get(ctx)
+
+	user := getResp.Source["user"].(map[string]interface{})
+	if user["name"] != "张三" {
+		t.Errorf("user.name 应该为 '张三', 实际=%v", user["name"])
+	}
+
+	address := user["address"].(map[string]interface{})
+	if address["city"] != "北京" {
+		t.Errorf("user.address.city 应该为 '北京', 实际=%v", address["city"])
+	}
+
+	t.Logf("✓ 嵌套对象验证成功")
+}
+
+// TestBulkBuilder_ChainedWithObjectArray 测试链式调用对象数组
+func TestBulkBuilder_ChainedWithObjectArray(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_obj_array"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 使用链式调用添加对象数组
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		AddDoc("array1").
+		Set("title", "对象数组文档").
+		SetArray("tags", "Go", "ES", "测试").
+		SetObjectArray("comments",
+			func(obj *NestedObject) {
+				obj.Set("author", "用户1").
+					Set("content", "评论1").
+					Set("rating", 5)
+			},
+			func(obj *NestedObject) {
+				obj.Set("author", "用户2").
+					Set("content", "评论2").
+					Set("rating", 4)
+			},
+		).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("链式调用对象数组失败: %v", err)
+	}
+
+	if resp.SuccessCount() != 1 {
+		t.Errorf("期望成功 1 个, 实际=%d", resp.SuccessCount())
+	}
+
+	t.Logf("✓ 链式调用对象数组成功: 成功=%d", resp.SuccessCount())
+
+	// 验证对象数组
+	time.Sleep(1 * time.Second)
+	getResp, _ := NewDocumentBuilder(client, indexName).
+		ID("array1").
+		Get(ctx)
+
+	comments := getResp.Source["comments"].([]interface{})
+	if len(comments) != 2 {
+		t.Errorf("应该有 2 条评论, 实际=%d", len(comments))
+	}
+
+	tags := getResp.Source["tags"].([]interface{})
+	if len(tags) != 3 {
+		t.Errorf("tags 应该有 3 个元素, 实际=%d", len(tags))
+	}
+
+	t.Logf("✓ 对象数组验证成功")
+}
+
+// TestBulkBuilder_ComplexNested 测试批量操作复杂嵌套
+func TestBulkBuilder_ComplexNested(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_complex"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 批量添加复杂嵌套结构
+	resp, err := NewBulkBuilder(client).
+		Index(indexName).
+		AddDoc("complex1").
+		Set("title", "复杂文档1").
+		Set("price", 99.99).
+		SetArray("tags", "标签1", "标签2").
+		SetObject("creator", func(creator *NestedObject) {
+			creator.Set("name", "作者1").
+				SetObject("profile", func(profile *NestedObject) {
+					profile.Set("bio", "简介").
+						Set("followers", 1000)
+				}).
+				SetObjectArray("projects", func(proj *NestedObject) {
+					proj.Set("name", "项目A")
+				}, func(proj *NestedObject) {
+					proj.Set("name", "项目B")
+				})
+		}).
+		AddDoc("complex2").
+		Set("title", "复杂文档2").
+		Set("price", 199.99).
+		SetObject("creator", func(creator *NestedObject) {
+			creator.Set("name", "作者2").
+				SetObjectArray("projects", func(proj *NestedObject) {
+					proj.Set("name", "项目C")
+				})
+		}).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("批量复杂嵌套失败: %v", err)
+	}
+
+	if resp.SuccessCount() != 2 {
+		t.Errorf("期望成功 2 个, 实际=%d", resp.SuccessCount())
+	}
+
+	t.Logf("✓ 批量复杂嵌套成功: 成功=%d", resp.SuccessCount())
+
+	// 验证第一个文档
+	time.Sleep(1 * time.Second)
+	getResp, _ := NewDocumentBuilder(client, indexName).
+		ID("complex1").
+		Get(ctx)
+
+	creator := getResp.Source["creator"].(map[string]interface{})
+	profile := creator["profile"].(map[string]interface{})
+	if profile["bio"] != "简介" {
+		t.Error("creator.profile.bio 不正确")
+	}
+
+	projects := creator["projects"].([]interface{})
+	if len(projects) != 2 {
+		t.Errorf("projects 应该有 2 个元素, 实际=%d", len(projects))
+	}
+
+	t.Logf("✓ 复杂嵌套验证成功")
+}

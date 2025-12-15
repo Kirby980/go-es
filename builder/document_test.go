@@ -766,3 +766,228 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 		}
 	})
 }
+
+// TestDocumentBuilder_NestedObject 测试嵌套对象
+func TestDocumentBuilder_NestedObject(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_doc_nested"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 使用 SetObject 设置嵌套对象
+	resp, err := NewDocumentBuilder(client, indexName).
+		ID("nested-1").
+		Set("title", "嵌套对象测试").
+		SetObject("user", func(obj *NestedObject) {
+			obj.Set("name", "张三").
+				Set("age", 25).
+				SetObject("address", func(addr *NestedObject) {
+					addr.Set("city", "北京").
+						Set("street", "长安街").
+						Set("zipcode", "100000")
+				})
+		}).
+		SetObject("metadata", func(meta *NestedObject) {
+			meta.Set("created_by", "admin").
+				Set("version", 1)
+		}).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("索引嵌套对象失败: %v", err)
+	}
+
+	t.Logf("✓ 索引嵌套对象成功: ID=%s", resp.ID)
+
+	// 验证嵌套对象
+	time.Sleep(1 * time.Second)
+	getResp, _ := NewDocumentBuilder(client, indexName).
+		ID("nested-1").
+		Get(ctx)
+
+	user := getResp.Source["user"].(map[string]interface{})
+	if user["name"] != "张三" {
+		t.Errorf("user.name 应该为 '张三', 实际=%v", user["name"])
+	}
+
+	address := user["address"].(map[string]interface{})
+	if address["city"] != "北京" {
+		t.Errorf("user.address.city 应该为 '北京', 实际=%v", address["city"])
+	}
+
+	t.Logf("✓ 嵌套对象验证成功")
+}
+
+// TestDocumentBuilder_ObjectArray 测试对象数组
+func TestDocumentBuilder_ObjectArray(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_doc_obj_array"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 使用 SetObjectArray 设置对象数组
+	resp, err := NewDocumentBuilder(client, indexName).
+		ID("array-1").
+		Set("title", "对象数组测试").
+		SetObjectArray("comments",
+			func(obj *NestedObject) {
+				obj.Set("author", "用户1").
+					Set("content", "第一条评论").
+					Set("rating", 5)
+			},
+			func(obj *NestedObject) {
+				obj.Set("author", "用户2").
+					Set("content", "第二条评论").
+					Set("rating", 4)
+			},
+			func(obj *NestedObject) {
+				obj.Set("author", "用户3").
+					Set("content", "第三条评论").
+					Set("rating", 5)
+			},
+		).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("索引对象数组失败: %v", err)
+	}
+
+	t.Logf("✓ 索引对象数组成功: ID=%s", resp.ID)
+
+	// 验证对象数组
+	time.Sleep(1 * time.Second)
+	getResp, _ := NewDocumentBuilder(client, indexName).
+		ID("array-1").
+		Get(ctx)
+
+	comments := getResp.Source["comments"].([]interface{})
+	if len(comments) != 3 {
+		t.Errorf("应该有 3 条评论, 实际=%d", len(comments))
+	}
+
+	firstComment := comments[0].(map[string]interface{})
+	if firstComment["author"] != "用户1" {
+		t.Errorf("第一条评论作者应该为 '用户1', 实际=%v", firstComment["author"])
+	}
+
+	t.Logf("✓ 对象数组验证成功: %d 条评论", len(comments))
+}
+
+// TestDocumentBuilder_ComplexNested 测试复杂嵌套结构
+func TestDocumentBuilder_ComplexNested(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_doc_complex"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 构建复杂的嵌套结构
+	resp, err := NewDocumentBuilder(client, indexName).
+		ID("complex-1").
+		Set("title", "复杂嵌套测试").
+		Set("price", 99.99).
+		SetArray("tags", "Go", "Elasticsearch", "测试").
+		SetObject("creator", func(creator *NestedObject) {
+			creator.Set("name", "李四").
+				Set("email", "lisi@example.com").
+				SetObject("profile", func(profile *NestedObject) {
+					profile.Set("bio", "资深开发者").
+						Set("followers", 1000)
+				}).
+				SetObjectArray("projects", func(proj *NestedObject) {
+					proj.Set("name", "项目A").
+						Set("role", "负责人")
+				}, func(proj *NestedObject) {
+					proj.Set("name", "项目B").
+						Set("role", "开发者")
+				})
+		}).
+		SetObjectArray("reviews",
+			func(review *NestedObject) {
+				review.Set("rating", 5).
+					Set("comment", "非常好").
+					SetObject("reviewer", func(reviewer *NestedObject) {
+						reviewer.Set("name", "王五").
+							Set("verified", true)
+					})
+			},
+			func(review *NestedObject) {
+				review.Set("rating", 4).
+					Set("comment", "不错").
+					SetObject("reviewer", func(reviewer *NestedObject) {
+						reviewer.Set("name", "赵六").
+							Set("verified", false)
+					})
+			},
+		).
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("索引复杂嵌套失败: %v", err)
+	}
+
+	t.Logf("✓ 索引复杂嵌套成功: ID=%s", resp.ID)
+
+	// 验证复杂结构
+	time.Sleep(1 * time.Second)
+	getResp, _ := NewDocumentBuilder(client, indexName).
+		ID("complex-1").
+		Get(ctx)
+
+	// 验证基本字段
+	if getResp.Source["title"] != "复杂嵌套测试" {
+		t.Error("title 字段不正确")
+	}
+
+	// 验证数组
+	tags := getResp.Source["tags"].([]interface{})
+	if len(tags) != 3 {
+		t.Errorf("tags 应该有 3 个元素, 实际=%d", len(tags))
+	}
+
+	// 验证嵌套对象
+	creator := getResp.Source["creator"].(map[string]interface{})
+	if creator["name"] != "李四" {
+		t.Error("creator.name 不正确")
+	}
+
+	// 验证多层嵌套
+	profile := creator["profile"].(map[string]interface{})
+	if profile["bio"] != "资深开发者" {
+		t.Error("creator.profile.bio 不正确")
+	}
+
+	// 验证嵌套对象数组
+	projects := creator["projects"].([]interface{})
+	if len(projects) != 2 {
+		t.Errorf("projects 应该有 2 个元素, 实际=%d", len(projects))
+	}
+
+	// 验证复杂对象数组
+	reviews := getResp.Source["reviews"].([]interface{})
+	if len(reviews) != 2 {
+		t.Errorf("reviews 应该有 2 个元素, 实际=%d", len(reviews))
+	}
+
+	firstReview := reviews[0].(map[string]interface{})
+	reviewer := firstReview["reviewer"].(map[string]interface{})
+	if reviewer["name"] != "王五" {
+		t.Error("reviews[0].reviewer.name 不正确")
+	}
+
+	t.Logf("✓ 复杂嵌套验证成功")
+}

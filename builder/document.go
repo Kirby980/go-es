@@ -56,6 +56,69 @@ func (b *DocumentBuilder) SetStruct(data interface{}) *DocumentBuilder {
 	return b
 }
 
+// NestedObject 嵌套对象构建器（用于构建嵌套字段）
+type NestedObject struct {
+	data map[string]interface{}
+}
+
+// Set 设置嵌套对象的字段
+func (o *NestedObject) Set(key string, value interface{}) *NestedObject {
+	o.data[key] = value
+	return o
+}
+
+// SetObject 设置嵌套对象的子对象
+func (o *NestedObject) SetObject(key string, builder func(*NestedObject)) *NestedObject {
+	nested := &NestedObject{data: make(map[string]interface{})}
+	builder(nested)
+	o.data[key] = nested.data
+	return o
+}
+
+// SetArray 设置数组字段
+func (o *NestedObject) SetArray(key string, values ...interface{}) *NestedObject {
+	o.data[key] = values
+	return o
+}
+
+// SetObjectArray 设置对象数组
+func (o *NestedObject) SetObjectArray(key string, builders ...func(*NestedObject)) *NestedObject {
+	arr := make([]map[string]interface{}, len(builders))
+	for i, builder := range builders {
+		nested := &NestedObject{data: make(map[string]interface{})}
+		builder(nested)
+		arr[i] = nested.data
+	}
+	o.data[key] = arr
+	return o
+}
+
+// SetObject 设置嵌套对象
+func (b *DocumentBuilder) SetObject(key string, builder func(*NestedObject)) *DocumentBuilder {
+	nested := &NestedObject{data: make(map[string]interface{})}
+	builder(nested)
+	b.doc[key] = nested.data
+	return b
+}
+
+// SetArray 设置数组字段
+func (b *DocumentBuilder) SetArray(key string, values ...interface{}) *DocumentBuilder {
+	b.doc[key] = values
+	return b
+}
+
+// SetObjectArray 设置对象数组
+func (b *DocumentBuilder) SetObjectArray(key string, builders ...func(*NestedObject)) *DocumentBuilder {
+	arr := make([]map[string]interface{}, len(builders))
+	for i, builder := range builders {
+		nested := &NestedObject{data: make(map[string]interface{})}
+		builder(nested)
+		arr[i] = nested.data
+	}
+	b.doc[key] = arr
+	return b
+}
+
 // Refresh 设置刷新策略
 // - "true": 立即刷新，操作后文档立即可见
 // - "false": 不刷新，等待自动刷新（默认）
