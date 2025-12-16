@@ -55,7 +55,19 @@ err := builder.NewIndexBuilder(esClient, "products").
     AddProperty("category", "keyword").
     AddProperty("created_at", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
     AddAlias("products-alias", nil).
-    Do(ctx)
+    Create(ctx)
+
+// 更新索引设置
+err = builder.NewIndexBuilder(esClient, "products").
+    Replicas(2).
+    RefreshInterval("30s").
+    UpdateSettings(ctx)
+
+// 更新索引映射（添加新字段）
+err = builder.NewIndexBuilder(esClient, "products").
+    AddProperty("description", "text", builder.WithAnalyzer("ik_max_word")).
+    AddProperty("stock", "integer").
+    PutMapping(ctx)
 
 // 检查索引是否存在
 exists, _ := builder.NewIndexBuilder(esClient, "products").Exists(ctx)
@@ -520,7 +532,9 @@ err := clusterBuilder.UpdateSettings(ctx,
 
 | 功能 | Elasticsearch REST API | github.com/Kirby980/go-es 链式调用 |
 |------|------------------------|----------------|
-| 创建索引 | PUT /index | NewIndexBuilder(client, "index").Shards(1).Do(ctx) |
+| 创建索引 | PUT /index | NewIndexBuilder(client, "index").Shards(1).Create(ctx) |
+| 更新索引设置 | PUT /index/_settings | NewIndexBuilder(client, "index").Replicas(2).UpdateSettings(ctx) |
+| 更新索引映射 | PUT /index/_mapping | NewIndexBuilder(client, "index").AddProperty("field", "type").PutMapping(ctx) |
 | 索引文档 | PUT /index/_doc/1 | NewDocumentBuilder(client, "index").ID("1").Set("field", value).Do(ctx) |
 | 搜索 | POST /index/_search | NewSearchBuilder(client, "index").Match("field", "value").Do(ctx) |
 | 计数 | POST /index/_count | NewSearchBuilder(client, "index").Match("field", "value").Count(ctx) |
@@ -542,9 +556,11 @@ go test -v ./examples -run TestCompleteAPI
 ## 支持的功能
 
 ### IndexBuilder
-- ✅ 创建索引 (Shards, Replicas, RefreshInterval)
+- ✅ 创建索引 (Create, Shards, Replicas, RefreshInterval)
 - ✅ 字段映射 (AddProperty, WithAnalyzer, WithFormat)
 - ✅ 别名管理 (AddAlias)
+- ✅ 更新索引设置 (UpdateSettings)
+- ✅ 更新索引映射 (PutMapping)
 - ✅ 检查存在 (Exists)
 - ✅ 获取索引信息 (Get)
 - ✅ 删除索引 (Delete)

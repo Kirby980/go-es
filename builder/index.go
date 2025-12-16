@@ -214,8 +214,8 @@ func (b *IndexBuilder) resetDebug() {
 	b.debug = false
 }
 
-// Do 执行创建索引
-func (b *IndexBuilder) Do(ctx context.Context) error {
+// Create 创建索引
+func (b *IndexBuilder) Create(ctx context.Context) error {
 	path := fmt.Sprintf("/%s", b.index)
 	body := b.Build()
 
@@ -226,6 +226,60 @@ func (b *IndexBuilder) Do(ctx context.Context) error {
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
+	if err != nil {
+		return err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
+	}
+
+	return nil
+}
+
+// Do 执行创建索引（Create 的别名，保持向后兼容）
+func (b *IndexBuilder) Do(ctx context.Context) error {
+	return b.Create(ctx)
+}
+
+// UpdateSettings 更新索引设置
+func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
+	path := fmt.Sprintf("/%s/_settings", b.index)
+	body := map[string]interface{}{
+		"settings": b.settings,
+	}
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("PUT", path, body)
+		defer b.resetDebug()
+	}
+
+	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
+	if err != nil {
+		return err
+	}
+
+	// 如果启用调试模式，打印响应信息
+	if b.debug {
+		b.printResponse(respBody)
+	}
+
+	return nil
+}
+
+// PutMapping 更新索引映射（添加新字段或更新已有字段映射）
+func (b *IndexBuilder) PutMapping(ctx context.Context) error {
+	path := fmt.Sprintf("/%s/_mapping", b.index)
+
+	// 如果启用调试模式，打印请求信息
+	if b.debug {
+		b.printDebug("PUT", path, b.mappings)
+		defer b.resetDebug()
+	}
+
+	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.mappings)
 	if err != nil {
 		return err
 	}

@@ -557,3 +557,261 @@ func TestIndexBuilder_AllPropertyOptions(t *testing.T) {
 		_ = NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
+
+// TestIndexBuilder_UpdateSettings 测试更新索引设置
+func TestIndexBuilder_UpdateSettings(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_index_update_settings"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 1. 先创建索引（初始设置：1个副本，1秒刷新间隔）
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(1).
+		RefreshInterval("1s").
+		AddProperty("name", "text").
+		AddProperty("price", "float").
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建索引失败: %v", err)
+	}
+	t.Logf("✓ 创建索引成功，初始设置：副本数=1，刷新间隔=1s")
+
+	// 2. 获取初始索引信息
+	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	t.Logf("初始索引设置:\n%s", info.PrettyJSON())
+
+	// 3. 更新索引设置（修改副本数为2，刷新间隔为30s）
+	err = NewIndexBuilder(client, indexName).
+		Debug().
+		Replicas(2).
+		RefreshInterval("30s").
+		UpdateSettings(ctx)
+
+	if err != nil {
+		t.Fatalf("更新索引设置失败: %v", err)
+	}
+	t.Logf("✓ 更新索引设置成功，新设置：副本数=2，刷新间隔=30s")
+
+	// 4. 再次获取索引信息，验证设置已更新
+	updatedInfo, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取更新后的索引信息失败: %v", err)
+	}
+	t.Logf("更新后的索引设置:\n%s", updatedInfo.PrettyJSON())
+
+	// 5. 测试只更新刷新间隔
+	err = NewIndexBuilder(client, indexName).
+		RefreshInterval("5s").
+		UpdateSettings(ctx)
+
+	if err != nil {
+		t.Fatalf("更新刷新间隔失败: %v", err)
+	}
+	t.Logf("✓ 单独更新刷新间隔成功")
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}
+
+// TestIndexBuilder_PutMapping 测试更新索引映射
+func TestIndexBuilder_PutMapping(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_index_put_mapping"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 1. 先创建索引（只有基础字段）
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(0).
+		AddProperty("name", "text", WithAnalyzer("ik_smart")).
+		AddProperty("price", "float").
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建索引失败: %v", err)
+	}
+	t.Logf("✓ 创建索引成功，初始字段：name, price")
+
+	// 2. 获取初始索引映射
+	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	t.Logf("初始索引映射:\n%s", info.PrettyJSON())
+
+	// 3. 添加新字段（使用 PutMapping）
+	err = NewIndexBuilder(client, indexName).
+		Debug().
+		AddProperty("description", "text", WithAnalyzer("ik_max_word")).
+		AddProperty("stock", "integer").
+		AddProperty("category", "keyword").
+		AddProperty("created_at", "date", WithFormat("yyyy-MM-dd HH:mm:ss")).
+		PutMapping(ctx)
+
+	if err != nil {
+		t.Fatalf("更新索引映射失败: %v", err)
+	}
+	t.Logf("✓ 更新索引映射成功，添加字段：description, stock, category, created_at")
+
+	// 4. 再次获取索引信息，验证新字段已添加
+	updatedInfo, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取更新后的索引信息失败: %v", err)
+	}
+	t.Logf("更新后的索引映射:\n%s", updatedInfo.PrettyJSON())
+
+	// 5. 测试添加嵌套字段
+	err = NewIndexBuilder(client, indexName).
+		AddProperty("tags", "keyword").
+		AddProperty("author", "object",
+			WithSubProperties("name", "text"),
+			WithSubProperties("email", "keyword"),
+		).
+		PutMapping(ctx)
+
+	if err != nil {
+		t.Fatalf("添加嵌套字段失败: %v", err)
+	}
+	t.Logf("✓ 添加嵌套字段成功")
+
+	// 6. 最终验证
+	finalInfo, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	t.Logf("最终索引映射:\n%s", finalInfo.PrettyJSON())
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}
+
+// TestIndexBuilder_UpdateSettingsAndPutMapping 测试同时使用 UpdateSettings 和 PutMapping
+func TestIndexBuilder_UpdateSettingsAndPutMapping(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_index_update_both"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 1. 创建初始索引
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(0).
+		RefreshInterval("1s").
+		AddProperty("id", "keyword").
+		AddProperty("title", "text").
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建索引失败: %v", err)
+	}
+	t.Logf("✓ 步骤1：创建初始索引成功")
+
+	// 2. 更新设置
+	err = NewIndexBuilder(client, indexName).
+		Replicas(1).
+		RefreshInterval("10s").
+		UpdateSettings(ctx)
+
+	if err != nil {
+		t.Fatalf("更新设置失败: %v", err)
+	}
+	t.Logf("✓ 步骤2：更新索引设置成功")
+
+	// 3. 添加新字段
+	err = NewIndexBuilder(client, indexName).
+		AddProperty("content", "text", WithAnalyzer("ik_smart")).
+		AddProperty("status", "keyword").
+		AddProperty("views", "long").
+		PutMapping(ctx)
+
+	if err != nil {
+		t.Fatalf("添加新字段失败: %v", err)
+	}
+	t.Logf("✓ 步骤3：添加新字段成功")
+
+	// 4. 验证最终结果
+	finalInfo, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取最终索引信息失败: %v", err)
+	}
+	t.Logf("✓ 步骤4：验证完成")
+	t.Logf("最终索引完整信息:\n%s", finalInfo.PrettyJSON())
+
+	// 验证索引包含预期的字段和设置
+	if finalInfo.Mappings == nil {
+		t.Error("索引应该包含 mappings")
+	}
+	if finalInfo.Settings == nil {
+		t.Error("索引应该包含 settings")
+	}
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}
+
+// TestIndexBuilder_CreateMethodAlias 测试 Create 和 Do 方法的兼容性
+func TestIndexBuilder_CreateMethodAlias(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	// 1. 使用新的 Create() 方法
+	indexName1 := "test_index_create_method"
+	_ = NewIndexBuilder(client, indexName1).Delete(ctx)
+
+	err := NewIndexBuilder(client, indexName1).
+		Shards(1).
+		Replicas(0).
+		AddProperty("field1", "text").
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("使用 Create() 创建索引失败: %v", err)
+	}
+	t.Logf("✓ 使用 Create() 方法创建索引成功")
+
+	// 2. 使用兼容的 Do() 方法（应该调用 Create）
+	indexName2 := "test_index_do_method"
+	_ = NewIndexBuilder(client, indexName2).Delete(ctx)
+
+	err = NewIndexBuilder(client, indexName2).
+		Shards(1).
+		Replicas(0).
+		AddProperty("field1", "text").
+		Do(ctx)
+
+	if err != nil {
+		t.Fatalf("使用 Do() 创建索引失败: %v", err)
+	}
+	t.Logf("✓ 使用 Do() 方法创建索引成功（向后兼容）")
+
+	// 验证两个索引都存在
+	exists1, _ := NewIndexBuilder(client, indexName1).Exists(ctx)
+	exists2, _ := NewIndexBuilder(client, indexName2).Exists(ctx)
+
+	if !exists1 {
+		t.Error("使用 Create() 创建的索引应该存在")
+	}
+	if !exists2 {
+		t.Error("使用 Do() 创建的索引应该存在")
+	}
+
+	t.Logf("✓ Create() 和 Do() 方法都能正常工作，保持向后兼容")
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName1).Delete(ctx)
+		_ = NewIndexBuilder(client, indexName2).Delete(ctx)
+	}()
+}
+
