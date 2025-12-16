@@ -472,7 +472,82 @@ for scroll.HasMore(resp) {
 scroll.Clear(ctx)
 ```
 
-### 9. Debug调试模式
+### 9. 高效深度分页 (SearchAfterBuilder)
+
+Search After 是 Elasticsearch 提供的另一种深度分页方案，相比 Scroll 更轻量、无状态，适合实时分页场景。
+
+**Search After vs Scroll 对比：**
+
+| 特性 | Search After | Scroll |
+|------|-------------|--------|
+| **性能** | 更轻量，无状态 | 需要维护 scroll context |
+| **适用场景** | 实时分页、API分页 | 大数据集顺序遍历、导出 |
+| **资源占用** | 低（无需保存上下文） | 高（需要保存快照） |
+| **实时性** | 能看到最新数据 | 看不到查询后的新数据 |
+| **使用限制** | 必须有排序字段 | 不需要排序 |
+
+```go
+// 基础用法（自动翻页）
+searchAfter := builder.NewSearchAfterBuilder(esClient, "products").
+    Match("status", "active").
+    Sort("price", "asc").      // 主排序字段
+    Sort("_id", "asc").        // tie-breaker（必须）
+    Size(20)
+
+// 第一页
+resp, err := searchAfter.Do(ctx)
+fmt.Printf("第一页: %d 条\n", len(resp.Hits.Hits))
+
+// 第二页（自动使用上一页的最后一个文档的 sort 值）
+resp, err = searchAfter.Next(ctx)
+fmt.Printf("第二页: %d 条\n", len(resp.Hits.Hits))
+
+// 持续翻页
+for searchAfter.HasMore(resp) {
+    resp, err = searchAfter.Next(ctx)
+    if err != nil {
+        break
+    }
+    for _, hit := range resp.Hits.Hits {
+        fmt.Printf("处理文档: %s\n", hit.ID)
+    }
+}
+
+// 手动指定 search_after 值（适合 API 分页）
+lastSort := searchAfter.GetLastSortValues(resp)
+
+// 下次请求时
+resp, _ = builder.NewSearchAfterBuilder(esClient, "products").
+    Sort("price", "asc").
+    Sort("_id", "asc").
+    SearchAfter(lastSort...).  // 手动设置上一页的 sort 值
+    Size(20).
+    Do(ctx)
+
+// 多条件查询
+resp, _ = builder.NewSearchAfterBuilder(esClient, "products").
+    Term("category", "electronics").
+    Range("price", 100, 1000).
+    Sort("created_at", "desc").
+    Sort("_id", "asc").
+    Size(50).
+    Do(ctx)
+
+// 多字段排序
+resp, _ = builder.NewSearchAfterBuilder(esClient, "products").
+    Sort("category", "asc").   // 先按分类
+    Sort("price", "desc").     // 再按价格降序
+    Sort("_id", "asc").        // 最后按ID
+    Size(20).
+    Do(ctx)
+```
+
+**重要提示：**
+- Search After **必须指定排序字段**，建议最后加上 `_id` 作为 tie-breaker
+- 适合实时 API 分页，客户端保存上一页的 `sort` 值即可
+- 无需清理上下文，比 Scroll 更轻量
+
+### 10. Debug调试模式
 
 ```go
 // 启用Debug模式查看请求和响应（类似GORM）
@@ -493,7 +568,7 @@ builder.NewIndexBuilder(esClient, "index").Debug().Do(ctx)
 builder.NewClusterBuilder(esClient).Debug().Health(ctx)
 ```
 
-### 10. 集群管理 (ClusterBuilder)
+### 11. 集群管理 (ClusterBuilder)
 
 ```go
 clusterBuilder := builder.NewClusterBuilder(esClient)
@@ -541,6 +616,7 @@ err := clusterBuilder.UpdateSettings(ctx,
 | 按条件更新 | POST /index/_update_by_query | NewUpdateByQueryBuilder(client, "index").Term("status", "old").Set("status", "new").Do(ctx) |
 | 按条件删除 | POST /index/_delete_by_query | NewDeleteByQueryBuilder(client, "index").Range("date", nil, "2020-01-01").Do(ctx) |
 | Scroll遍历 | POST /index/_search?scroll=5m | NewScrollBuilder(client, "index").Size(1000).Do(ctx) |
+| Search After | POST /index/_search (with search_after) | NewSearchAfterBuilder(client, "index").Sort("price", "asc").Do(ctx) |
 | 聚合 | POST /index/_search (with aggs) | NewAggregationBuilder(client, "index").Avg("name", "field").Do(ctx) |
 | 批量操作 | POST /_bulk | NewBulkBuilder(client).Add(...).Update(...).Do(ctx) |
 
@@ -628,6 +704,15 @@ go test -v ./examples -run TestCompleteAPI
 - ✅ 深度分页遍历 (Do, Next)
 - ✅ 游标管理 (KeepAlive, Clear)
 - ✅ 批量处理 (Size, HasMore)
+
+### SearchAfterBuilder
+- ✅ 高效深度分页 (Do, Next)
+- ✅ 多字段排序 (Sort, SortBy)
+- ✅ 无状态分页 (SearchAfter, GetLastSortValues)
+- ✅ 查询条件 (Match, Term, Range, Terms, Exists)
+- ✅ 布尔查询 (Should, MustNot, MinimumShouldMatch)
+- ✅ 字段过滤 (Source, Highlight, MinScore)
+- ✅ 自动/手动翻页 (HasMore)
 
 ### 通用功能
 - ✅ 链式Debug模式 (所有Builder支持)
