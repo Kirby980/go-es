@@ -815,3 +815,185 @@ func TestIndexBuilder_CreateMethodAlias(t *testing.T) {
 	}()
 }
 
+// TestIndexBuilder_AddCustomAnalyzer 测试添加自定义分析器（简化版）
+func TestIndexBuilder_AddCustomAnalyzer(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_index_custom_analyzer"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 创建带自定义分析器的索引（使用常量，避免拼写错误）
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(0).
+		AddCustomAnalyzer("ik_case_sensitive", TokenizerIKSmart). // 使用常量
+		AddProperty("title", "text", WithAnalyzer("ik_case_sensitive")).
+		AddProperty("content", "text", WithAnalyzer(AnalyzerIKSmart)). // 使用内置分析器常量
+		Debug().
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建带自定义分析器的索引失败: %v", err)
+	}
+	t.Logf("✓ 创建带自定义分析器的索引成功")
+
+	// 获取索引信息验证
+	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取索引信息失败: %v", err)
+	}
+	t.Logf("索引配置:\n%s", info.PrettyJSON())
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}
+
+// TestIndexBuilder_AddAnalyzer 测试添加分析器（完整版）
+func TestIndexBuilder_AddAnalyzer(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_index_analyzer_full"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 创建带自定义分析器的索引（完整版，使用 Option 模式）
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(0).
+		// 添加自定义分析器 1：只有 tokenizer（最简单的自定义）
+		AddAnalyzer("my_analyzer",
+			WithAnalyzerType("custom"),
+			WithTokenizer("ik_smart"),
+		).
+		// 添加自定义分析器 2：使用不同的 tokenizer
+		AddAnalyzer("simple_ik",
+			WithAnalyzerType("custom"),
+			WithTokenizer("ik_max_word"),
+		).
+		AddProperty("html_content", "text", WithAnalyzer("my_analyzer")).
+		AddProperty("description", "text", WithAnalyzer("simple_ik")).
+		Debug().
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建带自定义分析器的索引失败: %v", err)
+	}
+	t.Logf("✓ 创建带完整自定义分析器的索引成功")
+
+	// 获取索引信息验证
+	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取索引信息失败: %v", err)
+	}
+	t.Logf("索引配置:\n%s", info.PrettyJSON())
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}
+
+// TestIndexBuilder_AddTokenizer 测试添加自定义分词器
+func TestIndexBuilder_AddTokenizer(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_index_custom_tokenizer"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 像用户的例子那样：先自定义 tokenizer，再在 analyzer 中使用
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(0).
+		// 1. 先自定义一个 tokenizer（禁用小写转换）
+		AddTokenizer("ik_smart_case_sensitive",
+			WithTokenizerType(TokenizerIKSmart),
+			WithEnableLowercase(false),
+		).
+		// 2. 创建 analyzer 使用自定义的 tokenizer
+		AddAnalyzer("ik_case_sensitive",
+			WithAnalyzerType(AnalyzerTypeCustom),
+			WithTokenizer("ik_smart_case_sensitive"), // 使用自定义的 tokenizer
+			WithTokenFilters(), // 空的 filter
+		).
+		// 3. 在字段中使用这个 analyzer
+		AddProperty("title", "text", WithAnalyzer("ik_case_sensitive")).
+		AddProperty("content", "text", WithAnalyzer("ik_case_sensitive")).
+		Debug().
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建带自定义 tokenizer 的索引失败: %v", err)
+	}
+	t.Logf("✓ 创建带自定义 tokenizer 的索引成功")
+
+	// 获取索引信息验证
+	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取索引信息失败: %v", err)
+	}
+	t.Logf("索引配置:\n%s", info.PrettyJSON())
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}
+
+// TestIndexBuilder_FieldTypeConstants 测试使用字段类型常量
+func TestIndexBuilder_FieldTypeConstants(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_field_type_constants"
+	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+
+	// 使用常量创建索引，避免拼写错误
+	err := NewIndexBuilder(client, indexName).
+		Shards(1).
+		Replicas(0).
+		// 字符串类型
+		AddProperty("title", FieldTypeText, WithAnalyzer(AnalyzerIKSmart)).
+		AddProperty("sku", FieldTypeKeyword).
+		// 数值类型
+		AddProperty("price", FieldTypeFloat).
+		AddProperty("quantity", FieldTypeInt).
+		AddProperty("views", FieldTypeLong).
+		// 布尔类型
+		AddProperty("available", FieldTypeBoolean).
+		// 日期类型
+		AddProperty("created_at", FieldTypeDate, WithFormat("yyyy-MM-dd HH:mm:ss")).
+		// 地理位置
+		AddProperty("location", FieldTypeGeoPoint).
+		// 对象类型
+		AddProperty("author", FieldTypeObject,
+			WithSubProperties("name", FieldTypeText),
+			WithSubProperties("email", FieldTypeKeyword),
+		).
+		Debug().
+		Create(ctx)
+
+	if err != nil {
+		t.Fatalf("创建索引失败: %v", err)
+	}
+	t.Logf("✓ 使用字段类型常量创建索引成功")
+
+	// 获取索引信息验证
+	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	if err != nil {
+		t.Fatalf("获取索引信息失败: %v", err)
+	}
+	t.Logf("索引映射:\n%s", info.PrettyJSON())
+
+	// 清理
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+}

@@ -48,6 +48,157 @@ func (b *IndexBuilder) RefreshInterval(interval string) *IndexBuilder {
 	return b
 }
 
+// AddCustomAnalyzer 添加自定义分析器（简化版，用于快速创建基于某个 tokenizer 的分析器）
+// 例如：AddCustomAnalyzer("ik_case_sensitive", "ik_smart")
+func (b *IndexBuilder) AddCustomAnalyzer(name string, tokenizer string, filters ...string) *IndexBuilder {
+	if b.settings["analysis"] == nil {
+		b.settings["analysis"] = make(map[string]interface{})
+	}
+	analysis := b.settings["analysis"].(map[string]interface{})
+
+	if analysis["analyzer"] == nil {
+		analysis["analyzer"] = make(map[string]interface{})
+	}
+	analyzers := analysis["analyzer"].(map[string]interface{})
+
+	analyzer := map[string]interface{}{
+		"type":      "custom",
+		"tokenizer": tokenizer,
+	}
+
+	if len(filters) > 0 {
+		analyzer["filter"] = filters
+	} else {
+		analyzer["filter"] = []string{}
+	}
+
+	analyzers[name] = analyzer
+	return b
+}
+
+// AnalyzerOption 分析器选项
+type AnalyzerOption func(map[string]interface{})
+
+// AddAnalyzer 添加分析器（完整版，支持所有选项）
+func (b *IndexBuilder) AddAnalyzer(name string, options ...AnalyzerOption) *IndexBuilder {
+	if b.settings["analysis"] == nil {
+		b.settings["analysis"] = make(map[string]interface{})
+	}
+	analysis := b.settings["analysis"].(map[string]interface{})
+
+	if analysis["analyzer"] == nil {
+		analysis["analyzer"] = make(map[string]interface{})
+	}
+	analyzers := analysis["analyzer"].(map[string]interface{})
+
+	analyzer := make(map[string]interface{})
+
+	// 应用选项
+	for _, opt := range options {
+		opt(analyzer)
+	}
+
+	analyzers[name] = analyzer
+	return b
+}
+
+// WithAnalyzerType 设置分析器类型
+func WithAnalyzerType(analyzerType string) AnalyzerOption {
+	return func(analyzer map[string]interface{}) {
+		analyzer["type"] = analyzerType
+	}
+}
+
+// WithTokenizer 设置分词器
+func WithTokenizer(tokenizer string) AnalyzerOption {
+	return func(analyzer map[string]interface{}) {
+		analyzer["tokenizer"] = tokenizer
+	}
+}
+
+// WithTokenFilters 设置 token filters
+func WithTokenFilters(filters ...string) AnalyzerOption {
+	return func(analyzer map[string]interface{}) {
+		analyzer["filter"] = filters
+	}
+}
+
+// WithCharFilters 设置 char filters
+func WithCharFilters(filters ...string) AnalyzerOption {
+	return func(analyzer map[string]interface{}) {
+		analyzer["char_filter"] = filters
+	}
+}
+
+// TokenizerOption 分词器选项
+type TokenizerOption func(map[string]interface{})
+
+// AddTokenizer 添加自定义分词器（用于需要配置 tokenizer 本身的场景）
+// 例如：AddTokenizer("ik_smart_case_sensitive", WithTokenizerType("ik_smart"), WithEnableLowercase(false))
+func (b *IndexBuilder) AddTokenizer(name string, options ...TokenizerOption) *IndexBuilder {
+	if b.settings["analysis"] == nil {
+		b.settings["analysis"] = make(map[string]interface{})
+	}
+	analysis := b.settings["analysis"].(map[string]interface{})
+
+	if analysis["tokenizer"] == nil {
+		analysis["tokenizer"] = make(map[string]interface{})
+	}
+	tokenizers := analysis["tokenizer"].(map[string]interface{})
+
+	tokenizer := make(map[string]interface{})
+
+	// 应用选项
+	for _, opt := range options {
+		opt(tokenizer)
+	}
+
+	tokenizers[name] = tokenizer
+	return b
+}
+
+// WithTokenizerType 设置分词器类型
+func WithTokenizerType(tokenizerType string) TokenizerOption {
+	return func(tokenizer map[string]interface{}) {
+		tokenizer["type"] = tokenizerType
+	}
+}
+
+// WithEnableLowercase 设置是否启用小写转换（IK 分词器专用）
+func WithEnableLowercase(enable bool) TokenizerOption {
+	return func(tokenizer map[string]interface{}) {
+		tokenizer["enable_lowercase"] = enable
+	}
+}
+
+// WithMaxTokenLength 设置最大 token 长度
+func WithMaxTokenLength(length int) TokenizerOption {
+	return func(tokenizer map[string]interface{}) {
+		tokenizer["max_token_length"] = length
+	}
+}
+
+// WithTokenizerMinGram 设置 n-gram 最小长度
+func WithTokenizerMinGram(minGram int) TokenizerOption {
+	return func(tokenizer map[string]interface{}) {
+		tokenizer["min_gram"] = minGram
+	}
+}
+
+// WithTokenizerMaxGram 设置 n-gram 最大长度
+func WithTokenizerMaxGram(maxGram int) TokenizerOption {
+	return func(tokenizer map[string]interface{}) {
+		tokenizer["max_gram"] = maxGram
+	}
+}
+
+// WithTokenChars 设置 token 字符类型
+func WithTokenChars(chars ...string) TokenizerOption {
+	return func(tokenizer map[string]interface{}) {
+		tokenizer["token_chars"] = chars
+	}
+}
+
 // AddProperty 添加字段映射
 func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...PropertyOption) *IndexBuilder {
 	if b.mappings["properties"] == nil {
