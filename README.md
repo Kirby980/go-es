@@ -870,5 +870,9 @@ esClient, err := client.New(
     config.WithTimeout(30*time.Second),                  // 超时时间
     config.WithRetry(3, time.Second),                    // 重试配置
     config.WithDebug(true),                              // 调试模式
+    config.WithMaxConnsPerHost(100),                     // 每个 host 的最大连接数
+	config.WithMaxIdConns(200),                          // 最大空闲连接数
+	config.WithMaxIdleConnsPerHost(50),                  // 每个 host 的最大空闲连接数
+	config.WithIdleConnTimeout(90*time.Second),          // 空闲连接超时时间
 )
 ```

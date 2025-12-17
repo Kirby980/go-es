@@ -16,6 +16,10 @@ func createTestClient(t *testing.T) *client.Client {
 		config.WithAuth("elastic", "123456"),
 		config.WithTransport(true),
 		config.WithTimeout(10*time.Second),
+		config.WithMaxConnsPerHost(100),
+		config.WithMaxIdConns(200),
+		config.WithMaxIdleConnsPerHost(50),
+		config.WithIdleConnTimeout(90*time.Second),
 	)
 	if err != nil {
 		t.Fatalf("创建客户端失败: %v", err)
@@ -920,7 +924,7 @@ func TestIndexBuilder_AddTokenizer(t *testing.T) {
 		AddAnalyzer("ik_case_sensitive",
 			WithAnalyzerType(AnalyzerTypeCustom),
 			WithTokenizer("ik_smart_case_sensitive"), // 使用自定义的 tokenizer
-			WithTokenFilters(), // 空的 filter
+			WithTokenFilters(),                       // 空的 filter
 		).
 		// 3. 在字段中使用这个 analyzer
 		AddProperty("title", "text", WithAnalyzer("ik_case_sensitive")).

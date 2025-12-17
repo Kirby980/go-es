@@ -26,17 +26,26 @@ type Config struct {
 	// 其他配置
 	EnableMetrics bool
 	EnableDebug   bool
+	// 连接池配置
+	MaxIdleConns        int           // 最大空闲连接
+	MaxIdleConnsPerHost int           // 每个主机的最大空闲连接数
+	MaxConnsPerHost     int           // 每个主机的最大连接数
+	IdleConnTimeout     time.Duration // 空闲连接超时
 }
 
 // DefaultConfig 返回默认配置
 func DefaultConfig() *Config {
 	return &Config{
-		Addresses:     []string{"http://localhost:9200"},
-		MaxRetries:    3,
-		RetryBackoff:  time.Second,
-		Timeout:       30 * time.Second,
-		EnableMetrics: false,
-		EnableDebug:   false,
+		Addresses:           []string{"http://localhost:9200"},
+		MaxRetries:          3,
+		RetryBackoff:        time.Second,
+		Timeout:             30 * time.Second,
+		EnableMetrics:       false,
+		EnableDebug:         false,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		MaxConnsPerHost:     0,
+		IdleConnTimeout:     90 * time.Second,
 	}
 }
 
@@ -84,5 +93,33 @@ func WithRetry(maxRetries int, backoff time.Duration) Option {
 func WithDebug(enable bool) Option {
 	return func(c *Config) {
 		c.EnableDebug = enable
+	}
+}
+
+// WithMaxIdConns 设置最大空闲连接数
+func WithMaxIdConns(maxIdleConns int) Option {
+	return func(c *Config) {
+		c.MaxIdleConns = maxIdleConns
+	}
+}
+
+// WithMaxIdleConnsPerHost 设置每个主机的最大空闲连接数
+func WithMaxIdleConnsPerHost(maxIdleConnsPerHost int) Option {
+	return func(c *Config) {
+		c.MaxIdleConnsPerHost = maxIdleConnsPerHost
+	}
+}
+
+// WithMaxConnsPerHost  设置每个host最大连接数
+func WithMaxConnsPerHost(maxConnsPerHost int) Option {
+	return func(c *Config) {
+		c.MaxConnsPerHost = maxConnsPerHost
+	}
+}
+
+// WithIdleConnTimeout 设置空闲连接超时时间
+func WithIdleConnTimeout(idleConnTimeout time.Duration) Option {
+	return func(c *Config) {
+		c.IdleConnTimeout = idleConnTimeout
 	}
 }
