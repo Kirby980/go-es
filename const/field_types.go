@@ -1,4 +1,4 @@
-package builder
+package constant
 
 // ===== 字符串类型 (String Types) =====
 
@@ -16,19 +16,19 @@ const (
 
 const (
 	// 整数类型
-	FieldTypeByte  = "byte"   // 8位有符号整数：-128 到 127
-	FieldTypeShort = "short"  // 16位有符号整数：-32,768 到 32,767
+	FieldTypeByte  = "byte"    // 8位有符号整数：-128 到 127
+	FieldTypeShort = "short"   // 16位有符号整数：-32,768 到 32,767
 	FieldTypeInt   = "integer" // 32位有符号整数：-2^31 到 2^31-1
-	FieldTypeLong  = "long"   // 64位有符号整数：-2^63 到 2^63-1
+	FieldTypeLong  = "long"    // 64位有符号整数：-2^63 到 2^63-1
 
 	// 浮点类型
 	FieldTypeFloat  = "float"  // 32位单精度浮点数
 	FieldTypeDouble = "double" // 64位双精度浮点数
 
 	// 高精度类型
-	FieldTypeHalfFloat        = "half_float"        // 16位半精度浮点数
-	FieldTypeScaledFloat      = "scaled_float"      // 用固定比例因子缩放的浮点数
-	FieldTypeUnsignedLong     = "unsigned_long"     // 64位无符号整数：0 到 2^64-1
+	FieldTypeHalfFloat    = "half_float"    // 16位半精度浮点数
+	FieldTypeScaledFloat  = "scaled_float"  // 用固定比例因子缩放的浮点数
+	FieldTypeUnsignedLong = "unsigned_long" // 64位无符号整数：0 到 2^64-1
 )
 
 // ===== 日期类型 (Date Types) =====

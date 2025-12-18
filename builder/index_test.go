@@ -7,6 +7,7 @@ import (
 
 	"github.com/Kirby980/go-es/client"
 	"github.com/Kirby980/go-es/config"
+	constant "github.com/Kirby980/go-es/const"
 )
 
 // 创建测试客户端
@@ -832,9 +833,9 @@ func TestIndexBuilder_AddCustomAnalyzer(t *testing.T) {
 	err := NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
-		AddCustomAnalyzer("ik_case_sensitive", TokenizerIKSmart). // 使用常量
+		AddCustomAnalyzer("ik_case_sensitive", constant.TokenizerIKSmart). // 使用常量
 		AddProperty("title", "text", WithAnalyzer("ik_case_sensitive")).
-		AddProperty("content", "text", WithAnalyzer(AnalyzerIKSmart)). // 使用内置分析器常量
+		AddProperty("content", "text", WithAnalyzer(constant.AnalyzerIKSmart)). // 使用内置分析器常量
 		Debug().
 		Create(ctx)
 
@@ -917,12 +918,12 @@ func TestIndexBuilder_AddTokenizer(t *testing.T) {
 		Replicas(0).
 		// 1. 先自定义一个 tokenizer（禁用小写转换）
 		AddTokenizer("ik_smart_case_sensitive",
-			WithTokenizerType(TokenizerIKSmart),
+			WithTokenizerType(constant.TokenizerIKSmart),
 			WithEnableLowercase(false),
 		).
 		// 2. 创建 analyzer 使用自定义的 tokenizer
 		AddAnalyzer("ik_case_sensitive",
-			WithAnalyzerType(AnalyzerTypeCustom),
+			WithAnalyzerType(constant.AnalyzerTypeCustom),
 			WithTokenizer("ik_smart_case_sensitive"), // 使用自定义的 tokenizer
 			WithTokenFilters(),                       // 空的 filter
 		).
@@ -964,22 +965,22 @@ func TestIndexBuilder_FieldTypeConstants(t *testing.T) {
 		Shards(1).
 		Replicas(0).
 		// 字符串类型
-		AddProperty("title", FieldTypeText, WithAnalyzer(AnalyzerIKSmart)).
-		AddProperty("sku", FieldTypeKeyword).
+		AddProperty("title", constant.FieldTypeText, WithAnalyzer(constant.AnalyzerIKSmart)).
+		AddProperty("sku", constant.FieldTypeKeyword).
 		// 数值类型
-		AddProperty("price", FieldTypeFloat).
-		AddProperty("quantity", FieldTypeInt).
-		AddProperty("views", FieldTypeLong).
+		AddProperty("price", constant.FieldTypeFloat).
+		AddProperty("quantity", constant.FieldTypeInt).
+		AddProperty("views", constant.FieldTypeLong).
 		// 布尔类型
-		AddProperty("available", FieldTypeBoolean).
+		AddProperty("available", constant.FieldTypeBoolean).
 		// 日期类型
-		AddProperty("created_at", FieldTypeDate, WithFormat("yyyy-MM-dd HH:mm:ss")).
+		AddProperty("created_at", constant.FieldTypeDate, WithFormat("yyyy-MM-dd HH:mm:ss")).
 		// 地理位置
-		AddProperty("location", FieldTypeGeoPoint).
+		AddProperty("location", constant.FieldTypeGeoPoint).
 		// 对象类型
-		AddProperty("author", FieldTypeObject,
-			WithSubProperties("name", FieldTypeText),
-			WithSubProperties("email", FieldTypeKeyword),
+		AddProperty("author", constant.FieldTypeObject,
+			WithSubProperties("name", constant.FieldTypeText),
+			WithSubProperties("email", constant.FieldTypeKeyword),
 		).
 		Debug().
 		Create(ctx)

@@ -1,15 +1,15 @@
-package builder
+package constant
 
 // ===== 分析器类型 (Analyzer Types) =====
 
 const (
-	AnalyzerTypeCustom   = "custom"   // 自定义分析器
-	AnalyzerTypeStandard = "standard" // 标准分析器（默认）
-	AnalyzerTypeSimple   = "simple"   // 简单分析器（按非字母字符分词）
+	AnalyzerTypeCustom     = "custom"     // 自定义分析器
+	AnalyzerTypeStandard   = "standard"   // 标准分析器（默认）
+	AnalyzerTypeSimple     = "simple"     // 简单分析器（按非字母字符分词）
 	AnalyzerTypeWhitespace = "whitespace" // 空格分析器（按空格分词）
-	AnalyzerTypeKeyword  = "keyword"  // 关键词分析器（不分词）
-	AnalyzerTypePattern  = "pattern"  // 正则分析器
-	AnalyzerTypeLanguage = "language" // 语言分析器
+	AnalyzerTypeKeyword    = "keyword"    // 关键词分析器（不分词）
+	AnalyzerTypePattern    = "pattern"    // 正则分析器
+	AnalyzerTypeLanguage   = "language"   // 语言分析器
 )
 
 // IK 分词器内置分析器
@@ -47,8 +47,8 @@ const (
 // ===== 字符过滤器 (Char Filters) - 在分词前对原始文本进行处理 =====
 
 const (
-	CharFilterHTMLStrip = "html_strip" // 去除HTML标签：<p>Hello</p> → Hello
-	CharFilterMapping   = "mapping"    // 字符映射替换：& → and
+	CharFilterHTMLStrip = "html_strip"      // 去除HTML标签：<p>Hello</p> → Hello
+	CharFilterMapping   = "mapping"         // 字符映射替换：& → and
 	CharFilterPattern   = "pattern_replace" // 正则替换
 )
 
@@ -63,10 +63,10 @@ const (
 	TokenFilterStop = "stop" // 去除停用词（the, is, at等）
 
 	// 词干提取
-	TokenFilterStemmer       = "stemmer"        // 词干提取：running → run
-	TokenFilterPorterStem    = "porter_stem"    // Porter词干算法
-	TokenFilterSnowball      = "snowball"       // Snowball词干算法
-	TokenFilterKStem         = "kstem"          // KStem词干算法
+	TokenFilterStemmer    = "stemmer"     // 词干提取：running → run
+	TokenFilterPorterStem = "porter_stem" // Porter词干算法
+	TokenFilterSnowball   = "snowball"    // Snowball词干算法
+	TokenFilterKStem      = "kstem"       // KStem词干算法
 
 	// 同义词
 	TokenFilterSynonym      = "synonym"       // 同义词替换：quick → [quick, fast]
