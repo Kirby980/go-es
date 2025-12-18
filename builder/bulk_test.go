@@ -2,6 +2,8 @@ package builder
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -213,7 +215,7 @@ func TestBulkBuilder_DeleteOperations(t *testing.T) {
 	// 先创建文档
 	for i := 1; i <= 3; i++ {
 		_, _ = NewDocumentBuilder(client, indexName).
-			ID(string(rune('0' + i))).
+			ID(string(rune('0'+i))).
 			Set("title", "待删除文档").
 			Do(ctx)
 	}
@@ -739,4 +741,110 @@ func TestBulkBuilder_ComplexNested(t *testing.T) {
 	}
 
 	t.Logf("✓ 复杂嵌套验证成功")
+}
+
+func TestBulkBuilder_Flush(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	indexName := "test_bulk_flush"
+	prepareTestIndex(t, client, indexName)
+	defer func() {
+		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	}()
+
+	// 测试参数
+	totalDocs := 255
+	batchSize := 50
+	expectedBatches := totalDocs / batchSize // 255 / 50 = 5 批（自动提交）
+
+	// 统计信息
+	var flushCount int
+	var autoFlushSuccessCount int
+
+	// 创建 Bulk Builder 并设置自动提交
+	bulk := NewBulkBuilder(client).
+		Index(indexName).
+		AutoFlushSize(batchSize).
+		OnFlush(func(resp *BulkResponse) {
+			flushCount++
+			autoFlushSuccessCount += resp.SuccessCount()
+			t.Logf("✓ 自动提交批次 #%d: 成功 %d 条，累计 %d 条",
+				flushCount, resp.SuccessCount(), autoFlushSuccessCount)
+
+			// 验证每批次没有错误
+			if resp.HasErrors() {
+				t.Errorf("批次 #%d 有错误", flushCount)
+				for _, item := range resp.FailedItems() {
+					t.Errorf("  失败项: ID=%s, 错误=%s", item.ID, item.Error.Reason)
+				}
+			}
+		})
+	// 添加文档（会触发自动提交）
+	for i := 0; i < totalDocs; i++ {
+		bulk.AddDoc(strconv.Itoa(i)).Set("price", i).Set("name", fmt.Sprintf("product_%d", i))
+	}
+
+	t.Logf("添加了 %d 个文档，触发了 %d 次自动提交", totalDocs, flushCount)
+
+	// 手动提交剩余的文档
+	remainingCount := bulk.Count()
+	t.Logf("剩余 %d 个文档待提交", remainingCount)
+
+	finalResp, err := bulk.Do(ctx)
+	if err != nil {
+		t.Fatalf("最终提交失败: %v", err)
+	}
+
+	finalSuccessCount := finalResp.SuccessCount()
+	t.Logf("✓ 最终提交: 成功 %d 条", finalSuccessCount)
+
+	// 验证结果
+	totalSuccess := autoFlushSuccessCount + finalSuccessCount
+
+	t.Logf("\n=== 统计结果 ===")
+	t.Logf("总文档数: %d", totalDocs)
+	t.Logf("批次大小: %d", batchSize)
+	t.Logf("自动提交次数: %d (预期 %d)", flushCount, expectedBatches)
+	t.Logf("自动提交成功: %d", autoFlushSuccessCount)
+	t.Logf("最终提交成功: %d", finalSuccessCount)
+	t.Logf("总成功数: %d", totalSuccess)
+
+	// 断言：自动提交次数应该等于预期批次数
+	if flushCount != expectedBatches {
+		t.Errorf("自动提交次数错误: 期望 %d 次, 实际 %d 次", expectedBatches, flushCount)
+	}
+
+	// 断言：自动提交的数量应该是批次大小的整数倍
+	expectedAutoFlush := flushCount * batchSize
+	if autoFlushSuccessCount != expectedAutoFlush {
+		t.Errorf("自动提交数量错误: 期望 %d, 实际 %d", expectedAutoFlush, autoFlushSuccessCount)
+	}
+
+	// 断言：剩余文档数应该是总数对批次大小的余数
+	expectedRemaining := totalDocs % batchSize
+	if remainingCount != expectedRemaining {
+		t.Errorf("剩余文档数错误: 期望 %d, 实际 %d", expectedRemaining, remainingCount)
+	}
+
+	// 断言：总成功数应该等于总文档数
+	if totalSuccess != totalDocs {
+		t.Errorf("总成功数错误: 期望 %d, 实际 %d", totalDocs, totalSuccess)
+	}
+
+	// 验证最终提交的数量
+	if finalSuccessCount != expectedRemaining {
+		t.Errorf("最终提交数量错误: 期望 %d, 实际 %d", expectedRemaining, finalSuccessCount)
+	}
+
+	// 检查是否有错误
+	if finalResp.HasErrors() {
+		t.Error("最终提交有错误:")
+		for _, item := range finalResp.FailedItems() {
+			t.Errorf("  失败项: ID=%s, 错误=%s", item.ID, item.Error.Reason)
+		}
+	}
+
+	t.Logf("✓ 自动分批提交测试通过")
 }

@@ -12,11 +12,13 @@ import (
 
 // BulkBuilder 批量操作构建器
 type BulkBuilder struct {
-	client     *client.Client
-	index      string
-	operations []bulkOperation
-	currentOp  *bulkOperation // 当前正在构建的操作（用于链式调用）
-	debug      bool           // 调试模式标志
+	client        *client.Client
+	index         string
+	operations    []bulkOperation
+	currentOp     *bulkOperation      // 当前正在构建的操作（用于链式调用）
+	debug         bool                // 调试模式标志
+	autoFlushSize int                 // 自动刷新大小
+	onFlush       func(*BulkResponse) // 分批回调
 }
 
 // bulkOperation 批量操作项
@@ -32,6 +34,18 @@ func NewBulkBuilder(c *client.Client) *BulkBuilder {
 		client:     c,
 		operations: make([]bulkOperation, 0),
 	}
+}
+
+// AuthFlush 设置自动刷新大小
+func (b *BulkBuilder) AutoFlushSize(size int) *BulkBuilder {
+	b.autoFlushSize = size
+	return b
+}
+
+// OnFlush 设置分批回调(每批完成后回调)
+func (b *BulkBuilder) OnFlush(callback func(*BulkResponse)) *BulkBuilder {
+	b.onFlush = callback
+	return b
 }
 
 // Index 设置默认索引
@@ -55,6 +69,7 @@ func (b *BulkBuilder) commitCurrent() {
 // Add 添加索引操作
 func (b *BulkBuilder) Add(index, id string, doc map[string]interface{}) *BulkBuilder {
 	b.commitCurrent() // 先提交链式构建的操作（如果有）
+	b.isFlush()
 
 	if index == "" {
 		index = b.index
@@ -72,7 +87,40 @@ func (b *BulkBuilder) Add(index, id string, doc map[string]interface{}) *BulkBui
 		meta:   meta,
 		doc:    doc,
 	})
+
 	return b
+}
+
+func (b *BulkBuilder) isFlush() {
+	if b.autoFlushSize > 0 && len(b.operations) >= b.autoFlushSize {
+		resp, err := b.flush(context.TODO())
+		if err == nil && b.onFlush != nil {
+			b.onFlush(resp)
+		}
+	}
+}
+
+func (b *BulkBuilder) flush(ctx context.Context) (*BulkResponse, error) {
+	if len(b.operations) == 0 {
+		return &BulkResponse{}, nil
+	}
+	flushCount := b.autoFlushSize
+	if b.autoFlushSize == 0 || len(b.operations) <= b.autoFlushSize {
+		flushCount = len(b.operations)
+	}
+
+	toFlush := b.operations[:flushCount]
+	remaining := b.operations[flushCount:]
+
+	b.operations = toFlush
+	resp, err := b.Do(ctx)
+	b.operations = remaining
+
+	return resp, err
+}
+
+func (b *BulkBuilder) Flush(ctx context.Context) (*BulkResponse, error) {
+	return b.flush(ctx)
 }
 
 // Create 添加创建操作（文档已存在则失败）
@@ -147,7 +195,7 @@ func (b *BulkBuilder) AddDoc(id string) *BulkBuilder {
 // AddDocWithIndex 开始添加索引操作并指定索引（链式调用）
 func (b *BulkBuilder) AddDocWithIndex(index, id string) *BulkBuilder {
 	b.commitCurrent()
-
+	b.isFlush()
 	if index == "" {
 		index = b.index
 	}
@@ -164,6 +212,7 @@ func (b *BulkBuilder) AddDocWithIndex(index, id string) *BulkBuilder {
 		meta:   meta,
 		doc:    make(map[string]interface{}),
 	}
+
 	return b
 }
 
@@ -175,6 +224,7 @@ func (b *BulkBuilder) CreateDoc(id string) *BulkBuilder {
 // CreateDocWithIndex 开始添加创建操作并指定索引（链式调用）
 func (b *BulkBuilder) CreateDocWithIndex(index, id string) *BulkBuilder {
 	b.commitCurrent()
+	b.isFlush()
 
 	if index == "" {
 		index = b.index
@@ -190,6 +240,7 @@ func (b *BulkBuilder) CreateDocWithIndex(index, id string) *BulkBuilder {
 		meta:   meta,
 		doc:    make(map[string]interface{}),
 	}
+
 	return b
 }
 
@@ -201,6 +252,7 @@ func (b *BulkBuilder) UpdateDoc(id string) *BulkBuilder {
 // UpdateDocWithIndex 开始添加更新操作并指定索引（链式调用）
 func (b *BulkBuilder) UpdateDocWithIndex(index, id string) *BulkBuilder {
 	b.commitCurrent()
+	b.isFlush()
 
 	if index == "" {
 		index = b.index
@@ -216,6 +268,7 @@ func (b *BulkBuilder) UpdateDocWithIndex(index, id string) *BulkBuilder {
 		meta:   meta,
 		doc:    make(map[string]interface{}),
 	}
+
 	return b
 }
 
@@ -227,6 +280,7 @@ func (b *BulkBuilder) DeleteDoc(id string) *BulkBuilder {
 // DeleteDocWithIndex 添加删除操作并指定索引（链式调用）
 func (b *BulkBuilder) DeleteDocWithIndex(index, id string) *BulkBuilder {
 	b.commitCurrent()
+	b.isFlush()
 
 	if index == "" {
 		index = b.index
@@ -242,6 +296,7 @@ func (b *BulkBuilder) DeleteDocWithIndex(index, id string) *BulkBuilder {
 		action: "delete",
 		meta:   meta,
 	})
+
 	return b
 }
 
@@ -475,5 +530,9 @@ func (b *BulkBuilder) Clear() *BulkBuilder {
 
 // Count 返回操作数量
 func (b *BulkBuilder) Count() int {
-	return len(b.operations)
+	count := len(b.operations)
+	if b.currentOp != nil {
+		count++
+	}
+	return count
 }

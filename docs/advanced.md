@@ -6,6 +6,20 @@
 
 ```go
 bulkResp, err := builder.NewBulkBuilder(esClient).
+    AutoFlushSize(batchSize).
+	OnFlush(func(resp *BulkResponse) {
+		flushCount++
+		autoFlushSuccessCount += resp.SuccessCount()
+		t.Logf("✓ 自动提交批次 #%d: 成功 %d 条，累计 %d 条",
+			flushCount, resp.SuccessCount(), autoFlushSuccessCount)
+		// 验证每批次没有错误
+		if resp.HasErrors() {
+			t.Errorf("批次 #%d 有错误", flushCount)
+			for _, item := range resp.FailedItems() {
+		    	t.Errorf("  失败项: ID=%s, 错误=%s", item.ID, item.Error.Reason)
+			}
+		}
+	}).
     Index("products").
     Add("", "1", map[string]interface{}{
         "name": "iPad Air",
@@ -40,6 +54,9 @@ if bulkResp.HasErrors() {
 - ✅ 批量更新 (Update)
 - ✅ 批量删除 (Delete)
 - ✅ 错误处理 (HasErrors, FailedItems, SuccessCount)
+- ✅ 自动提交(AutoFlushSize)
+- ✅ 回调函数(OnFulsh)
+
 
 ## 按条件批量更新 (UpdateByQueryBuilder)
 
