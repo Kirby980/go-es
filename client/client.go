@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Kirby980/go-es/config"
+	"github.com/Kirby980/go-es/errors"
 )
 
 // Client Elasticsearch 客户端
@@ -99,7 +100,7 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	}
 
 	if resp.StatusCode >= 400 {
-		return respBody, fmt.Errorf("请求失败，状态码: %d, 响应: %s", resp.StatusCode, string(respBody))
+		return respBody, errors.ParseESError(resp.StatusCode, respBody)
 	}
 
 	return respBody, nil
@@ -179,7 +180,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body interface{}) 
 	}
 
 	if resp.StatusCode >= 400 {
-		return respBody, fmt.Errorf("请求失败，状态码: %d, 响应: %s", resp.StatusCode, string(respBody))
+		return respBody, errors.ParseESError(resp.StatusCode, respBody)
 	}
 
 	return respBody, nil
