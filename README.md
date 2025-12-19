@@ -240,6 +240,68 @@ if err != nil {
 
 [查看完整错误处理文档](docs/errors.md)
 
+## 线程安全说明
+
+### Client 是线程安全的
+
+`*client.Client` 可以在多个 goroutine 中并发使用：
+
+```go
+esClient, _ := client.New(...)
+
+// ✅ 安全：多个 goroutine 共享 client
+go func() {
+    builder.NewSearchBuilder(esClient, "index1").Match(...).Do(ctx)
+}()
+go func() {
+    builder.NewSearchBuilder(esClient, "index2").Match(...).Do(ctx)
+}()
+```
+
+### Builder 不是线程安全的
+
+所有 Builder（SearchBuilder、DocumentBuilder 等）都**不是线程安全**的，不能在多个 goroutine 中共享使用：
+
+```go
+// ❌ 错误：多个 goroutine 共享同一个 Builder
+sb := builder.NewSearchBuilder(esClient, "index")
+go func() { sb.Match("field1", "value1").Do(ctx) }()  // 数据竞争！
+go func() { sb.Match("field2", "value2").Do(ctx) }()  // 数据竞争！
+
+// ✅ 正确：每个 goroutine 创建自己的 Builder
+go func() {
+    builder.NewSearchBuilder(esClient, "index").Match("field1", "value1").Do(ctx)
+}()
+go func() {
+    builder.NewSearchBuilder(esClient, "index").Match("field2", "value2").Do(ctx)
+}()
+```
+
+### 并发最佳实践
+
+1. **全局共享 Client**：应用启动时创建一个 Client，全局共享
+2. **每次查询创建新 Builder**：不要重复使用 Builder 实例
+3. **使用连接池**：配置合适的连接池参数提升并发性能
+
+```go
+var esClient *client.Client
+
+func init() {
+    esClient, _ = client.New(
+        config.WithAddresses("https://localhost:9200"),
+        config.WithConnectionPool(200, 50, 100), // 高并发配置
+    )
+}
+
+func SearchProducts(ctx context.Context, keyword string) {
+    // 每次查询创建新的 Builder
+    resp, _ := builder.NewSearchBuilder(esClient, "products").
+        Match("name", keyword).
+        Do(ctx)
+    // ...
+}
+```
+
 ## 完整文档
 
 - [索引管理](docs/index.md) - 创建、更新、删除索引，自定义分析器
