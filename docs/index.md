@@ -2,6 +2,89 @@
 
 IndexBuilder 提供了完整的 Elasticsearch 索引管理功能，包括创建、更新、查询和删除索引。
 
+## AutoMigrate（推荐）
+
+类似 GORM 的自动迁移功能，通过结构体标签自动创建或更新索引映射。
+
+### 基本用法
+
+```go
+// 定义结构体，使用 es 标签定义字段映射
+type Article struct {
+    Title     string    `es:"type:text;analyzer:ik_smart"`
+    Content   string    `es:"type:text;analyzer:ik_max_word"`
+    Author    string    `es:"type:keyword"`
+    Tags      []string  `es:"type:keyword"`
+    Views     int       `es:"type:integer"`
+    Price     float64   `es:"type:float"`
+    Published bool      `es:"type:boolean"`
+    CreatedAt time.Time `es:"type:date;format:yyyy-MM-dd HH:mm:ss"`
+    Location  string    `es:"type:geo_point"`
+}
+
+// 自动迁移（创建或更新索引）
+err := esClient.AutoMigrate(&Article{})
+```
+
+### 自定义索引名
+
+默认索引名为结构体名称的 snake_case 复数形式（如 `Article` -> `articles`）。
+
+可以实现 `IndexName` 接口自定义索引名：
+
+```go
+type Article struct {
+    // ...
+}
+
+// 实现 IndexName 接口
+func (a *Article) IndexName() string {
+    return "my_articles"
+}
+
+// 迁移时会使用 "my_articles" 作为索引名
+err := esClient.AutoMigrate(&Article{})
+```
+
+### es 标签语法
+
+标签格式：`es:"key1:value1;key2:value2"`
+
+常用配置：
+- `type:xxx` - 字段类型（必填）
+- `analyzer:xxx` - 分析器
+- `format:xxx` - 日期格式
+- `-` - 忽略该字段
+
+```go
+type Product struct {
+    Name        string  `es:"type:text;analyzer:ik_smart"`     // text + IK分词
+    SKU         string  `es:"type:keyword"`                     // 精确匹配
+    Price       float64 `es:"type:float"`                       // 浮点数
+    Stock       int     `es:"type:integer"`                     // 整数
+    Available   bool    `es:"type:boolean"`                     // 布尔
+    CreatedAt   string  `es:"type:date;format:yyyy-MM-dd"`      // 日期
+    Location    string  `es:"type:geo_point"`                   // 地理位置
+    InternalID  string  `es:"-"`                                // 忽略
+}
+```
+
+### 迁移多个模型
+
+```go
+err := esClient.AutoMigrate(
+    &Article{},
+    &Product{},
+    &User{},
+)
+```
+
+### 注意事项
+
+- ES 不支持删除或修改已有字段类型，AutoMigrate 只能添加新字段
+- 如果索引已存在，会调用 PutMapping 添加新字段
+- 如果索引不存在，会创建新索引
+
 ## 基础操作
 
 ### 创建索引
@@ -224,6 +307,7 @@ err := builder.NewIndexBuilder(esClient, "products").
 
 ## 支持的功能
 
+- ✅ AutoMigrate（自动迁移）
 - ✅ 创建索引 (Create, Shards, Replicas, RefreshInterval)
 - ✅ 字段映射 (AddProperty, WithAnalyzer, WithFormat)
 - ✅ 别名管理 (AddAlias)

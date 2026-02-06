@@ -11,6 +11,7 @@
 - ✅ **高性能**: 支持批量操作和连接池
 - ✅ **错误处理**: 完善的错误处理和重试机制
 - ✅ **链式Debug**: 类似GORM的Debug模式，局部控制日志输出
+- ✅ **AutoMigrate**: 类似GORM的自动迁移，通过结构体标签定义映射
 
 ## 快速开始
 
@@ -63,6 +64,26 @@ exists, _ := builder.NewIndexBuilder(esClient, "products").Exists(ctx)
 
 // 删除索引
 err = builder.NewIndexBuilder(esClient, "products").Delete(ctx)
+```
+
+#### AutoMigrate（类似 GORM）
+
+```go
+// 定义结构体，使用 es 标签定义字段映射
+type Product struct {
+    Name      string  `es:"type:text;analyzer:ik_smart"`
+    Price     float64 `es:"type:float"`
+    Category  string  `es:"type:keyword"`
+    CreatedAt string  `es:"type:date;format:yyyy-MM-dd HH:mm:ss"`
+}
+
+// 可选：实现 IndexName 接口自定义索引名
+func (p *Product) IndexName() string {
+    return "my_products"
+}
+
+// 自动迁移（创建或更新索引）
+err := esClient.AutoMigrate(&Product{})
 ```
 
 [查看完整索引管理文档](docs/index.md)
@@ -330,6 +351,7 @@ func SearchProducts(ctx context.Context, keyword string) {
 - ✅ 自定义分析器
 - ✅ 字段映射
 - ✅ 别名管理
+- ✅ AutoMigrate（类似 GORM 的自动迁移）
 
 ### DocumentBuilder
 - ✅ 文档 CRUD
