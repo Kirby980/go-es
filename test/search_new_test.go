@@ -1,4 +1,4 @@
-package builder
+package builder_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
 	"github.com/Kirby980/go-es/config"
 )
@@ -37,7 +38,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
 	index := "test_search_match_should"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("category", "keyword").
@@ -47,7 +48,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
 	docs := []map[string]interface{}{
@@ -57,7 +58,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
 		{"category": "other", "brand": "Xiaomi", "price": 599},
 	}
 
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	for i, doc := range docs {
 		bulk.Add("", string(rune(i+1)), doc)
 	}
@@ -68,7 +69,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：至少匹配一个 category（默认）
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		MatchShould("category", "tech").
 		MatchShould("category", "programming").
 		MatchShould("category", "database").
@@ -91,7 +92,7 @@ func TestSearchBuilder_TermShould(t *testing.T) {
 	index := "test_search_term_should"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("brand", "keyword").
@@ -99,10 +100,10 @@ func TestSearchBuilder_TermShould(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{"brand": "Apple"})
 	bulk.Add("", "2", map[string]interface{}{"brand": "Samsung"})
 	bulk.Add("", "3", map[string]interface{}{"brand": "Huawei"})
@@ -114,7 +115,7 @@ func TestSearchBuilder_TermShould(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：品牌是 Apple 或 Samsung
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		TermShould("brand", "Apple").
 		TermShould("brand", "Samsung").
 		Do(ctx)
@@ -136,7 +137,7 @@ func TestSearchBuilder_RangeShould(t *testing.T) {
 	index := "test_search_range_should"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("price", "float").
@@ -144,10 +145,10 @@ func TestSearchBuilder_RangeShould(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{"price": 100})
 	bulk.Add("", "2", map[string]interface{}{"price": 500})
 	bulk.Add("", "3", map[string]interface{}{"price": 1500})
@@ -159,7 +160,7 @@ func TestSearchBuilder_RangeShould(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：价格在 0-300 或 1000-2000 范围内
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		RangeShould("price", 0, 300).
 		RangeShould("price", 1000, 2000).
 		Do(ctx)
@@ -181,7 +182,7 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
 	index := "test_search_minimum_should_match"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("tag", "keyword").
@@ -189,10 +190,10 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{"tag": "new"})
 	bulk.Add("", "2", map[string]interface{}{"tag": "popular"})
 	bulk.Add("", "3", map[string]interface{}{"tag": "recommended"})
@@ -204,7 +205,7 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：4个 should 条件，至少匹配1个（所有都能匹配）
-	resp1, err := NewSearchBuilder(esClient, index).
+	resp1, err := builder.NewSearchBuilder(esClient, index).
 		TermShould("tag", "new").
 		TermShould("tag", "popular").
 		TermShould("tag", "recommended").
@@ -222,7 +223,7 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
 	t.Logf("✓ MinimumShouldMatch(1) 查询成功: 找到 %d 条结果", resp1.Hits.Total.Value)
 
 	// 测试：至少匹配2个（应该找不到，因为每个文档只有1个标签）
-	resp2, err := NewSearchBuilder(esClient, index).
+	resp2, err := builder.NewSearchBuilder(esClient, index).
 		TermShould("tag", "new").
 		TermShould("tag", "popular").
 		TermShould("tag", "recommended").
@@ -249,7 +250,7 @@ func TestSearchBuilder_MatchMustNot(t *testing.T) {
 	index := "test_search_match_must_not"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("title", "text").
@@ -257,10 +258,10 @@ func TestSearchBuilder_MatchMustNot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{"title": "iPhone 15 Pro"})
 	bulk.Add("", "2", map[string]interface{}{"title": "Samsung Galaxy S24"})
 	bulk.Add("", "3", map[string]interface{}{"title": "refurbished iPhone 14"})
@@ -272,7 +273,7 @@ func TestSearchBuilder_MatchMustNot(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：标题不能包含 "refurbished"
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		MatchAll().
 		MatchMustNot("title", "refurbished").
 		Do(ctx)
@@ -294,7 +295,7 @@ func TestSearchBuilder_TermMustNot(t *testing.T) {
 	index := "test_search_term_must_not"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("status", "keyword").
@@ -302,10 +303,10 @@ func TestSearchBuilder_TermMustNot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{"status": "active"})
 	bulk.Add("", "2", map[string]interface{}{"status": "pending"})
 	bulk.Add("", "3", map[string]interface{}{"status": "deleted"})
@@ -317,7 +318,7 @@ func TestSearchBuilder_TermMustNot(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：状态不是 deleted
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		MatchAll().
 		TermMustNot("status", "deleted").
 		Do(ctx)
@@ -339,7 +340,7 @@ func TestSearchBuilder_RangeMustNot(t *testing.T) {
 	index := "test_search_range_must_not"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("age", "integer").
@@ -347,10 +348,10 @@ func TestSearchBuilder_RangeMustNot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{"age": 15})
 	bulk.Add("", "2", map[string]interface{}{"age": 25})
 	bulk.Add("", "3", map[string]interface{}{"age": 35})
@@ -362,7 +363,7 @@ func TestSearchBuilder_RangeMustNot(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// 测试：排除 18 岁以下（不包含 18）
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		MatchAll().
 		RangeMustNot("age", nil, 17). // 排除 <= 17 岁的
 		Do(ctx)
@@ -386,7 +387,7 @@ func TestSearchBuilder_ComplexLogic(t *testing.T) {
 	index := "test_search_complex_logic"
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, index).
+	err := builder.NewIndexBuilder(esClient, index).
 		Shards(1).
 		Replicas(0).
 		AddProperty("category", "keyword").
@@ -398,10 +399,10 @@ func TestSearchBuilder_ComplexLogic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建索引失败: %v", err)
 	}
-	defer NewIndexBuilder(esClient, index).Delete(ctx)
+	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	bulk := NewBulkBuilder(esClient).Index(index)
+	bulk := builder.NewBulkBuilder(esClient).Index(index)
 	bulk.Add("", "1", map[string]interface{}{
 		"category": "electronics",
 		"status":   "active",
@@ -450,7 +451,7 @@ func TestSearchBuilder_ComplexLogic(t *testing.T) {
 	// 3. price 必须在 700-1000 之间 (AND)
 	// 4. brand 是 Apple 或 Samsung（至少1个）(OR)
 	// 5. title 不能包含 refurbished (NOT)
-	resp, err := NewSearchBuilder(esClient, index).
+	resp, err := builder.NewSearchBuilder(esClient, index).
 		// AND 条件
 		Term("category", "electronics").
 		Term("status", "active").

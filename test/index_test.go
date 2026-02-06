@@ -1,14 +1,40 @@
-package builder
+package builder_test
 
 import (
 	"context"
+	"log"
 	"testing"
 	"time"
 
+	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
 	"github.com/Kirby980/go-es/config"
 	constant "github.com/Kirby980/go-es/const"
 )
+
+type Article struct {
+	Title   string  `es:"type:text;analyzer:ik_max_word"`
+	Status  int     `es:"type:integer"`
+	Created string  `es:"type:date;format:yyyy-MM-dd"`
+	Content string  `es:"type:text;analyzer:standard"`
+	Tags    string  `es:"type:keyword"`
+	Score   float64 `es:"type:float"` // 跳过
+	Test    string  `es:"type:keyword"`
+}
+
+type Test struct {
+	Test string `es:"type:keyword"`
+}
+
+func TestAutoMigrate(t *testing.T) {
+	client := createTestClient(t)
+	defer client.Close()
+	err := client.AutoMigrate(&Article{}, &Test{})
+	if err != nil {
+		t.Fatalf("AutoMigrate failed: %v", err)
+	}
+	t.Logf("✓ AutoMigrate success")
+}
 
 // 创建测试客户端
 func createTestClient(t *testing.T) *client.Client {
@@ -37,20 +63,20 @@ func TestIndexBuilder_CreateIndex(t *testing.T) {
 	indexName := "test_index_create"
 
 	// 清理：先删除可能存在的索引
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		RefreshInterval("1s").
-		AddProperty("title", "text", WithAnalyzer("ik_smart")).
-		AddProperty("content", "text", WithAnalyzer("ik_smart")).
+		AddProperty("title", "text", builder.WithAnalyzer("ik_smart")).
+		AddProperty("content", "text", builder.WithAnalyzer("ik_smart")).
 		AddProperty("author", "keyword").
 		AddProperty("views", "integer").
 		AddProperty("price", "float").
 		AddProperty("published", "boolean").
-		AddProperty("created_at", "date", WithFormat("yyyy-MM-dd HH:mm:ss")).
+		AddProperty("created_at", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
 		AddProperty("tags", "keyword").
 		AddAlias("test_alias", nil).
 		Do(ctx)
@@ -62,7 +88,7 @@ func TestIndexBuilder_CreateIndex(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -75,10 +101,10 @@ func TestIndexBuilder_Exists(t *testing.T) {
 	indexName := "test_index_exists"
 
 	// 确保索引不存在
-	//_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	//_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 检查不存在的索引
-	exists, err := NewIndexBuilder(client, indexName).Exists(ctx)
+	exists, err := builder.NewIndexBuilder(client, indexName).Exists(ctx)
 	if err != nil {
 		t.Fatalf("检查索引存在性失败: %v", err)
 	}
@@ -88,13 +114,13 @@ func TestIndexBuilder_Exists(t *testing.T) {
 	t.Logf("✓ 确认索引不存在")
 
 	// 创建索引
-	_ = NewIndexBuilder(client, indexName).
+	_ = builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		Do(ctx)
 
 	// 检查存在的索引
-	exists, err = NewIndexBuilder(client, indexName).Exists(ctx)
+	exists, err = builder.NewIndexBuilder(client, indexName).Exists(ctx)
 	if err != nil {
 		t.Fatalf("检查索引存在性失败: %v", err)
 	}
@@ -105,8 +131,11 @@ func TestIndexBuilder_Exists(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
+}
+func logResponse(r builder.JSONSerializer) {
+	log.Println(r.PrettyJSON())
 }
 
 // TestIndexBuilder_GetIndexInfo 测试获取索引信息
@@ -118,7 +147,7 @@ func TestIndexBuilder_GetIndexInfo(t *testing.T) {
 	indexName := "test_index_create"
 
 	// 创建索引
-	_ = NewIndexBuilder(client, indexName).
+	_ = builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		AddProperty("name", "text").
@@ -126,7 +155,7 @@ func TestIndexBuilder_GetIndexInfo(t *testing.T) {
 		Do(ctx)
 
 	// 获取索引信息
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -134,6 +163,7 @@ func TestIndexBuilder_GetIndexInfo(t *testing.T) {
 	t.Logf("✓ 获取索引信息成功")
 	t.Logf("索引信息: %s", info.PrettyJSON())
 
+	logResponse(info)
 	// 验证索引信息包含必要字段
 	if info.Mappings == nil {
 		t.Error("索引信息应该包含 mappings")
@@ -144,7 +174,7 @@ func TestIndexBuilder_GetIndexInfo(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -157,26 +187,26 @@ func TestIndexBuilder_DeleteIndex(t *testing.T) {
 	indexName := "test_index_delete"
 
 	// 创建索引
-	_ = NewIndexBuilder(client, indexName).
+	_ = builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		Do(ctx)
 
 	// 确认索引存在
-	exists, _ := NewIndexBuilder(client, indexName).Exists(ctx)
+	exists, _ := builder.NewIndexBuilder(client, indexName).Exists(ctx)
 	if !exists {
 		t.Fatal("索引应该存在")
 	}
 
 	// 删除索引
-	err := NewIndexBuilder(client, indexName).Delete(ctx)
+	err := builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	if err != nil {
 		t.Fatalf("删除索引失败: %v", err)
 	}
 	t.Logf("✓ 删除索引成功")
 
 	// 确认索引已删除
-	exists, _ = NewIndexBuilder(client, indexName).Exists(ctx)
+	exists, _ = builder.NewIndexBuilder(client, indexName).Exists(ctx)
 	if exists {
 		t.Error("索引不应该存在")
 	}
@@ -189,28 +219,28 @@ func TestIndexBuilder_PropertyOptions(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_properties"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建包含各种字段选项的索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		// 文本字段带分词器
-		AddProperty("description", "text", WithAnalyzer("ik_smart")).
+		AddProperty("description", "text", builder.WithAnalyzer("ik_smart")).
 		// 关键字字段
 		AddProperty("keyword_field", "keyword").
 		// 数值字段
 		AddProperty("integer_field", "integer").
 		AddProperty("float_field", "float").
 		// 日期字段带格式
-		AddProperty("date_field", "date", WithFormat("yyyy-MM-dd")).
-		AddProperty("datetime_field", "date", WithFormat("yyyy-MM-dd HH:mm:ss")).
+		AddProperty("date_field", "date", builder.WithFormat("yyyy-MM-dd")).
+		AddProperty("datetime_field", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
 		// 布尔字段
 		AddProperty("boolean_field", "boolean").
 		// 带存储选项的字段
-		AddProperty("stored_field", "text", WithStore(true)).
+		AddProperty("stored_field", "text", builder.WithStore(true)).
 		// 不索引的字段
-		AddProperty("not_indexed_field", "text", WithIndex(false)).
+		AddProperty("not_indexed_field", "text", builder.WithIndex(false)).
 		Do(ctx)
 
 	if err != nil {
@@ -219,12 +249,12 @@ func TestIndexBuilder_PropertyOptions(t *testing.T) {
 	t.Logf("✓ 创建包含多种字段类型的索引成功")
 
 	// 获取索引信息验证
-	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	info, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	t.Logf("索引映射: %s", info.PrettyJSON())
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -235,10 +265,10 @@ func TestIndexBuilder_MultipleAliases(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_aliases"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建带多个别名的索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		AddProperty("status", "keyword").
@@ -257,7 +287,7 @@ func TestIndexBuilder_MultipleAliases(t *testing.T) {
 	t.Logf("✓ 创建带多个别名的索引成功")
 
 	// 获取索引信息验证别名
-	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	info, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if info.Aliases == nil {
 		t.Error("索引应该包含别名")
 	}
@@ -265,7 +295,7 @@ func TestIndexBuilder_MultipleAliases(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -276,10 +306,10 @@ func TestIndexBuilder_RefreshInterval(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_refresh"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建带自定义刷新间隔的索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		RefreshInterval("5s").
@@ -292,7 +322,7 @@ func TestIndexBuilder_RefreshInterval(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -301,7 +331,7 @@ func TestIndexBuilder_Build(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 
-	builder := NewIndexBuilder(client, "test").
+	indexBuilder := builder.NewIndexBuilder(client, "test").
 		Shards(3).
 		Replicas(1).
 		RefreshInterval("30s").
@@ -309,7 +339,7 @@ func TestIndexBuilder_Build(t *testing.T) {
 		AddProperty("price", "float").
 		AddAlias("test_alias", nil)
 
-	definition := builder.Build()
+	definition := indexBuilder.Build()
 
 	// 验证定义包含所有必要部分
 	if definition["settings"] == nil {
@@ -333,18 +363,18 @@ func TestIndexBuilder_ChainCalls(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_chain"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 测试所有方法都返回 *IndexBuilder 以支持链式调用
-	builder := NewIndexBuilder(client, indexName)
-	builder = builder.Shards(1)
-	builder = builder.Replicas(0)
-	builder = builder.RefreshInterval("1s")
-	builder = builder.AddProperty("field1", "text")
-	builder = builder.AddProperty("field2", "keyword")
-	builder = builder.AddAlias("alias1", nil)
+	ib := builder.NewIndexBuilder(client, indexName)
+	ib = ib.Shards(1)
+	ib = ib.Replicas(0)
+	ib = ib.RefreshInterval("1s")
+	ib = ib.AddProperty("field1", "text")
+	ib = ib.AddProperty("field2", "keyword")
+	ib = ib.AddAlias("alias1", nil)
 
-	err := builder.Do(ctx)
+	err := ib.Do(ctx)
 	if err != nil {
 		t.Fatalf("链式调用创建索引失败: %v", err)
 	}
@@ -352,39 +382,39 @@ func TestIndexBuilder_ChainCalls(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
-// TestIndexBuilder_WithFields 测试 WithSubField 多字段映射
+// TestIndexBuilder_WithFields 测试 builder.WithSubField 多字段映射
 func TestIndexBuilder_WithFields(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
 
 	indexName := "test_index_with_fields"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
-	// 使用 WithSubField 链式调用添加多字段，无需手写 map
-	err := NewIndexBuilder(client, indexName).
+	// 使用 builder.WithSubField 链式调用添加多字段，无需手写 map
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		AddProperty("title", "text",
-			WithAnalyzer("ik_smart"),
-			WithSubField("keyword", "keyword", WithIgnoreAbove(256)),
-			WithSubField("raw", "keyword"),
+			builder.WithAnalyzer("ik_smart"),
+			builder.WithSubField("keyword", "keyword", builder.WithIgnoreAbove(256)),
+			builder.WithSubField("raw", "keyword"),
 		).
-		// 使用 WithSubProperties 添加嵌套对象（必须是 object 或 nested 类型）
+		// 使用 builder.WithSubProperties 添加嵌套对象（必须是 object 或 nested 类型）
 		AddProperty("author", "object",
-			WithSubProperties("name", "text"),
-			WithSubProperties("email", "keyword"),
-			WithSubProperties("profile", "object",
-				WithSubProperties("age", "integer"),
-				WithSubProperties("city", "keyword"),
+			builder.WithSubProperties("name", "text"),
+			builder.WithSubProperties("email", "keyword"),
+			builder.WithSubProperties("profile", "object",
+				builder.WithSubProperties("age", "integer"),
+				builder.WithSubProperties("city", "keyword"),
 			),
 		).
 		AddProperty("description", "text",
-			WithSubField("keyword", "keyword"),
+			builder.WithSubField("keyword", "keyword"),
 		).
 		Do(ctx)
 
@@ -394,7 +424,7 @@ func TestIndexBuilder_WithFields(t *testing.T) {
 	t.Logf("✓ 创建带多字段映射的索引成功")
 
 	// 获取索引信息验证 fields
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -402,7 +432,7 @@ func TestIndexBuilder_WithFields(t *testing.T) {
 
 	// 清理
 	// defer func() {
-	// 	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	// 	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	// }()
 }
 
@@ -413,28 +443,28 @@ func TestIndexBuilder_MultiplePropertyOptions(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_multiple_options"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 测试在同一个字段上使用多个选项（使用链式 API）
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		// 组合使用多个选项
 		AddProperty("multi_option_field", "text",
-			WithAnalyzer("ik_smart"),
-			WithStore(true),
-			WithSubField("keyword", "keyword"),
+			builder.WithAnalyzer("ik_smart"),
+			builder.WithStore(true),
+			builder.WithSubField("keyword", "keyword"),
 		).
 		// 日期字段组合选项
 		AddProperty("timestamp", "date",
-			WithFormat("yyyy-MM-dd HH:mm:ss||epoch_millis"),
-			WithStore(true),
+			builder.WithFormat("yyyy-MM-dd HH:mm:ss||epoch_millis"),
+			builder.WithStore(true),
 		).
 		// 文本字段组合选项
 		AddProperty("content", "text",
-			WithAnalyzer("ik_smart"),
-			WithIndex(true),
-			WithStore(false),
+			builder.WithAnalyzer("ik_smart"),
+			builder.WithIndex(true),
+			builder.WithStore(false),
 		).
 		Do(ctx)
 
@@ -444,12 +474,12 @@ func TestIndexBuilder_MultiplePropertyOptions(t *testing.T) {
 	t.Logf("✓ 创建包含组合选项的索引成功")
 
 	// 获取索引信息验证
-	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	info, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	t.Logf("索引映射: %s", info.PrettyJSON())
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -460,10 +490,10 @@ func TestIndexInfo_JSONMethods(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_json_methods"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		AddProperty("name", "text").
@@ -476,7 +506,7 @@ func TestIndexInfo_JSONMethods(t *testing.T) {
 	}
 
 	// 获取索引信息
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -510,7 +540,7 @@ func TestIndexInfo_JSONMethods(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -521,31 +551,31 @@ func TestIndexBuilder_AllPropertyOptions(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_all_options"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 测试所有可用的 PropertyOption 函数（使用链式 API）
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
-		// WithAnalyzer
-		AddProperty("analyzed_field", "text", WithAnalyzer("ik_smart")).
-		// WithIndex - 测试 true 和 false
-		AddProperty("indexed_field", "text", WithIndex(true)).
-		AddProperty("not_indexed_field", "text", WithIndex(false)).
-		// WithStore - 测试 true 和 false
-		AddProperty("stored_field", "text", WithStore(true)).
-		AddProperty("not_stored_field", "text", WithStore(false)).
-		// WithFormat - 测试不同的日期格式
-		AddProperty("date_field1", "date", WithFormat("yyyy-MM-dd")).
-		AddProperty("date_field2", "date", WithFormat("yyyy-MM-dd HH:mm:ss")).
-		AddProperty("date_field3", "date", WithFormat("epoch_millis")).
-		// WithSubField - 测试多字段映射（使用链式 API）
+		// builder.WithAnalyzer
+		AddProperty("analyzed_field", "text", builder.WithAnalyzer("ik_smart")).
+		// builder.WithIndex - 测试 true 和 false
+		AddProperty("indexed_field", "text", builder.WithIndex(true)).
+		AddProperty("not_indexed_field", "text", builder.WithIndex(false)).
+		// builder.WithStore - 测试 true 和 false
+		AddProperty("stored_field", "text", builder.WithStore(true)).
+		AddProperty("not_stored_field", "text", builder.WithStore(false)).
+		// builder.WithFormat - 测试不同的日期格式
+		AddProperty("date_field1", "date", builder.WithFormat("yyyy-MM-dd")).
+		AddProperty("date_field2", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
+		AddProperty("date_field3", "date", builder.WithFormat("epoch_millis")).
+		// builder.WithSubField - 测试多字段映射（使用链式 API）
 		AddProperty("multi_field", "text",
-			WithSubField("keyword", "keyword"),
-			WithSubField("english", "text", WithAnalyzer("english")),
+			builder.WithSubField("keyword", "keyword"),
+			builder.WithSubField("english", "text", builder.WithAnalyzer("english")),
 		).
-		// WithIgnoreAbove - 测试 ignore_above 参数
-		AddProperty("limited_keyword", "keyword", WithIgnoreAbove(100)).
+		// builder.WithIgnoreAbove - 测试 ignore_above 参数
+		AddProperty("limited_keyword", "keyword", builder.WithIgnoreAbove(100)).
 		Do(ctx)
 
 	if err != nil {
@@ -554,12 +584,12 @@ func TestIndexBuilder_AllPropertyOptions(t *testing.T) {
 	t.Logf("✓ 所有 PropertyOption 函数测试成功")
 
 	// 获取并打印索引信息
-	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	info, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	t.Logf("完整索引映射:\n%s", info.PrettyJSON())
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -570,10 +600,10 @@ func TestIndexBuilder_UpdateSettings(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_update_settings"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 1. 先创建索引（初始设置：1个副本，1秒刷新间隔）
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(1).
 		RefreshInterval("1s").
@@ -587,11 +617,11 @@ func TestIndexBuilder_UpdateSettings(t *testing.T) {
 	t.Logf("✓ 创建索引成功，初始设置：副本数=1，刷新间隔=1s")
 
 	// 2. 获取初始索引信息
-	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	info, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	t.Logf("初始索引设置:\n%s", info.PrettyJSON())
 
 	// 3. 更新索引设置（修改副本数为2，刷新间隔为30s）
-	err = NewIndexBuilder(client, indexName).
+	err = builder.NewIndexBuilder(client, indexName).
 		Debug().
 		Replicas(2).
 		RefreshInterval("30s").
@@ -603,14 +633,14 @@ func TestIndexBuilder_UpdateSettings(t *testing.T) {
 	t.Logf("✓ 更新索引设置成功，新设置：副本数=2，刷新间隔=30s")
 
 	// 4. 再次获取索引信息，验证设置已更新
-	updatedInfo, err := NewIndexBuilder(client, indexName).Get(ctx)
+	updatedInfo, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取更新后的索引信息失败: %v", err)
 	}
 	t.Logf("更新后的索引设置:\n%s", updatedInfo.PrettyJSON())
 
 	// 5. 测试只更新刷新间隔
-	err = NewIndexBuilder(client, indexName).
+	err = builder.NewIndexBuilder(client, indexName).
 		RefreshInterval("5s").
 		UpdateSettings(ctx)
 
@@ -621,7 +651,7 @@ func TestIndexBuilder_UpdateSettings(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -632,13 +662,13 @@ func TestIndexBuilder_PutMapping(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_put_mapping"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 1. 先创建索引（只有基础字段）
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
-		AddProperty("name", "text", WithAnalyzer("ik_smart")).
+		AddProperty("name", "text", builder.WithAnalyzer("ik_smart")).
 		AddProperty("price", "float").
 		Create(ctx)
 
@@ -648,16 +678,16 @@ func TestIndexBuilder_PutMapping(t *testing.T) {
 	t.Logf("✓ 创建索引成功，初始字段：name, price")
 
 	// 2. 获取初始索引映射
-	info, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	info, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	t.Logf("初始索引映射:\n%s", info.PrettyJSON())
 
 	// 3. 添加新字段（使用 PutMapping）
-	err = NewIndexBuilder(client, indexName).
+	err = builder.NewIndexBuilder(client, indexName).
 		Debug().
-		AddProperty("description", "text", WithAnalyzer("ik_max_word")).
+		AddProperty("description", "text", builder.WithAnalyzer("ik_max_word")).
 		AddProperty("stock", "integer").
 		AddProperty("category", "keyword").
-		AddProperty("created_at", "date", WithFormat("yyyy-MM-dd HH:mm:ss")).
+		AddProperty("created_at", "date", builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
 		PutMapping(ctx)
 
 	if err != nil {
@@ -666,18 +696,18 @@ func TestIndexBuilder_PutMapping(t *testing.T) {
 	t.Logf("✓ 更新索引映射成功，添加字段：description, stock, category, created_at")
 
 	// 4. 再次获取索引信息，验证新字段已添加
-	updatedInfo, err := NewIndexBuilder(client, indexName).Get(ctx)
+	updatedInfo, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取更新后的索引信息失败: %v", err)
 	}
 	t.Logf("更新后的索引映射:\n%s", updatedInfo.PrettyJSON())
 
 	// 5. 测试添加嵌套字段
-	err = NewIndexBuilder(client, indexName).
+	err = builder.NewIndexBuilder(client, indexName).
 		AddProperty("tags", "keyword").
 		AddProperty("author", "object",
-			WithSubProperties("name", "text"),
-			WithSubProperties("email", "keyword"),
+			builder.WithSubProperties("name", "text"),
+			builder.WithSubProperties("email", "keyword"),
 		).
 		PutMapping(ctx)
 
@@ -687,12 +717,12 @@ func TestIndexBuilder_PutMapping(t *testing.T) {
 	t.Logf("✓ 添加嵌套字段成功")
 
 	// 6. 最终验证
-	finalInfo, _ := NewIndexBuilder(client, indexName).Get(ctx)
+	finalInfo, _ := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	t.Logf("最终索引映射:\n%s", finalInfo.PrettyJSON())
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -703,10 +733,10 @@ func TestIndexBuilder_UpdateSettingsAndPutMapping(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_update_both"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 1. 创建初始索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		RefreshInterval("1s").
@@ -720,7 +750,7 @@ func TestIndexBuilder_UpdateSettingsAndPutMapping(t *testing.T) {
 	t.Logf("✓ 步骤1：创建初始索引成功")
 
 	// 2. 更新设置
-	err = NewIndexBuilder(client, indexName).
+	err = builder.NewIndexBuilder(client, indexName).
 		Replicas(1).
 		RefreshInterval("10s").
 		UpdateSettings(ctx)
@@ -731,8 +761,8 @@ func TestIndexBuilder_UpdateSettingsAndPutMapping(t *testing.T) {
 	t.Logf("✓ 步骤2：更新索引设置成功")
 
 	// 3. 添加新字段
-	err = NewIndexBuilder(client, indexName).
-		AddProperty("content", "text", WithAnalyzer("ik_smart")).
+	err = builder.NewIndexBuilder(client, indexName).
+		AddProperty("content", "text", builder.WithAnalyzer("ik_smart")).
 		AddProperty("status", "keyword").
 		AddProperty("views", "long").
 		PutMapping(ctx)
@@ -743,7 +773,7 @@ func TestIndexBuilder_UpdateSettingsAndPutMapping(t *testing.T) {
 	t.Logf("✓ 步骤3：添加新字段成功")
 
 	// 4. 验证最终结果
-	finalInfo, err := NewIndexBuilder(client, indexName).Get(ctx)
+	finalInfo, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取最终索引信息失败: %v", err)
 	}
@@ -760,7 +790,7 @@ func TestIndexBuilder_UpdateSettingsAndPutMapping(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -772,9 +802,9 @@ func TestIndexBuilder_CreateMethodAlias(t *testing.T) {
 
 	// 1. 使用新的 Create() 方法
 	indexName1 := "test_index_create_method"
-	_ = NewIndexBuilder(client, indexName1).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName1).Delete(ctx)
 
-	err := NewIndexBuilder(client, indexName1).
+	err := builder.NewIndexBuilder(client, indexName1).
 		Shards(1).
 		Replicas(0).
 		AddProperty("field1", "text").
@@ -787,9 +817,9 @@ func TestIndexBuilder_CreateMethodAlias(t *testing.T) {
 
 	// 2. 使用兼容的 Do() 方法（应该调用 Create）
 	indexName2 := "test_index_do_method"
-	_ = NewIndexBuilder(client, indexName2).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName2).Delete(ctx)
 
-	err = NewIndexBuilder(client, indexName2).
+	err = builder.NewIndexBuilder(client, indexName2).
 		Shards(1).
 		Replicas(0).
 		AddProperty("field1", "text").
@@ -801,8 +831,8 @@ func TestIndexBuilder_CreateMethodAlias(t *testing.T) {
 	t.Logf("✓ 使用 Do() 方法创建索引成功（向后兼容）")
 
 	// 验证两个索引都存在
-	exists1, _ := NewIndexBuilder(client, indexName1).Exists(ctx)
-	exists2, _ := NewIndexBuilder(client, indexName2).Exists(ctx)
+	exists1, _ := builder.NewIndexBuilder(client, indexName1).Exists(ctx)
+	exists2, _ := builder.NewIndexBuilder(client, indexName2).Exists(ctx)
 
 	if !exists1 {
 		t.Error("使用 Create() 创建的索引应该存在")
@@ -815,8 +845,8 @@ func TestIndexBuilder_CreateMethodAlias(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName1).Delete(ctx)
-		_ = NewIndexBuilder(client, indexName2).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName1).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName2).Delete(ctx)
 	}()
 }
 
@@ -827,15 +857,15 @@ func TestIndexBuilder_AddCustomAnalyzer(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_custom_analyzer"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建带自定义分析器的索引（使用常量，避免拼写错误）
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		AddCustomAnalyzer("ik_case_sensitive", constant.TokenizerIKSmart). // 使用常量
-		AddProperty("title", "text", WithAnalyzer("ik_case_sensitive")).
-		AddProperty("content", "text", WithAnalyzer(constant.AnalyzerIKSmart)). // 使用内置分析器常量
+		AddProperty("title", "text", builder.WithAnalyzer("ik_case_sensitive")).
+		AddProperty("content", "text", builder.WithAnalyzer(constant.AnalyzerIKSmart)). // 使用内置分析器常量
 		Debug().
 		Create(ctx)
 
@@ -845,7 +875,7 @@ func TestIndexBuilder_AddCustomAnalyzer(t *testing.T) {
 	t.Logf("✓ 创建带自定义分析器的索引成功")
 
 	// 获取索引信息验证
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -853,7 +883,7 @@ func TestIndexBuilder_AddCustomAnalyzer(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -864,24 +894,24 @@ func TestIndexBuilder_AddAnalyzer(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_analyzer_full"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 创建带自定义分析器的索引（完整版，使用 Option 模式）
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		// 添加自定义分析器 1：只有 tokenizer（最简单的自定义）
 		AddAnalyzer("my_analyzer",
-			WithAnalyzerType("custom"),
-			WithTokenizer("ik_smart"),
+			builder.WithAnalyzerType("custom"),
+			builder.WithTokenizer("ik_smart"),
 		).
 		// 添加自定义分析器 2：使用不同的 tokenizer
 		AddAnalyzer("simple_ik",
-			WithAnalyzerType("custom"),
-			WithTokenizer("ik_max_word"),
+			builder.WithAnalyzerType("custom"),
+			builder.WithTokenizer("ik_max_word"),
 		).
-		AddProperty("html_content", "text", WithAnalyzer("my_analyzer")).
-		AddProperty("description", "text", WithAnalyzer("simple_ik")).
+		AddProperty("html_content", "text", builder.WithAnalyzer("my_analyzer")).
+		AddProperty("description", "text", builder.WithAnalyzer("simple_ik")).
 		Debug().
 		Create(ctx)
 
@@ -891,7 +921,7 @@ func TestIndexBuilder_AddAnalyzer(t *testing.T) {
 	t.Logf("✓ 创建带完整自定义分析器的索引成功")
 
 	// 获取索引信息验证
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -899,7 +929,7 @@ func TestIndexBuilder_AddAnalyzer(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -910,26 +940,26 @@ func TestIndexBuilder_AddTokenizer(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_index_custom_tokenizer"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 像用户的例子那样：先自定义 tokenizer，再在 analyzer 中使用
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		// 1. 先自定义一个 tokenizer（禁用小写转换）
 		AddTokenizer("ik_smart_case_sensitive",
-			WithTokenizerType(constant.TokenizerIKSmart),
-			WithEnableLowercase(false),
+			builder.WithTokenizerType(constant.TokenizerIKSmart),
+			builder.WithEnableLowercase(false),
 		).
 		// 2. 创建 analyzer 使用自定义的 tokenizer
 		AddAnalyzer("ik_case_sensitive",
-			WithAnalyzerType(constant.AnalyzerTypeCustom),
-			WithTokenizer("ik_smart_case_sensitive"), // 使用自定义的 tokenizer
-			WithTokenFilters(),                       // 空的 filter
+			builder.WithAnalyzerType(constant.AnalyzerTypeCustom),
+			builder.WithTokenizer("ik_smart_case_sensitive"), // 使用自定义的 tokenizer
+			builder.WithTokenFilters(),                       // 空的 filter
 		).
 		// 3. 在字段中使用这个 analyzer
-		AddProperty("title", "text", WithAnalyzer("ik_case_sensitive")).
-		AddProperty("content", "text", WithAnalyzer("ik_case_sensitive")).
+		AddProperty("title", "text", builder.WithAnalyzer("ik_case_sensitive")).
+		AddProperty("content", "text", builder.WithAnalyzer("ik_case_sensitive")).
 		Debug().
 		Create(ctx)
 
@@ -939,7 +969,7 @@ func TestIndexBuilder_AddTokenizer(t *testing.T) {
 	t.Logf("✓ 创建带自定义 tokenizer 的索引成功")
 
 	// 获取索引信息验证
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -947,7 +977,7 @@ func TestIndexBuilder_AddTokenizer(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }
 
@@ -958,14 +988,14 @@ func TestIndexBuilder_FieldTypeConstants(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_field_type_constants"
-	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 使用常量创建索引，避免拼写错误
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		// 字符串类型
-		AddProperty("title", constant.FieldTypeText, WithAnalyzer(constant.AnalyzerIKSmart)).
+		AddProperty("title", constant.FieldTypeText, builder.WithAnalyzer(constant.AnalyzerIKSmart)).
 		AddProperty("sku", constant.FieldTypeKeyword).
 		// 数值类型
 		AddProperty("price", constant.FieldTypeFloat).
@@ -974,13 +1004,13 @@ func TestIndexBuilder_FieldTypeConstants(t *testing.T) {
 		// 布尔类型
 		AddProperty("available", constant.FieldTypeBoolean).
 		// 日期类型
-		AddProperty("created_at", constant.FieldTypeDate, WithFormat("yyyy-MM-dd HH:mm:ss")).
+		AddProperty("created_at", constant.FieldTypeDate, builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
 		// 地理位置
 		AddProperty("location", constant.FieldTypeGeoPoint).
 		// 对象类型
 		AddProperty("author", constant.FieldTypeObject,
-			WithSubProperties("name", constant.FieldTypeText),
-			WithSubProperties("email", constant.FieldTypeKeyword),
+			builder.WithSubProperties("name", constant.FieldTypeText),
+			builder.WithSubProperties("email", constant.FieldTypeKeyword),
 		).
 		Debug().
 		Create(ctx)
@@ -991,7 +1021,7 @@ func TestIndexBuilder_FieldTypeConstants(t *testing.T) {
 	t.Logf("✓ 使用字段类型常量创建索引成功")
 
 	// 获取索引信息验证
-	info, err := NewIndexBuilder(client, indexName).Get(ctx)
+	info, err := builder.NewIndexBuilder(client, indexName).Get(ctx)
 	if err != nil {
 		t.Fatalf("获取索引信息失败: %v", err)
 	}
@@ -999,6 +1029,6 @@ func TestIndexBuilder_FieldTypeConstants(t *testing.T) {
 
 	// 清理
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 }

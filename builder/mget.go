@@ -5,19 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // MGetBuilder 批量获取文档构建器
 type MGetBuilder struct {
-	client *client.Client
+	client ESClient
 	index  string
 	ids    []string
 }
 
 // NewMGetBuilder 创建批量获取构建器
-func NewMGetBuilder(c *client.Client, index string) *MGetBuilder {
+func NewMGetBuilder(c ESClient, index string) *MGetBuilder {
 	return &MGetBuilder{
 		client: c,
 		index:  index,

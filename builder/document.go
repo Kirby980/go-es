@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // DocumentBuilder 文档构建器
 type DocumentBuilder struct {
-	client  *client.Client
+	client  ESClient
 	index   string
 	id      string
 	doc     map[string]interface{}
@@ -21,7 +19,7 @@ type DocumentBuilder struct {
 }
 
 // NewDocumentBuilder 创建文档构建器
-func NewDocumentBuilder(c *client.Client, index string) *DocumentBuilder {
+func NewDocumentBuilder(c ESClient, index string) *DocumentBuilder {
 	return &DocumentBuilder{
 		client: c,
 		index:  index,

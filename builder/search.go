@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // SearchBuilder 搜索构建器
 type SearchBuilder struct {
-	client              *client.Client
+	client              ESClient
 	index               string
 	query               map[string]interface{}
 	filters             []map[string]interface{}
@@ -30,7 +28,7 @@ type SearchBuilder struct {
 }
 
 // NewSearchBuilder 创建搜索构建器
-func NewSearchBuilder(c *client.Client, index string) *SearchBuilder {
+func NewSearchBuilder(c ESClient, index string) *SearchBuilder {
 	return &SearchBuilder{
 		client:  c,
 		index:   index,

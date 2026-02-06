@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // DeleteByQueryBuilder 按查询删除构建器
 type DeleteByQueryBuilder struct {
-	client  *client.Client
+	client  ESClient
 	index   string
 	filters []map[string]interface{}
 	must    []map[string]interface{}
@@ -21,7 +19,7 @@ type DeleteByQueryBuilder struct {
 }
 
 // NewDeleteByQueryBuilder 创建按查询删除构建器
-func NewDeleteByQueryBuilder(c *client.Client, index string) *DeleteByQueryBuilder {
+func NewDeleteByQueryBuilder(c ESClient, index string) *DeleteByQueryBuilder {
 	return &DeleteByQueryBuilder{
 		client:  c,
 		index:   index,

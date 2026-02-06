@@ -1,9 +1,11 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/Kirby980/go-es/builder"
 )
 
 // TestDebugReset 测试debug模式在执行后自动重置
@@ -15,11 +17,11 @@ func TestDebugReset(t *testing.T) {
 	indexName := "test_debug_reset"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 创建一个builder实例（模拟gorm的使用方式）
-	docBuilder := NewDocumentBuilder(client, indexName)
+	docBuilder := builder.NewDocumentBuilder(client, indexName)
 
 	// 第一次调用，带debug
 	t.Log("=== 第一次调用（带debug） ===")

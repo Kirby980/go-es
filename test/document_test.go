@@ -1,10 +1,11 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
 )
 
@@ -13,10 +14,10 @@ func prepareTestIndex(t *testing.T, esClient *client.Client, indexName string) {
 	ctx := context.Background()
 
 	// 删除可能存在的索引
-	_ = NewIndexBuilder(esClient, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(esClient, indexName).Delete(ctx)
 
 	// 创建测试索引
-	err := NewIndexBuilder(esClient, indexName).
+	err := builder.NewIndexBuilder(esClient, indexName).
 		Shards(1).
 		Replicas(0).
 		AddProperty("title", "text").
@@ -46,11 +47,11 @@ func TestDocumentBuilder_IndexDocument(t *testing.T) {
 	indexName := "test_doc_index"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用 Do 方法索引文档（带 ID）
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("1").
 		Set("title", "测试文档").
 		Set("content", "这是一篇测试文档的内容").
@@ -84,11 +85,11 @@ func TestDocumentBuilder_IndexWithoutID(t *testing.T) {
 	indexName := "test_doc_no_id"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 不指定 ID，让 ES 自动生成
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		Set("title", "自动生成 ID 的文档").
 		Set("content", "ES 会自动分配一个唯一 ID").
 		Do(ctx)
@@ -113,11 +114,11 @@ func TestDocumentBuilder_Create(t *testing.T) {
 	indexName := "test_doc_create"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 第一次创建应该成功
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("create-1").
 		Set("title", "创建文档").
 		Create(ctx)
@@ -132,7 +133,7 @@ func TestDocumentBuilder_Create(t *testing.T) {
 	t.Logf("✓ 创建文档成功: Result=%s", resp.Result)
 
 	// 第二次创建同一 ID 应该失败
-	_, err = NewDocumentBuilder(client, indexName).
+	_, err = builder.NewDocumentBuilder(client, indexName).
 		ID("create-1").
 		Set("title", "重复文档").
 		Create(ctx)
@@ -153,11 +154,11 @@ func TestDocumentBuilder_Get(t *testing.T) {
 	indexName := "test_doc_get"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 先创建一个文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("get-1").
 		Set("title", "待获取的文档").
 		Set("author", "李四").
@@ -167,7 +168,7 @@ func TestDocumentBuilder_Get(t *testing.T) {
 	time.Sleep(1 * time.Second) // 等待索引刷新
 
 	// 获取文档
-	getResp, err := NewDocumentBuilder(client, indexName).
+	getResp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("get-1").
 		Get(ctx)
 
@@ -197,11 +198,11 @@ func TestDocumentBuilder_GetNotFound(t *testing.T) {
 	indexName := "test_doc_get_notfound"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 获取不存在的文档
-	getResp, err := NewDocumentBuilder(client, indexName).
+	getResp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("non-existent").
 		Get(ctx)
 
@@ -225,11 +226,11 @@ func TestDocumentBuilder_Update(t *testing.T) {
 	indexName := "test_doc_update"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 先创建文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("update-1").
 		Set("title", "原始标题").
 		Set("views", 100).
@@ -239,7 +240,7 @@ func TestDocumentBuilder_Update(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 更新文档
-	updateResp, err := NewDocumentBuilder(client, indexName).
+	updateResp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("update-1").
 		Set("views", 150).
 		Set("price", 45.0).
@@ -259,7 +260,7 @@ func TestDocumentBuilder_Update(t *testing.T) {
 	t.Logf("✓ 更新文档成功: Version=%d", updateResp.Version)
 
 	// 验证更新结果
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("update-1").
 		Get(ctx)
 
@@ -277,11 +278,11 @@ func TestDocumentBuilder_ScriptUpdate(t *testing.T) {
 	indexName := "test_doc_script"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 创建文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("script-1").
 		Set("title", "脚本测试").
 		Set("views", 100).
@@ -290,7 +291,7 @@ func TestDocumentBuilder_ScriptUpdate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 使用脚本更新
-	scriptResp, err := NewDocumentBuilder(client, indexName).
+	scriptResp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("script-1").
 		Script("ctx._source.views += params.increment",
 			map[string]interface{}{"increment": 50}).
@@ -304,7 +305,7 @@ func TestDocumentBuilder_ScriptUpdate(t *testing.T) {
 
 	// 验证结果
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("script-1").
 		Get(ctx)
 
@@ -322,11 +323,11 @@ func TestDocumentBuilder_Upsert(t *testing.T) {
 	indexName := "test_doc_upsert"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 第一次 Upsert（文档不存在，应该创建）
-	resp1, err := NewDocumentBuilder(client, indexName).
+	resp1, err := builder.NewDocumentBuilder(client, indexName).
 		ID("upsert-1").
 		Set("title", "Upsert 文档").
 		Set("views", 100).
@@ -341,7 +342,7 @@ func TestDocumentBuilder_Upsert(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 第二次 Upsert（文档存在，应该更新）
-	resp2, err := NewDocumentBuilder(client, indexName).
+	resp2, err := builder.NewDocumentBuilder(client, indexName).
 		ID("upsert-1").
 		Set("views", 200).
 		Upsert(ctx)
@@ -353,7 +354,7 @@ func TestDocumentBuilder_Upsert(t *testing.T) {
 	t.Logf("✓ Upsert 更新文档: Result=%s, Version=%d", resp2.Result, resp2.Version)
 
 	// 验证结果
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("upsert-1").
 		Get(ctx)
 
@@ -371,11 +372,11 @@ func TestDocumentBuilder_Delete(t *testing.T) {
 	indexName := "test_doc_delete"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 创建文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("delete-1").
 		Set("title", "待删除文档").
 		Do(ctx)
@@ -383,7 +384,7 @@ func TestDocumentBuilder_Delete(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 删除文档
-	delResp, err := NewDocumentBuilder(client, indexName).
+	delResp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("delete-1").
 		Delete(ctx)
 
@@ -399,7 +400,7 @@ func TestDocumentBuilder_Delete(t *testing.T) {
 
 	// 验证文档已删除
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("delete-1").
 		Get(ctx)
 
@@ -417,11 +418,11 @@ func TestDocumentBuilder_Exists(t *testing.T) {
 	indexName := "test_doc_exists"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 检查不存在的文档
-	exists, err := NewDocumentBuilder(client, indexName).
+	exists, err := builder.NewDocumentBuilder(client, indexName).
 		ID("non-existent").
 		Exists(ctx)
 
@@ -435,7 +436,7 @@ func TestDocumentBuilder_Exists(t *testing.T) {
 	t.Logf("✓ 确认文档不存在")
 
 	// 创建文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("exists-1").
 		Set("title", "存在性测试").
 		Do(ctx)
@@ -443,7 +444,7 @@ func TestDocumentBuilder_Exists(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 检查存在的文档
-	exists, err = NewDocumentBuilder(client, indexName).
+	exists, err = builder.NewDocumentBuilder(client, indexName).
 		ID("exists-1").
 		Exists(ctx)
 
@@ -466,7 +467,7 @@ func TestDocumentBuilder_SetMap(t *testing.T) {
 	indexName := "test_doc_setmap"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用 SetMap 批量设置
@@ -478,7 +479,7 @@ func TestDocumentBuilder_SetMap(t *testing.T) {
 		"published": true,
 	}
 
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("setmap-1").
 		SetMap(data).
 		Do(ctx)
@@ -491,7 +492,7 @@ func TestDocumentBuilder_SetMap(t *testing.T) {
 
 	// 验证
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("setmap-1").
 		Get(ctx)
 
@@ -509,7 +510,7 @@ func TestDocumentBuilder_SetStruct(t *testing.T) {
 	indexName := "test_doc_setstruct"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 定义结构体
@@ -527,7 +528,7 @@ func TestDocumentBuilder_SetStruct(t *testing.T) {
 		Tags:   []string{"Go", "Elasticsearch"},
 	}
 
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("struct-1").
 		SetStruct(article).
 		Do(ctx)
@@ -540,7 +541,7 @@ func TestDocumentBuilder_SetStruct(t *testing.T) {
 
 	// 验证
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("struct-1").
 		Get(ctx)
 
@@ -558,12 +559,12 @@ func TestDocumentBuilder_MGet(t *testing.T) {
 	indexName := "test_doc_mget"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 创建多个文档
 	for i := 1; i <= 5; i++ {
-		_, _ = NewDocumentBuilder(client, indexName).
+		_, _ = builder.NewDocumentBuilder(client, indexName).
 			ID(string(rune('0'+i))).
 			Set("title", "文档"+string(rune('0'+i))).
 			Do(ctx)
@@ -572,7 +573,7 @@ func TestDocumentBuilder_MGet(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 批量获取
-	mgetResp, err := NewMGetBuilder(client, indexName).
+	mgetResp, err := builder.NewMGetBuilder(client, indexName).
 		IDs("1", "2", "3").
 		Do(ctx)
 
@@ -600,12 +601,12 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 	indexName := "test_doc_refresh"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 测试 1: 使用 refresh=true 立即刷新
 	t.Run("refresh=true", func(t *testing.T) {
-		resp, err := NewDocumentBuilder(client, indexName).
+		resp, err := builder.NewDocumentBuilder(client, indexName).
 			ID("refresh-test-1").
 			Set("title", "立即刷新测试").
 			Set("content", "使用 refresh=true").
@@ -618,7 +619,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 		t.Logf("✓ 文档索引成功 (refresh=true): ID=%s, Result=%s", resp.ID, resp.Result)
 
 		// 立即搜索应该能找到（因为使用了 refresh=true）
-		searchResp, err := NewSearchBuilder(client, indexName).
+		searchResp, err := builder.NewSearchBuilder(client, indexName).
 			Match("title", "立即刷新测试").
 			Do(ctx)
 
@@ -635,7 +636,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 
 	// 测试 2: 使用 refresh=wait_for 等待刷新
 	t.Run("refresh=wait_for", func(t *testing.T) {
-		resp, err := NewDocumentBuilder(client, indexName).
+		resp, err := builder.NewDocumentBuilder(client, indexName).
 			ID("refresh-test-2").
 			Set("title", "等待刷新测试").
 			Set("content", "使用 refresh=wait_for").
@@ -648,7 +649,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 		t.Logf("✓ 文档索引成功 (refresh=wait_for): ID=%s, Result=%s", resp.ID, resp.Result)
 
 		// 等待刷新完成后搜索应该能找到
-		searchResp, err := NewSearchBuilder(client, indexName).
+		searchResp, err := builder.NewSearchBuilder(client, indexName).
 			Match("title", "等待刷新测试").
 			Do(ctx)
 
@@ -665,7 +666,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 
 	// 测试 3: 不使用 refresh（默认行为）
 	t.Run("no refresh", func(t *testing.T) {
-		resp, err := NewDocumentBuilder(client, indexName).
+		resp, err := builder.NewDocumentBuilder(client, indexName).
 			ID("refresh-test-3").
 			Set("title", "默认刷新测试").
 			Set("content", "不使用 refresh 参数").
@@ -677,7 +678,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 		t.Logf("✓ 文档索引成功 (no refresh): ID=%s, Result=%s", resp.ID, resp.Result)
 
 		// 立即搜索可能找不到（需要等待自动刷新）
-		searchResp, _ := NewSearchBuilder(client, indexName).
+		searchResp, _ := builder.NewSearchBuilder(client, indexName).
 			Match("title", "默认刷新测试").
 			Do(ctx)
 
@@ -689,7 +690,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 
 		// 等待一段时间后应该能找到
 		time.Sleep(1 * time.Second)
-		searchResp, err = NewSearchBuilder(client, indexName).
+		searchResp, err = builder.NewSearchBuilder(client, indexName).
 			Match("title", "默认刷新测试").
 			Do(ctx)
 
@@ -707,7 +708,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 	// 测试 4: Update 操作使用 refresh
 	t.Run("Update with refresh", func(t *testing.T) {
 		// 先创建文档
-		_, _ = NewDocumentBuilder(client, indexName).
+		_, _ = builder.NewDocumentBuilder(client, indexName).
 			ID("update-refresh-test").
 			Set("title", "更新前").
 			Set("views", 100).
@@ -715,7 +716,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 			Do(ctx)
 
 		// 更新文档并立即刷新
-		resp, err := NewDocumentBuilder(client, indexName).
+		resp, err := builder.NewDocumentBuilder(client, indexName).
 			ID("update-refresh-test").
 			Set("views", 200).
 			Refresh("true").
@@ -727,7 +728,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 		t.Logf("✓ 更新文档成功 (refresh=true): Result=%s, Version=%d", resp.Result, resp.Version)
 
 		// 立即获取应该能看到更新
-		getResp, _ := NewDocumentBuilder(client, indexName).
+		getResp, _ := builder.NewDocumentBuilder(client, indexName).
 			ID("update-refresh-test").
 			Get(ctx)
 
@@ -739,14 +740,14 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 	// 测试 5: Delete 操作使用 refresh
 	t.Run("Delete with refresh", func(t *testing.T) {
 		// 先创建文档
-		_, _ = NewDocumentBuilder(client, indexName).
+		_, _ = builder.NewDocumentBuilder(client, indexName).
 			ID("delete-refresh-test").
 			Set("title", "待删除").
 			Refresh("true").
 			Do(ctx)
 
 		// 删除文档并立即刷新
-		resp, err := NewDocumentBuilder(client, indexName).
+		resp, err := builder.NewDocumentBuilder(client, indexName).
 			ID("delete-refresh-test").
 			Refresh("true").
 			Delete(ctx)
@@ -757,7 +758,7 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 		t.Logf("✓ 删除文档成功 (refresh=true): Result=%s", resp.Result)
 
 		// 立即搜索应该找不到
-		searchResp, _ := NewSearchBuilder(client, indexName).
+		searchResp, _ := builder.NewSearchBuilder(client, indexName).
 			Match("title", "待删除").
 			Do(ctx)
 
@@ -767,8 +768,8 @@ func TestDocumentBuilder_Refresh(t *testing.T) {
 	})
 }
 
-// TestDocumentBuilder_NestedObject 测试嵌套对象
-func TestDocumentBuilder_NestedObject(t *testing.T) {
+// TestDocumentBuilder_builder.NestedObject 测试嵌套对象
+func TestDocumentBuilder_builderNestedObject(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -776,23 +777,23 @@ func TestDocumentBuilder_NestedObject(t *testing.T) {
 	indexName := "test_doc_nested"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用 SetObject 设置嵌套对象
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("nested-1").
 		Set("title", "嵌套对象测试").
-		SetObject("user", func(obj *NestedObject) {
+		SetObject("user", func(obj *builder.NestedObject) {
 			obj.Set("name", "张三").
 				Set("age", 25).
-				SetObject("address", func(addr *NestedObject) {
+				SetObject("address", func(addr *builder.NestedObject) {
 					addr.Set("city", "北京").
 						Set("street", "长安街").
 						Set("zipcode", "100000")
 				})
 		}).
-		SetObject("metadata", func(meta *NestedObject) {
+		SetObject("metadata", func(meta *builder.NestedObject) {
 			meta.Set("created_by", "admin").
 				Set("version", 1)
 		}).
@@ -806,7 +807,7 @@ func TestDocumentBuilder_NestedObject(t *testing.T) {
 
 	// 验证嵌套对象
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("nested-1").
 		Get(ctx)
 
@@ -832,25 +833,25 @@ func TestDocumentBuilder_ObjectArray(t *testing.T) {
 	indexName := "test_doc_obj_array"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用 SetObjectArray 设置对象数组
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("array-1").
 		Set("title", "对象数组测试").
 		SetObjectArray("comments",
-			func(obj *NestedObject) {
+			func(obj *builder.NestedObject) {
 				obj.Set("author", "用户1").
 					Set("content", "第一条评论").
 					Set("rating", 5)
 			},
-			func(obj *NestedObject) {
+			func(obj *builder.NestedObject) {
 				obj.Set("author", "用户2").
 					Set("content", "第二条评论").
 					Set("rating", 4)
 			},
-			func(obj *NestedObject) {
+			func(obj *builder.NestedObject) {
 				obj.Set("author", "用户3").
 					Set("content", "第三条评论").
 					Set("rating", 5)
@@ -866,7 +867,7 @@ func TestDocumentBuilder_ObjectArray(t *testing.T) {
 
 	// 验证对象数组
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("array-1").
 		Get(ctx)
 
@@ -892,43 +893,43 @@ func TestDocumentBuilder_ComplexNested(t *testing.T) {
 	indexName := "test_doc_complex"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 构建复杂的嵌套结构
-	resp, err := NewDocumentBuilder(client, indexName).
+	resp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("complex-1").
 		Set("title", "复杂嵌套测试").
 		Set("price", 99.99).
 		SetArray("tags", "Go", "Elasticsearch", "测试").
-		SetObject("creator", func(creator *NestedObject) {
+		SetObject("creator", func(creator *builder.NestedObject) {
 			creator.Set("name", "李四").
 				Set("email", "lisi@example.com").
-				SetObject("profile", func(profile *NestedObject) {
+				SetObject("profile", func(profile *builder.NestedObject) {
 					profile.Set("bio", "资深开发者").
 						Set("followers", 1000)
 				}).
-				SetObjectArray("projects", func(proj *NestedObject) {
+				SetObjectArray("projects", func(proj *builder.NestedObject) {
 					proj.Set("name", "项目A").
 						Set("role", "负责人")
-				}, func(proj *NestedObject) {
+				}, func(proj *builder.NestedObject) {
 					proj.Set("name", "项目B").
 						Set("role", "开发者")
 				})
 		}).
 		SetObjectArray("reviews",
-			func(review *NestedObject) {
+			func(review *builder.NestedObject) {
 				review.Set("rating", 5).
 					Set("comment", "非常好").
-					SetObject("reviewer", func(reviewer *NestedObject) {
+					SetObject("reviewer", func(reviewer *builder.NestedObject) {
 						reviewer.Set("name", "王五").
 							Set("verified", true)
 					})
 			},
-			func(review *NestedObject) {
+			func(review *builder.NestedObject) {
 				review.Set("rating", 4).
 					Set("comment", "不错").
-					SetObject("reviewer", func(reviewer *NestedObject) {
+					SetObject("reviewer", func(reviewer *builder.NestedObject) {
 						reviewer.Set("name", "赵六").
 							Set("verified", false)
 					})
@@ -944,7 +945,7 @@ func TestDocumentBuilder_ComplexNested(t *testing.T) {
 
 	// 验证复杂结构
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("complex-1").
 		Get(ctx)
 

@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // AggregationBuilder 聚合构建器
 type AggregationBuilder struct {
-	client *client.Client
+	client ESClient
 	index  string
 	query  map[string]interface{}
 	aggs   map[string]interface{}
@@ -20,7 +18,7 @@ type AggregationBuilder struct {
 }
 
 // NewAggregationBuilder 创建聚合构建器
-func NewAggregationBuilder(c *client.Client, index string) *AggregationBuilder {
+func NewAggregationBuilder(c ESClient, index string) *AggregationBuilder {
 	return &AggregationBuilder{
 		client: c,
 		index:  index,

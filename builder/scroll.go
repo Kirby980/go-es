@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // ScrollBuilder Scroll深度分页构建器
 type ScrollBuilder struct {
-	client    *client.Client
+	client    ESClient
 	index     string
 	filters   []map[string]interface{}
 	must      []map[string]interface{}
@@ -24,7 +22,7 @@ type ScrollBuilder struct {
 }
 
 // NewScrollBuilder 创建Scroll构建器
-func NewScrollBuilder(c *client.Client, index string) *ScrollBuilder {
+func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
 	return &ScrollBuilder{
 		client:    c,
 		index:     index,

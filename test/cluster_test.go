@@ -1,8 +1,10 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
+
+	"github.com/Kirby980/go-es/builder"
 )
 
 // TestClusterBuilder_Health 测试集群健康
@@ -11,7 +13,7 @@ func TestClusterBuilder_Health(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	health, err := clusterBuilder.Health(ctx)
 	if err != nil {
@@ -45,10 +47,10 @@ func TestClusterBuilder_IndexHealth(t *testing.T) {
 	indexName := "test_cluster_health"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	health, err := clusterBuilder.IndexHealth(ctx, indexName)
 	if err != nil {
@@ -65,7 +67,7 @@ func TestClusterBuilder_State(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	state, err := clusterBuilder.State(ctx)
 	if err != nil {
@@ -92,7 +94,7 @@ func TestClusterBuilder_Stats(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	stats, err := clusterBuilder.Stats(ctx)
 	if err != nil {
@@ -115,7 +117,7 @@ func TestClusterBuilder_NodesInfo(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	nodes, err := clusterBuilder.NodesInfo(ctx)
 	if err != nil {
@@ -137,7 +139,7 @@ func TestClusterBuilder_NodesStats(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	stats, err := clusterBuilder.NodesStats(ctx)
 	if err != nil {
@@ -159,7 +161,7 @@ func TestClusterBuilder_Tasks(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	tasks, err := clusterBuilder.Tasks(ctx)
 	if err != nil {
@@ -176,7 +178,7 @@ func TestClusterBuilder_GetSettings(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	settings, err := clusterBuilder.GetSettings(ctx)
 	if err != nil {
@@ -196,7 +198,7 @@ func TestClusterBuilder_UpdateSettings(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	// 更新临时设置
 	err := clusterBuilder.UpdateSettings(ctx,
@@ -223,10 +225,10 @@ func TestClusterBuilder_AllocationExplain(t *testing.T) {
 	indexName := "test_allocation_explain"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	// 解释第一个分片的分配
 	explain, err := clusterBuilder.AllocationExplain(ctx, indexName, 0, true)
@@ -248,7 +250,7 @@ func TestClusterBuilder_RemoteClusters(t *testing.T) {
 	defer client.Close()
 	ctx := context.Background()
 
-	clusterBuilder := NewClusterBuilder(client)
+	clusterBuilder := builder.NewClusterBuilder(client)
 
 	clusters, err := clusterBuilder.RemoteClusters(ctx)
 	if err != nil {

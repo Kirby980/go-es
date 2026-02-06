@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // SearchAfterBuilder Search After深度分页构建器
 // Search After 是 Elasticsearch 提供的高效分页方案，相比 Scroll 更轻量，无需维护上下文
 type SearchAfterBuilder struct {
-	client             *client.Client
+	client             ESClient
 	index              string
 	filters            []map[string]interface{}
 	must               []map[string]interface{}
@@ -30,7 +28,7 @@ type SearchAfterBuilder struct {
 }
 
 // NewSearchAfterBuilder 创建SearchAfter构建器
-func NewSearchAfterBuilder(c *client.Client, index string) *SearchAfterBuilder {
+func NewSearchAfterBuilder(c ESClient, index string) *SearchAfterBuilder {
 	return &SearchAfterBuilder{
 		client:    c,
 		index:     index,
@@ -312,7 +310,7 @@ type SearchAfterResponse struct {
 			ID        string                 `json:"_id"`
 			Score     float64                `json:"_score"`
 			Source    map[string]interface{} `json:"_source"`
-			Sort      []interface{}          `json:"sort"`      // Search After 的关键：每个文档的排序值
+			Sort      []interface{}          `json:"sort"` // Search After 的关键：每个文档的排序值
 			Highlight map[string][]string    `json:"highlight,omitempty"`
 		} `json:"hits"`
 	} `json:"hits"`
@@ -386,21 +384,4 @@ func (b *SearchAfterBuilder) GetLastSortValues(resp *SearchAfterResponse) []inte
 	}
 	lastHit := resp.Hits.Hits[len(resp.Hits.Hits)-1]
 	return lastHit.Sort
-}
-
-// JSON 返回紧凑的 JSON 字符串
-func (r *SearchAfterResponse) JSON() string {
-	data, _ := json.Marshal(r)
-	return string(data)
-}
-
-// PrettyJSON 返回格式化的 JSON 字符串
-func (r *SearchAfterResponse) PrettyJSON() string {
-	data, _ := json.MarshalIndent(r, "", "  ")
-	return string(data)
-}
-
-// String 实现 Stringer 接口
-func (r *SearchAfterResponse) String() string {
-	return r.PrettyJSON()
 }

@@ -1,10 +1,11 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
 	"github.com/Kirby980/go-es/config"
 )
@@ -28,7 +29,7 @@ func prepareScrollTestData(t *testing.T, client *client.Client, indexName string
 	ctx := context.Background()
 
 	// 创建索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		RefreshInterval("1s").
@@ -44,7 +45,7 @@ func prepareScrollTestData(t *testing.T, client *client.Client, indexName string
 	}
 
 	// 批量插入测试数据
-	bulk := NewBulkBuilder(client).Index(indexName)
+	bulk := builder.NewBulkBuilder(client).Index(indexName)
 	for i := 1; i <= docCount; i++ {
 		bulk.Add("", "", map[string]interface{}{
 			"id":         i,
@@ -81,13 +82,13 @@ func TestScrollBuilder_BasicScroll(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_basic"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备100条测试数据
 	prepareScrollTestData(t, client, indexName, 100)
 
 	// 创建scroll查询（每次取20条）
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Size(20).
 		KeepAlive("5m")
 
@@ -147,14 +148,14 @@ func TestScrollBuilder_WithFilters(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_filters"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备60条测试数据
 	prepareScrollTestData(t, client, indexName, 60)
 
 	// 创建带过滤条件的scroll查询
 	// 查询 status="active" 的文档（应该有20条：1,4,7,10...58）
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Term("status", "active").
 		Size(5).
 		KeepAlive("2m")
@@ -199,14 +200,14 @@ func TestScrollBuilder_MultipleConditions(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_multiple"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备100条测试数据
 	prepareScrollTestData(t, client, indexName, 100)
 
 	// 创建带多个条件的scroll查询
 	// status="active" AND price >= 100 AND price <= 500
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Term("status", "active").
 		Range("price", 100, 500).
 		Size(10).
@@ -245,13 +246,13 @@ func TestScrollBuilder_MatchQuery(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_match"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备50条测试数据
 	prepareScrollTestData(t, client, indexName, 50)
 
 	// 使用Match查询
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Match("title", "测试").
 		Size(15).
 		KeepAlive("3m")
@@ -288,13 +289,13 @@ func TestScrollBuilder_SmallBatch(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_small_batch"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备10条测试数据
 	prepareScrollTestData(t, client, indexName, 10)
 
 	// 每次只取1条
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Size(1).
 		KeepAlive("2m")
 
@@ -338,13 +339,13 @@ func TestScrollBuilder_Debug(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_debug"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备20条测试数据
 	prepareScrollTestData(t, client, indexName, 20)
 
 	// 启用Debug模式
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Debug().
 		Term("status", "active").
 		Size(5).
@@ -381,13 +382,13 @@ func TestScrollBuilder_EmptyResult(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_empty"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备10条测试数据
 	prepareScrollTestData(t, client, indexName, 10)
 
 	// 查询一个不存在的status
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Term("status", "non_existent_status").
 		Size(10).
 		KeepAlive("1m")
@@ -423,7 +424,7 @@ func TestScrollBuilder_Build(t *testing.T) {
 	defer client.Close()
 
 	// 测试基础构建
-	scroll1 := NewScrollBuilder(client, "test").Size(100)
+	scroll1 := builder.NewScrollBuilder(client, "test").Size(100)
 	body1 := scroll1.Build()
 
 	if body1["size"] != 100 {
@@ -434,7 +435,7 @@ func TestScrollBuilder_Build(t *testing.T) {
 	}
 
 	// 测试带查询条件的构建
-	scroll2 := NewScrollBuilder(client, "test").
+	scroll2 := builder.NewScrollBuilder(client, "test").
 		Term("status", "active").
 		Match("title", "test").
 		Range("price", 100, 500).
@@ -457,10 +458,10 @@ func TestScrollBuilder_HasMore(t *testing.T) {
 	client := createScrollTestClient(t)
 	defer client.Close()
 
-	scroll := NewScrollBuilder(client, "test")
+	scroll := builder.NewScrollBuilder(client, "test")
 
 	// 测试有数据的情况
-	resp1 := &ScrollResponse{}
+	resp1 := &builder.ScrollResponse{}
 	resp1.Hits.Hits = make([]struct {
 		Index     string                 `json:"_index"`
 		ID        string                 `json:"_id"`
@@ -474,7 +475,7 @@ func TestScrollBuilder_HasMore(t *testing.T) {
 	}
 
 	// 测试没有数据的情况
-	resp2 := &ScrollResponse{}
+	resp2 := &builder.ScrollResponse{}
 	if scroll.HasMore(resp2) {
 		t.Error("没有数据时HasMore应该返回false")
 	}
@@ -493,7 +494,7 @@ func TestScrollBuilder_LargeDataset(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_scroll_large"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备1000条测试数据
 	t.Log("开始准备1000条测试数据...")
@@ -501,7 +502,7 @@ func TestScrollBuilder_LargeDataset(t *testing.T) {
 	t.Log("✓ 测试数据准备完成")
 
 	// 使用scroll遍历（每批100条）
-	scroll := NewScrollBuilder(client, indexName).
+	scroll := builder.NewScrollBuilder(client, indexName).
 		Size(100).
 		KeepAlive("5m")
 

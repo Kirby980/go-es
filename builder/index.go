@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
+	"reflect"
+	"strings"
+	"unicode"
 )
 
 // IndexBuilder 索引构建器
 type IndexBuilder struct {
-	client   *client.Client
+	client   ESClient
 	index    string
 	settings map[string]interface{}
 	mappings map[string]interface{}
@@ -20,7 +21,7 @@ type IndexBuilder struct {
 }
 
 // NewIndexBuilder 创建索引构建器
-func NewIndexBuilder(c *client.Client, index string) *IndexBuilder {
+func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
 	return &IndexBuilder{
 		client:   c,
 		index:    index,
@@ -200,6 +201,7 @@ func WithTokenChars(chars ...string) TokenizerOption {
 }
 
 // AddProperty 添加字段映射
+// 通用模板
 func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...PropertyOption) *IndexBuilder {
 	if b.mappings["properties"] == nil {
 		b.mappings["properties"] = make(map[string]interface{})
@@ -217,6 +219,70 @@ func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...Pro
 
 	properties[name] = field
 	return b
+}
+
+func (b *IndexBuilder) AutoMigrate(model interface{}) *IndexBuilder {
+	t := reflect.TypeOf(model)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	// 如果索引名为空，自动推断（类似 GORM）
+	if b.index == "" {
+		if idxName, ok := model.(IndexName); ok {
+			b.index = idxName.IndexName()
+		} else {
+			b.index = toSnakeCase(t.Name() + "s")
+		}
+	}
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("es")
+
+		if tag == "" || tag == "-" {
+			continue
+		}
+		props := parseTag(tag)
+		fieldType, ok := props["type"]
+		if !ok {
+			continue
+		}
+		var options []PropertyOption
+		for k, v := range props {
+			if k == "type" {
+				continue
+			}
+			key, val := k, v
+			options = append(options, func(f map[string]interface{}) {
+				f[key] = val
+			})
+		}
+		// 字段名转 snake_case
+		fieldName := toSnakeCase(field.Name)
+		b.AddProperty(fieldName, fieldType, options...)
+	}
+	return b
+}
+
+func parseTag(tag string) map[string]string {
+	result := make(map[string]string)
+	pairs := strings.Split(tag, ";")
+	for _, pair := range pairs {
+		kv := strings.SplitN(pair, ":", 2)
+		if len(kv) == 2 {
+			result[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
+	}
+	return result
+}
+func toSnakeCase(s string) string {
+	var buf strings.Builder
+	for i, r := range s {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			buf.WriteByte('_')
+		}
+		buf.WriteRune(unicode.ToLower(r))
+	}
+	return buf.String()
 }
 
 // PropertyOption 字段选项

@@ -5,18 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // ClusterBuilder 集群管理构建器
 type ClusterBuilder struct {
-	client *client.Client
+	client ESClient
 	debug  bool // 调试模式标志
 }
 
 // NewClusterBuilder 创建集群构建器
-func NewClusterBuilder(c *client.Client) *ClusterBuilder {
+func NewClusterBuilder(c ESClient) *ClusterBuilder {
 	return &ClusterBuilder{
 		client: c,
 		debug:  false,

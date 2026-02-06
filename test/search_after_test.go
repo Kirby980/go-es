@@ -1,10 +1,11 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
 	"github.com/Kirby980/go-es/config"
 )
@@ -28,7 +29,7 @@ func prepareSearchAfterTestData(t *testing.T, client *client.Client, indexName s
 	ctx := context.Background()
 
 	// 创建索引
-	err := NewIndexBuilder(client, indexName).
+	err := builder.NewIndexBuilder(client, indexName).
 		Shards(1).
 		Replicas(0).
 		RefreshInterval("1s").
@@ -45,7 +46,7 @@ func prepareSearchAfterTestData(t *testing.T, client *client.Client, indexName s
 	}
 
 	// 批量插入测试数据
-	bulk := NewBulkBuilder(client).Index(indexName)
+	bulk := builder.NewBulkBuilder(client).Index(indexName)
 	for i := 1; i <= docCount; i++ {
 		bulk.Add("", "", map[string]interface{}{
 			"id":         i,
@@ -79,13 +80,13 @@ func TestSearchAfterBuilder_BasicUsage(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_basic"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备50条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 50)
 
 	// 创建 SearchAfter 查询（按价格升序，每页10条）
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Sort("price", "asc").
 		Sort("_id", "asc"). // tie-breaker
 		Size(10)
@@ -158,13 +159,13 @@ func TestSearchAfterBuilder_WithFilters(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_filters"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备60条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 60)
 
 	// 查询 category="electronics" 的商品（应该有20条）
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Term("category", "electronics").
 		Sort("price", "desc").
 		Sort("_id", "asc").
@@ -204,13 +205,13 @@ func TestSearchAfterBuilder_MultipleConditions(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_multiple"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备100条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 100)
 
 	// category="books" AND price>=100 AND price<=500
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Term("category", "books").
 		Range("price", 100, 500).
 		Sort("price", "asc").
@@ -244,13 +245,13 @@ func TestSearchAfterBuilder_ManualSearchAfter(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_manual"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备30条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 30)
 
 	// 第一页
-	searchAfter1 := NewSearchAfterBuilder(client, indexName).
+	searchAfter1 := builder.NewSearchAfterBuilder(client, indexName).
 		Sort("price", "asc").
 		Sort("_id", "asc").
 		Size(5)
@@ -267,7 +268,7 @@ func TestSearchAfterBuilder_ManualSearchAfter(t *testing.T) {
 	t.Logf("✓ 第一页最后的 sort 值: %v", lastSort)
 
 	// 手动创建第二页查询（手动指定 search_after）
-	searchAfter2 := NewSearchAfterBuilder(client, indexName).
+	searchAfter2 := builder.NewSearchAfterBuilder(client, indexName).
 		Sort("price", "asc").
 		Sort("_id", "asc").
 		Size(5).
@@ -293,13 +294,13 @@ func TestSearchAfterBuilder_MultipleSort(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_multi_sort"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备40条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 40)
 
 	// 先按 category 排序，再按 price 降序，最后按 _id
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Sort("category", "asc").
 		Sort("price", "desc").
 		Sort("_id", "asc").
@@ -335,13 +336,13 @@ func TestSearchAfterBuilder_WithHighlight(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_highlight"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备20条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 20)
 
 	// 带高亮的查询
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Match("title", "商品").
 		Highlight("title").
 		Sort("price", "asc").
@@ -378,13 +379,13 @@ func TestSearchAfterBuilder_WithSource(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_source"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备15条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 15)
 
 	// 只返回指定字段
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Source("id", "title", "price").
 		Sort("price", "asc").
 		Sort("_id", "asc").
@@ -431,13 +432,13 @@ func TestSearchAfterBuilder_MinScore(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_min_score"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备30条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 30)
 
 	// 带最小评分的查询
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Match("title", "商品").
 		MinScore(0.1).
 		Sort("_score", "desc").
@@ -468,7 +469,7 @@ func TestSearchAfterBuilder_Debug(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_debug"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备10条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 10)
@@ -476,7 +477,7 @@ func TestSearchAfterBuilder_Debug(t *testing.T) {
 	t.Log("=== 开始Debug模式测试 ===")
 
 	// 启用Debug
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Debug().
 		Term("category", "books").
 		Sort("price", "asc").
@@ -509,13 +510,13 @@ func TestSearchAfterBuilder_EmptyResult(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_empty"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备10条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 10)
 
 	// 查询不存在的分类
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Term("category", "non_existent").
 		Sort("price", "asc").
 		Sort("_id", "asc").
@@ -557,13 +558,13 @@ func TestSearchAfterBuilder_DefaultSort(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_default_sort"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备20条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 20)
 
 	// 不指定排序（应该默认按 _id 排序）
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Size(5)
 
 	resp, err := searchAfter.Do(ctx)
@@ -597,7 +598,7 @@ func TestSearchAfterBuilder_Build(t *testing.T) {
 	defer client.Close()
 
 	// 测试基础构建
-	sa1 := NewSearchAfterBuilder(client, "test").Size(20)
+	sa1 := builder.NewSearchAfterBuilder(client, "test").Size(20)
 	body1 := sa1.Build()
 
 	if body1["size"] != 20 {
@@ -609,7 +610,7 @@ func TestSearchAfterBuilder_Build(t *testing.T) {
 	}
 
 	// 测试带条件的构建
-	sa2 := NewSearchAfterBuilder(client, "test").
+	sa2 := builder.NewSearchAfterBuilder(client, "test").
 		Term("status", "active").
 		Match("title", "test").
 		Range("price", 100, 500).
@@ -645,13 +646,13 @@ func TestSearchAfterBuilder_ShouldQueries(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_should"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备30条测试数据
 	prepareSearchAfterTestData(t, client, indexName, 30)
 
 	// category="books" OR category="electronics"
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		TermShould("category", "books").
 		TermShould("category", "electronics").
 		Sort("price", "asc").
@@ -695,7 +696,7 @@ func TestSearchAfterBuilder_LargeDataset(t *testing.T) {
 	ctx := context.Background()
 
 	indexName := "test_search_after_large"
-	defer NewIndexBuilder(client, indexName).Delete(ctx)
+	defer builder.NewIndexBuilder(client, indexName).Delete(ctx)
 
 	// 准备500条测试数据
 	t.Log("开始准备500条测试数据...")
@@ -703,7 +704,7 @@ func TestSearchAfterBuilder_LargeDataset(t *testing.T) {
 	t.Log("✓ 测试数据准备完成")
 
 	// 使用 SearchAfter 遍历（每批50条）
-	searchAfter := NewSearchAfterBuilder(client, indexName).
+	searchAfter := builder.NewSearchAfterBuilder(client, indexName).
 		Sort("price", "asc").
 		Sort("_id", "asc").
 		Size(50)

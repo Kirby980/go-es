@@ -1,10 +1,11 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
 )
 
@@ -13,12 +14,12 @@ func prepareSearchTestData(t *testing.T, esClient *client.Client, indexName stri
 	ctx := context.Background()
 
 	// 删除并创建索引
-	_ = NewIndexBuilder(esClient, indexName).Delete(ctx)
-	_ = NewIndexBuilder(esClient, indexName).
+	_ = builder.NewIndexBuilder(esClient, indexName).Delete(ctx)
+	_ = builder.NewIndexBuilder(esClient, indexName).
 		Shards(1).
 		Replicas(0).
-		AddProperty("title", "text", WithAnalyzer("ik_smart")).
-		AddProperty("content", "text", WithAnalyzer("ik_smart")).
+		AddProperty("title", "text", builder.WithAnalyzer("ik_smart")).
+		AddProperty("content", "text", builder.WithAnalyzer("ik_smart")).
 		AddProperty("category", "keyword").
 		AddProperty("tags", "keyword").
 		AddProperty("price", "float").
@@ -88,7 +89,7 @@ func prepareSearchTestData(t *testing.T, esClient *client.Client, indexName stri
 	}
 
 	for i, doc := range documents {
-		_, _ = NewDocumentBuilder(esClient, indexName).
+		_, _ = builder.NewDocumentBuilder(esClient, indexName).
 			ID(string(rune('1' + i))).
 			SetMap(doc).
 			Do(ctx)
@@ -97,8 +98,8 @@ func prepareSearchTestData(t *testing.T, esClient *client.Client, indexName stri
 	time.Sleep(2 * time.Second) // 等待索引刷新
 }
 
-// TestSearchBuilder_Match 测试 Match 查询
-func TestSearchBuilder_Match(t *testing.T) {
+// TestBuilderSearchBuilder_Match 测试 Match 查询
+func TestBuilderSearchBuilder_Match(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -106,11 +107,11 @@ func TestSearchBuilder_Match(t *testing.T) {
 	indexName := "test_search_match"
 	prepareSearchTestData(t, client, indexName)
 	// defer func() {
-	// 	_ = NewIndexBuilder(client, indexName).Delete(ctx)
+	// 	_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	// }()
 
-	t.Log(NewSearchBuilder(client, indexName).MatchPhrase("content", "手机").Debug())
-	resp, err := NewSearchBuilder(client, indexName).
+	t.Log(builder.NewSearchBuilder(client, indexName).MatchPhrase("content", "手机").Debug())
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		MatchPhrase("content", "手机").
 		Do(ctx)
 
@@ -125,8 +126,8 @@ func TestSearchBuilder_Match(t *testing.T) {
 	t.Logf("✓ Match 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_MatchPhrase 测试短语匹配
-func TestSearchBuilder_MatchPhrase(t *testing.T) {
+// TestBuilderSearchBuilder_MatchPhrase 测试短语匹配
+func TestBuilderSearchBuilder_MatchPhrase(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -134,10 +135,10 @@ func TestSearchBuilder_MatchPhrase(t *testing.T) {
 	indexName := "test_search_matchphrase"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		MatchPhrase("title", "iPhone 15").
 		Do(ctx)
 
@@ -148,8 +149,8 @@ func TestSearchBuilder_MatchPhrase(t *testing.T) {
 	t.Logf("✓ MatchPhrase 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Term 测试精确查询
-func TestSearchBuilder_Term(t *testing.T) {
+// TestBuilderSearchBuilder_Term 测试精确查询
+func TestBuilderSearchBuilder_Term(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -157,10 +158,10 @@ func TestSearchBuilder_Term(t *testing.T) {
 	indexName := "test_search_term"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Term("category", "electronics").
 		Do(ctx)
 
@@ -175,8 +176,8 @@ func TestSearchBuilder_Term(t *testing.T) {
 	t.Logf("✓ Term 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Terms 测试多值精确查询
-func TestSearchBuilder_Terms(t *testing.T) {
+// TestBuilderSearchBuilder_Terms 测试多值精确查询
+func TestBuilderSearchBuilder_Terms(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -184,10 +185,10 @@ func TestSearchBuilder_Terms(t *testing.T) {
 	indexName := "test_search_terms"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Terms("category", "electronics", "tablets").
 		Do(ctx)
 
@@ -202,8 +203,8 @@ func TestSearchBuilder_Terms(t *testing.T) {
 	t.Logf("✓ Terms 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Range 测试范围查询
-func TestSearchBuilder_Range(t *testing.T) {
+// TestBuilderSearchBuilder_Range 测试范围查询
+func TestBuilderSearchBuilder_Range(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -211,10 +212,10 @@ func TestSearchBuilder_Range(t *testing.T) {
 	indexName := "test_search_range"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Range("price", 500, 1500).
 		Do(ctx)
 
@@ -225,8 +226,8 @@ func TestSearchBuilder_Range(t *testing.T) {
 	t.Logf("✓ Range 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Exists 测试字段存在查询
-func TestSearchBuilder_Exists(t *testing.T) {
+// TestBuilderSearchBuilder_Exists 测试字段存在查询
+func TestBuilderSearchBuilder_Exists(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -234,10 +235,10 @@ func TestSearchBuilder_Exists(t *testing.T) {
 	indexName := "test_search_exists"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Exists("location").
 		Do(ctx)
 
@@ -248,8 +249,8 @@ func TestSearchBuilder_Exists(t *testing.T) {
 	t.Logf("✓ Exists 查询成功: 找到 %d 条有 location 字段的文档", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Wildcard 测试通配符查询
-func TestSearchBuilder_Wildcard(t *testing.T) {
+// TestBuilderSearchBuilder_Wildcard 测试通配符查询
+func TestBuilderSearchBuilder_Wildcard(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -257,10 +258,10 @@ func TestSearchBuilder_Wildcard(t *testing.T) {
 	indexName := "test_search_wildcard"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Wildcard("category", "electro*").
 		Do(ctx)
 
@@ -271,8 +272,8 @@ func TestSearchBuilder_Wildcard(t *testing.T) {
 	t.Logf("✓ Wildcard 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Prefix 测试前缀查询
-func TestSearchBuilder_Prefix(t *testing.T) {
+// TestBuilderSearchBuilder_Prefix 测试前缀查询
+func TestBuilderSearchBuilder_Prefix(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -280,10 +281,10 @@ func TestSearchBuilder_Prefix(t *testing.T) {
 	indexName := "test_search_prefix"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Prefix("category", "elec").
 		Do(ctx)
 
@@ -294,8 +295,8 @@ func TestSearchBuilder_Prefix(t *testing.T) {
 	t.Logf("✓ Prefix 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Fuzzy 测试模糊查询
-func TestSearchBuilder_Fuzzy(t *testing.T) {
+// TestBuilderSearchBuilder_Fuzzy 测试模糊查询
+func TestBuilderSearchBuilder_Fuzzy(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -303,10 +304,10 @@ func TestSearchBuilder_Fuzzy(t *testing.T) {
 	indexName := "test_search_fuzzy"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Fuzzy("category", "electroncs", "AUTO"). // 拼写错误
 		Do(ctx)
 
@@ -317,8 +318,8 @@ func TestSearchBuilder_Fuzzy(t *testing.T) {
 	t.Logf("✓ Fuzzy 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_MultiMatch 测试多字段匹配
-func TestSearchBuilder_MultiMatch(t *testing.T) {
+// TestBuilderSearchBuilder_MultiMatch 测试多字段匹配
+func TestBuilderSearchBuilder_MultiMatch(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -326,10 +327,10 @@ func TestSearchBuilder_MultiMatch(t *testing.T) {
 	indexName := "test_search_multimatch"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		MultiMatch("apple", "title", "content").
 		Do(ctx)
 
@@ -340,8 +341,8 @@ func TestSearchBuilder_MultiMatch(t *testing.T) {
 	t.Logf("✓ MultiMatch 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_QueryString 测试查询字符串
-func TestSearchBuilder_QueryString(t *testing.T) {
+// TestBuilderSearchBuilder_QueryString 测试查询字符串
+func TestBuilderSearchBuilder_QueryString(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -349,10 +350,10 @@ func TestSearchBuilder_QueryString(t *testing.T) {
 	indexName := "test_search_querystring"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		QueryString("(iPhone OR Samsung) AND electronics", "title", "category").
 		Do(ctx)
 
@@ -363,8 +364,8 @@ func TestSearchBuilder_QueryString(t *testing.T) {
 	t.Logf("✓ QueryString 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_BoolQuery 测试布尔查询
-func TestSearchBuilder_BoolQuery(t *testing.T) {
+// TestBuilderSearchBuilder_BoolQuery 测试布尔查询
+func TestBuilderSearchBuilder_BoolQuery(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -372,10 +373,10 @@ func TestSearchBuilder_BoolQuery(t *testing.T) {
 	indexName := "test_search_bool"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Match("title", "phone").
 		Term("category", "electronics").
 		Range("price", 500, 1500).
@@ -389,8 +390,8 @@ func TestSearchBuilder_BoolQuery(t *testing.T) {
 	t.Logf("✓ Bool 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Should 测试 Should 查询
-func TestSearchBuilder_Should(t *testing.T) {
+// TestBuilderSearchBuilder_Should 测试 Should 查询
+func TestBuilderSearchBuilder_Should(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -398,15 +399,15 @@ func TestSearchBuilder_Should(t *testing.T) {
 	indexName := "test_search_should"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Should(
-			func(b *SearchBuilder) {
+			func(b *builder.SearchBuilder) {
 				b.Match("title", "iPhone")
 			},
-			func(b *SearchBuilder) {
+			func(b *builder.SearchBuilder) {
 				b.Match("title", "Samsung")
 			},
 		).
@@ -419,8 +420,8 @@ func TestSearchBuilder_Should(t *testing.T) {
 	t.Logf("✓ Should 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Sort 测试排序
-func TestSearchBuilder_Sort(t *testing.T) {
+// TestBuilderSearchBuilder_Sort 测试排序
+func TestBuilderSearchBuilder_Sort(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -428,10 +429,10 @@ func TestSearchBuilder_Sort(t *testing.T) {
 	indexName := "test_search_sort"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		MatchAll().
 		Sort("price", "desc").
 		Sort("rating", "asc").
@@ -453,8 +454,8 @@ func TestSearchBuilder_Sort(t *testing.T) {
 	}
 }
 
-// TestSearchBuilder_Pagination 测试分页
-func TestSearchBuilder_Pagination(t *testing.T) {
+// TestBuilderSearchBuilder_Pagination 测试分页
+func TestBuilderSearchBuilder_Pagination(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -462,11 +463,11 @@ func TestSearchBuilder_Pagination(t *testing.T) {
 	indexName := "test_search_pagination"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 第一页
-	resp1, err := NewSearchBuilder(client, indexName).
+	resp1, err := builder.NewSearchBuilder(client, indexName).
 		MatchAll().
 		From(0).
 		Size(2).
@@ -481,7 +482,7 @@ func TestSearchBuilder_Pagination(t *testing.T) {
 	}
 
 	// 第二页
-	resp2, err := NewSearchBuilder(client, indexName).
+	resp2, err := builder.NewSearchBuilder(client, indexName).
 		MatchAll().
 		From(2).
 		Size(2).
@@ -495,8 +496,8 @@ func TestSearchBuilder_Pagination(t *testing.T) {
 		len(resp1.Hits.Hits), len(resp2.Hits.Hits))
 }
 
-// TestSearchBuilder_Source 测试字段过滤
-func TestSearchBuilder_Source(t *testing.T) {
+// TestBuilderSearchBuilder_Source 测试字段过滤
+func TestBuilderSearchBuilder_Source(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -504,10 +505,10 @@ func TestSearchBuilder_Source(t *testing.T) {
 	indexName := "test_search_source"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		MatchAll().
 		Source("title", "price").
 		Size(1).
@@ -533,8 +534,8 @@ func TestSearchBuilder_Source(t *testing.T) {
 	t.Logf("✓ Source 字段过滤成功")
 }
 
-// TestSearchBuilder_Highlight 测试高亮
-func TestSearchBuilder_Highlight(t *testing.T) {
+// TestBuilderSearchBuilder_Highlight 测试高亮
+func TestBuilderSearchBuilder_Highlight(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -542,10 +543,10 @@ func TestSearchBuilder_Highlight(t *testing.T) {
 	indexName := "test_search_highlight"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).
+	resp, err := builder.NewSearchBuilder(client, indexName).
 		Match("title", "iPhone").
 		Highlight("title").
 		Do(ctx)
@@ -561,8 +562,8 @@ func TestSearchBuilder_Highlight(t *testing.T) {
 	}
 }
 
-// TestSearchBuilder_GeoDistance 测试地理距离查询
-func TestSearchBuilder_GeoDistance(t *testing.T) {
+// TestBuilderSearchBuilder_GeoDistance 测试地理距离查询
+func TestBuilderSearchBuilder_GeoDistance(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -570,10 +571,10 @@ func TestSearchBuilder_GeoDistance(t *testing.T) {
 	indexName := "test_search_geodistance"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
-	resp, err := NewSearchBuilder(client, indexName).Debug().
+	resp, err := builder.NewSearchBuilder(client, indexName).Debug().
 		GeoDistance("location", 37.7749, -122.4194, "50km").
 		Do(ctx)
 
@@ -584,12 +585,12 @@ func TestSearchBuilder_GeoDistance(t *testing.T) {
 	t.Logf("✓ GeoDistance 查询成功: 找到 %d 条结果", resp.Hits.Total.Value)
 }
 
-// TestSearchBuilder_Build 测试构建查询 DSL
-func TestSearchBuilder_Build(t *testing.T) {
+// TestBuilderSearchBuilder_Build 测试构建查询 DSL
+func TestBuilderSearchBuilder_Build(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 
-	builder := NewSearchBuilder(client, "test").
+	builder := builder.NewSearchBuilder(client, "test").
 		Match("title", "test").
 		Term("category", "electronics").
 		Range("price", 100, 500).

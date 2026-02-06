@@ -1,4 +1,4 @@
-package builder
+package builder_test
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/Kirby980/go-es/builder"
 )
 
 // TestBulkBuilder_IndexOperations 测试批量索引操作
@@ -17,11 +19,11 @@ func TestBulkBuilder_IndexOperations(t *testing.T) {
 	indexName := "test_bulk_index"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 批量索引
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Add("", "bulk1", map[string]interface{}{
 			"title": "批量文档1",
@@ -58,17 +60,17 @@ func TestBulkBuilder_MixedOperations(t *testing.T) {
 	indexName := "test_bulk_mixed"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 先创建一些文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("mixed1").
 		Set("title", "原始文档1").
 		Set("views", 100).
 		Do(ctx)
 
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("mixed2").
 		Set("title", "原始文档2").
 		Set("views", 200).
@@ -77,7 +79,7 @@ func TestBulkBuilder_MixedOperations(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 混合操作：索引、更新、删除
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Add("", "mixed3", map[string]interface{}{
 			"title": "新文档3",
@@ -112,11 +114,11 @@ func TestBulkBuilder_CreateOperations(t *testing.T) {
 	indexName := "test_bulk_create"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 批量创建
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Create("", "create1", map[string]interface{}{
 			"title": "创建文档1",
@@ -133,7 +135,7 @@ func TestBulkBuilder_CreateOperations(t *testing.T) {
 	t.Logf("✓ 批量创建成功: 成功=%d", resp.SuccessCount())
 
 	// 再次创建相同 ID 应该部分失败
-	resp2, err := NewBulkBuilder(client).
+	resp2, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Create("", "create1", map[string]interface{}{
 			"title": "重复文档",
@@ -164,17 +166,17 @@ func TestBulkBuilder_UpdateOperations(t *testing.T) {
 	indexName := "test_bulk_update"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 先创建文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("update1").
 		Set("title", "原文档1").
 		Set("views", 100).
 		Do(ctx)
 
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("update2").
 		Set("title", "原文档2").
 		Set("views", 200).
@@ -183,7 +185,7 @@ func TestBulkBuilder_UpdateOperations(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 批量更新
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Update("", "update1", map[string]interface{}{
 			"views": 150,
@@ -209,12 +211,12 @@ func TestBulkBuilder_DeleteOperations(t *testing.T) {
 	indexName := "test_bulk_delete"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 先创建文档
 	for i := 1; i <= 3; i++ {
-		_, _ = NewDocumentBuilder(client, indexName).
+		_, _ = builder.NewDocumentBuilder(client, indexName).
 			ID(string(rune('0'+i))).
 			Set("title", "待删除文档").
 			Do(ctx)
@@ -223,7 +225,7 @@ func TestBulkBuilder_DeleteOperations(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 批量删除
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Delete("", "1").
 		Delete("", "2").
@@ -250,7 +252,7 @@ func TestBulkBuilder_FromStruct(t *testing.T) {
 	indexName := "test_bulk_struct"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	type Doc struct {
@@ -259,7 +261,7 @@ func TestBulkBuilder_FromStruct(t *testing.T) {
 	}
 
 	// 使用结构体批量索引
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddFromStruct("", "struct1", Doc{Title: "结构体1", Views: 100}).
 		AddFromStruct("", "struct2", Doc{Title: "结构体2", Views: 200}).
@@ -277,7 +279,7 @@ func TestBulkBuilder_Clear(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 
-	builder := NewBulkBuilder(client).
+	builder := builder.NewBulkBuilder(client).
 		Index("test").
 		Add("", "1", map[string]interface{}{"title": "doc1"}).
 		Add("", "2", map[string]interface{}{"title": "doc2"})
@@ -300,7 +302,7 @@ func TestBulkBuilder_Count(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 
-	builder := NewBulkBuilder(client).
+	builder := builder.NewBulkBuilder(client).
 		Index("test").
 		Add("", "1", map[string]interface{}{"title": "doc1"}).
 		Update("", "2", map[string]interface{}{"title": "doc2"}).
@@ -318,7 +320,7 @@ func TestBulkBuilder_Build(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 
-	builder := NewBulkBuilder(client).
+	builder := builder.NewBulkBuilder(client).
 		Index("test").
 		Add("", "1", map[string]interface{}{"title": "doc1"}).
 		Update("", "2", map[string]interface{}{"title": "doc2"}).
@@ -342,11 +344,11 @@ func TestBulkBuilder_ErrorHandling(t *testing.T) {
 	indexName := "test_bulk_error"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 创建一些会成功和会失败的操作
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Add("", "success1", map[string]interface{}{
 			"title": "成功文档",
@@ -384,11 +386,11 @@ func TestBulkBuilder_ChainedAPI(t *testing.T) {
 	indexName := "test_bulk_chained"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用链式调用添加文档
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddDoc("chain1").
 		Set("title", "链式文档1").
@@ -422,17 +424,17 @@ func TestBulkBuilder_ChainedMixedOperations(t *testing.T) {
 	indexName := "test_bulk_chained_mixed"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 先创建一些文档
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("mix1").
 		Set("title", "原始文档1").
 		Set("views", 100).
 		Do(ctx)
 
-	_, _ = NewDocumentBuilder(client, indexName).
+	_, _ = builder.NewDocumentBuilder(client, indexName).
 		ID("mix2").
 		Set("title", "原始文档2").
 		Set("views", 200).
@@ -441,7 +443,7 @@ func TestBulkBuilder_ChainedMixedOperations(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 使用链式调用进行混合操作
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddDoc("mix3").
 		Set("title", "新文档3").
@@ -474,7 +476,7 @@ func TestBulkBuilder_ChainedWithStruct(t *testing.T) {
 	indexName := "test_bulk_chained_struct"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	type Doc struct {
@@ -483,7 +485,7 @@ func TestBulkBuilder_ChainedWithStruct(t *testing.T) {
 	}
 
 	// 使用链式调用和 SetFromStruct
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddDoc("struct1").
 		SetFromStruct(Doc{Title: "结构体1", Views: 100}).
@@ -511,11 +513,11 @@ func TestBulkBuilder_MixedAPIStyles(t *testing.T) {
 	indexName := "test_bulk_mixed_styles"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 混用传统 map 方式和链式调用方式
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		Add("", "map1", map[string]interface{}{
 			"title": "Map方式1",
@@ -544,8 +546,8 @@ func TestBulkBuilder_MixedAPIStyles(t *testing.T) {
 	t.Logf("✓ 混用 API 风格成功: 成功=%d", resp.SuccessCount())
 }
 
-// TestBulkBuilder_ChainedWithNestedObject 测试链式调用嵌套对象
-func TestBulkBuilder_ChainedWithNestedObject(t *testing.T) {
+// TestBulkBuilder_ChainedWithbuilder.NestedObject 测试链式调用嵌套对象
+func TestBulkBuilder_ChainedWithbuilderNestedObject(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -553,28 +555,28 @@ func TestBulkBuilder_ChainedWithNestedObject(t *testing.T) {
 	indexName := "test_bulk_nested"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用链式调用添加嵌套对象
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddDoc("nested1").
 		Set("title", "嵌套文档1").
-		SetObject("user", func(obj *NestedObject) {
+		SetObject("user", func(obj *builder.NestedObject) {
 			obj.Set("name", "张三").
 				Set("age", 25).
-				SetObject("address", func(addr *NestedObject) {
+				SetObject("address", func(addr *builder.NestedObject) {
 					addr.Set("city", "北京").
 						Set("street", "长安街")
 				})
 		}).
 		AddDoc("nested2").
 		Set("title", "嵌套文档2").
-		SetObject("user", func(obj *NestedObject) {
+		SetObject("user", func(obj *builder.NestedObject) {
 			obj.Set("name", "李四").
 				Set("age", 30).
-				SetObject("address", func(addr *NestedObject) {
+				SetObject("address", func(addr *builder.NestedObject) {
 					addr.Set("city", "上海").
 						Set("street", "南京路")
 				})
@@ -593,7 +595,7 @@ func TestBulkBuilder_ChainedWithNestedObject(t *testing.T) {
 
 	// 验证嵌套对象
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("nested1").
 		Get(ctx)
 
@@ -619,22 +621,22 @@ func TestBulkBuilder_ChainedWithObjectArray(t *testing.T) {
 	indexName := "test_bulk_obj_array"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 使用链式调用添加对象数组
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddDoc("array1").
 		Set("title", "对象数组文档").
 		SetArray("tags", "Go", "ES", "测试").
 		SetObjectArray("comments",
-			func(obj *NestedObject) {
+			func(obj *builder.NestedObject) {
 				obj.Set("author", "用户1").
 					Set("content", "评论1").
 					Set("rating", 5)
 			},
-			func(obj *NestedObject) {
+			func(obj *builder.NestedObject) {
 				obj.Set("author", "用户2").
 					Set("content", "评论2").
 					Set("rating", 4)
@@ -654,7 +656,7 @@ func TestBulkBuilder_ChainedWithObjectArray(t *testing.T) {
 
 	// 验证对象数组
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("array1").
 		Get(ctx)
 
@@ -680,34 +682,34 @@ func TestBulkBuilder_ComplexNested(t *testing.T) {
 	indexName := "test_bulk_complex"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 批量添加复杂嵌套结构
-	resp, err := NewBulkBuilder(client).
+	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AddDoc("complex1").
 		Set("title", "复杂文档1").
 		Set("price", 99.99).
 		SetArray("tags", "标签1", "标签2").
-		SetObject("creator", func(creator *NestedObject) {
+		SetObject("creator", func(creator *builder.NestedObject) {
 			creator.Set("name", "作者1").
-				SetObject("profile", func(profile *NestedObject) {
+				SetObject("profile", func(profile *builder.NestedObject) {
 					profile.Set("bio", "简介").
 						Set("followers", 1000)
 				}).
-				SetObjectArray("projects", func(proj *NestedObject) {
+				SetObjectArray("projects", func(proj *builder.NestedObject) {
 					proj.Set("name", "项目A")
-				}, func(proj *NestedObject) {
+				}, func(proj *builder.NestedObject) {
 					proj.Set("name", "项目B")
 				})
 		}).
 		AddDoc("complex2").
 		Set("title", "复杂文档2").
 		Set("price", 199.99).
-		SetObject("creator", func(creator *NestedObject) {
+		SetObject("creator", func(creator *builder.NestedObject) {
 			creator.Set("name", "作者2").
-				SetObjectArray("projects", func(proj *NestedObject) {
+				SetObjectArray("projects", func(proj *builder.NestedObject) {
 					proj.Set("name", "项目C")
 				})
 		}).
@@ -725,7 +727,7 @@ func TestBulkBuilder_ComplexNested(t *testing.T) {
 
 	// 验证第一个文档
 	time.Sleep(1 * time.Second)
-	getResp, _ := NewDocumentBuilder(client, indexName).
+	getResp, _ := builder.NewDocumentBuilder(client, indexName).
 		ID("complex1").
 		Get(ctx)
 
@@ -751,7 +753,7 @@ func TestBulkBuilder_Flush(t *testing.T) {
 	indexName := "test_bulk_flush"
 	prepareTestIndex(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 测试参数
@@ -764,10 +766,10 @@ func TestBulkBuilder_Flush(t *testing.T) {
 	var autoFlushSuccessCount int
 
 	// 创建 Bulk Builder 并设置自动提交
-	bulk := NewBulkBuilder(client).
+	bulk := builder.NewBulkBuilder(client).
 		Index(indexName).
 		AutoFlushSize(batchSize).
-		OnFlush(func(resp *BulkResponse) {
+		OnFlush(func(resp *builder.BulkResponse) {
 			flushCount++
 			autoFlushSuccessCount += resp.SuccessCount()
 			t.Logf("✓ 自动提交批次 #%d: 成功 %d 条，累计 %d 条",

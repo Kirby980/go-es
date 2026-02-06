@@ -6,13 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // BulkBuilder 批量操作构建器
 type BulkBuilder struct {
-	client        *client.Client
+	client        ESClient
 	index         string
 	operations    []bulkOperation
 	currentOp     *bulkOperation      // 当前正在构建的操作（用于链式调用）
@@ -29,7 +27,7 @@ type bulkOperation struct {
 }
 
 // NewBulkBuilder 创建批量操作构建器
-func NewBulkBuilder(c *client.Client) *BulkBuilder {
+func NewBulkBuilder(c ESClient) *BulkBuilder {
 	return &BulkBuilder{
 		client:     c,
 		operations: make([]bulkOperation, 0),

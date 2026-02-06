@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/Kirby980/go-es/client"
 )
 
 // UpdateByQueryBuilder 按查询更新构建器
 type UpdateByQueryBuilder struct {
-	client  *client.Client
+	client  ESClient
 	index   string
 	filters []map[string]interface{}
 	must    []map[string]interface{}
@@ -22,7 +20,7 @@ type UpdateByQueryBuilder struct {
 }
 
 // NewUpdateByQueryBuilder 创建按查询更新构建器
-func NewUpdateByQueryBuilder(c *client.Client, index string) *UpdateByQueryBuilder {
+func NewUpdateByQueryBuilder(c ESClient, index string) *UpdateByQueryBuilder {
 	return &UpdateByQueryBuilder{
 		client:  c,
 		index:   index,

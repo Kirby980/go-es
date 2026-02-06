@@ -1,8 +1,10 @@
-package builder
+package builder_test
 
 import (
 	"context"
 	"testing"
+
+	"github.com/Kirby980/go-es/builder"
 )
 
 // TestAggregationBuilder_MetricAggregations 测试指标聚合
@@ -14,11 +16,11 @@ func TestAggregationBuilder_MetricAggregations(t *testing.T) {
 	indexName := "test_agg_metrics"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 测试多种指标聚合
-	resp, err := NewAggregationBuilder(client, indexName).
+	resp, err := builder.NewAggregationBuilder(client, indexName).
 		Avg("avg_price", "price").
 		Sum("total_views", "views").
 		Min("min_price", "price").
@@ -49,11 +51,11 @@ func TestAggregationBuilder_TermsAggregation(t *testing.T) {
 	indexName := "test_agg_terms"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// Terms 聚合
-	resp, err := NewAggregationBuilder(client, indexName).
+	resp, err := builder.NewAggregationBuilder(client, indexName).
 		Terms("by_category", "category", 10).
 		Do(ctx)
 
@@ -74,11 +76,11 @@ func TestAggregationBuilder_TermsWithOrder(t *testing.T) {
 	indexName := "test_agg_terms_order"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 带排序的 Terms 聚合
-	resp, err := NewAggregationBuilder(client, indexName).
+	resp, err := builder.NewAggregationBuilder(client, indexName).
 		TermsWithOrder("top_categories", "category", 5, "_count", "desc").
 		Do(ctx)
 
@@ -99,11 +101,11 @@ func TestAggregationBuilder_Histogram(t *testing.T) {
 	indexName := "test_agg_histogram"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 直方图聚合
-	_, err := NewAggregationBuilder(client, indexName).
+	_, err := builder.NewAggregationBuilder(client, indexName).
 		Histogram("price_distribution", "price", 500).
 		Do(ctx)
 
@@ -123,11 +125,11 @@ func TestAggregationBuilder_Range(t *testing.T) {
 	indexName := "test_agg_range"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 范围聚合
-	resp, err := NewAggregationBuilder(client, indexName).
+	resp, err := builder.NewAggregationBuilder(client, indexName).
 		Range("price_ranges", "price", []map[string]interface{}{
 			{"key": "cheap", "to": 500},
 			{"key": "medium", "from": 500, "to": 1000},
@@ -152,11 +154,11 @@ func TestAggregationBuilder_Percentiles(t *testing.T) {
 	indexName := "test_agg_percentiles"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 百分位聚合
-	_, err := NewAggregationBuilder(client, indexName).
+	_, err := builder.NewAggregationBuilder(client, indexName).
 		Percentiles("price_percentiles", "price", 25, 50, 75, 95, 99).
 		Do(ctx)
 
@@ -176,11 +178,11 @@ func TestAggregationBuilder_ExtendedStats(t *testing.T) {
 	indexName := "test_agg_extended_stats"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 扩展统计聚合
-	_, err := NewAggregationBuilder(client, indexName).
+	_, err := builder.NewAggregationBuilder(client, indexName).
 		ExtendedStats("price_extended_stats", "price").
 		Do(ctx)
 
@@ -200,11 +202,11 @@ func TestAggregationBuilder_Filter(t *testing.T) {
 	indexName := "test_agg_filter"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 过滤器聚合
-	_, err := NewAggregationBuilder(client, indexName).
+	_, err := builder.NewAggregationBuilder(client, indexName).
 		Filter("electronics_only", map[string]interface{}{
 			"term": map[string]interface{}{
 				"category": "electronics",
@@ -228,11 +230,11 @@ func TestAggregationBuilder_Missing(t *testing.T) {
 	indexName := "test_agg_missing"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 缺失值聚合
-	_, err := NewAggregationBuilder(client, indexName).
+	_, err := builder.NewAggregationBuilder(client, indexName).
 		Missing("missing_location", "location").
 		Do(ctx)
 
@@ -252,11 +254,11 @@ func TestAggregationBuilder_WithQuery(t *testing.T) {
 	indexName := "test_agg_query"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 带查询条件的聚合
-	_, err := NewAggregationBuilder(client, indexName).
+	_, err := builder.NewAggregationBuilder(client, indexName).
 		Query(map[string]interface{}{
 			"bool": map[string]interface{}{
 				"filter": []map[string]interface{}{
@@ -288,11 +290,11 @@ func TestAggregationBuilder_SizeControl(t *testing.T) {
 	indexName := "test_agg_size"
 	prepareSearchTestData(t, client, indexName)
 	defer func() {
-		_ = NewIndexBuilder(client, indexName).Delete(ctx)
+		_ = builder.NewIndexBuilder(client, indexName).Delete(ctx)
 	}()
 
 	// 设置返回0个文档，只返回聚合结果
-	resp, err := NewAggregationBuilder(client, indexName).
+	resp, err := builder.NewAggregationBuilder(client, indexName).
 		Size(0).
 		Avg("avg_price", "price").
 		Terms("categories", "category", 5).
@@ -311,7 +313,7 @@ func TestAggregationBuilder_Build(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 
-	builder := NewAggregationBuilder(client, "test").
+	builder := builder.NewAggregationBuilder(client, "test").
 		Avg("avg_price", "price").
 		Terms("by_category", "category", 10).
 		Size(0)
