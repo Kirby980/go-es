@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 )
 
 // SearchBuilder 搜索构建器
@@ -433,6 +434,52 @@ type SearchResponse struct {
 		} `json:"hits"`
 	} `json:"hits"`
 	Aggregations map[string]interface{} `json:"aggregations,omitempty"`
+}
+
+// Scan 将搜索结果扫描到结构体切片中
+// dest 必须是指向切片的指针，如 *[]Article
+func (r *SearchResponse) Scan(dest any) error {
+	// 获取目标类型
+	destVal := reflect.ValueOf(dest)
+	if destVal.Kind() != reflect.Ptr {
+		return fmt.Errorf("dest must be a pointer to slice")
+	}
+	sliceVal := destVal.Elem()
+	if sliceVal.Kind() != reflect.Slice {
+		return fmt.Errorf("dest must be a pointer to slice")
+	}
+
+	elemType := sliceVal.Type().Elem()
+
+	// 遍历搜索结果
+	for _, hit := range r.Hits.Hits {
+		// 将 Source 转为 JSON 再解析到结构体
+		jsonData, err := json.Marshal(hit.Source)
+		if err != nil {
+			return err
+		}
+
+		// 创建新元素
+		var elem reflect.Value
+		if elemType.Kind() == reflect.Ptr {
+			elem = reflect.New(elemType.Elem())
+		} else {
+			elem = reflect.New(elemType)
+		}
+
+		if err := json.Unmarshal(jsonData, elem.Interface()); err != nil {
+			return err
+		}
+
+		// 添加到切片
+		if elemType.Kind() == reflect.Ptr {
+			sliceVal.Set(reflect.Append(sliceVal, elem))
+		} else {
+			sliceVal.Set(reflect.Append(sliceVal, elem.Elem()))
+		}
+	}
+
+	return nil
 }
 
 // Build 构建查询 DSL

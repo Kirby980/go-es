@@ -22,6 +22,53 @@ for _, hit := range searchResp.Hits.Hits {
 }
 ```
 
+## 结果扫描到结构体
+
+使用 `Scan` 方法可以将搜索结果直接扫描到结构体切片中：
+
+```go
+type Product struct {
+    Name     string  `json:"name"`
+    Price    float64 `json:"price"`
+    Category string  `json:"category"`
+}
+
+// 搜索
+resp, err := builder.NewSearchBuilder(esClient, "products").
+    Match("name", "iPhone").
+    Size(10).
+    Do(ctx)
+
+// 扫描结果到结构体切片
+var products []Product
+if err := resp.Scan(&products); err != nil {
+    // handle error
+}
+
+// 使用结果
+for _, p := range products {
+    fmt.Printf("%s: $%.2f\n", p.Name, p.Price)
+}
+
+// 也支持指针切片
+var productPtrs []*Product
+resp.Scan(&productPtrs)
+```
+
+### 使用 Find 方法（简洁风格）
+
+```go
+// 使用 Client.Find 方法
+resp, _ := esClient.Find("products").
+    Match("name", "iPhone").
+    Term("category", "electronics").
+    Size(10).
+    Do(ctx)
+
+var products []Product
+resp.Scan(&products)
+```
+
 ## 查询类型
 
 ### 全文搜索
@@ -228,6 +275,7 @@ fmt.Printf("活跃商品数量: %d\n", count)
 
 ## 支持的功能
 
+- ✅ 结果扫描到结构体 (Scan)
 - ✅ 全文搜索 (Match, MatchPhrase, MultiMatch)
 - ✅ 精确查询 (Term, Terms, IDs)
 - ✅ 范围查询 (Range)

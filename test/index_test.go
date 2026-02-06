@@ -19,16 +19,23 @@ type Article struct {
 	Content string  `es:"type:text;analyzer:standard"`
 	Tags    string  `es:"type:keyword"`
 	Score   float64 `es:"type:float"` // 跳过
-	Test    string  `es:"type:keyword"`
+	Test    *Test   `es:"type:object"`
 }
 
 type Test struct {
 	Test string `es:"type:keyword"`
+	Name string `es:"type:keyword"`
 }
 
 func TestAutoMigrate(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
+	ctx := context.Background()
+
+	// 先删除可能存在的旧索引
+	_ = builder.NewIndexBuilder(client, "articles").Delete(ctx)
+	_ = builder.NewIndexBuilder(client, "tests").Delete(ctx)
+
 	err := client.AutoMigrate(&Article{}, &Test{})
 	if err != nil {
 		t.Fatalf("AutoMigrate failed: %v", err)

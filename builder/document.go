@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 )
 
 // DocumentBuilder 文档构建器
@@ -25,6 +26,28 @@ func NewDocumentBuilder(c ESClient, index string) *DocumentBuilder {
 		index:  index,
 		doc:    make(map[string]interface{}),
 	}
+}
+
+// Model 从结构体设置文档数据，并自动推断索引名
+// 如果结构体实现了 IndexName 接口，使用该方法返回的索引名
+// 否则使用结构体名称的 snake_case + s 作为索引名
+func (b *DocumentBuilder) Model(model any) *DocumentBuilder {
+	// 自动推断索引名
+	if b.index == "" {
+		if namer, ok := model.(IndexName); ok {
+			b.index = namer.IndexName()
+		} else {
+			t := reflect.TypeOf(model)
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			b.index = toSnakeCase(t.Name() + "s")
+		}
+	}
+	// 设置文档数据
+	jsonData, _ := json.Marshal(model)
+	json.Unmarshal(jsonData, &b.doc)
+	return b
 }
 
 // ID 设置文档 ID

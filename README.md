@@ -4,14 +4,14 @@
 
 ## 特性
 
-- ✅ **链式调用**: 类似 GORM 的优雅 API 设计
+- ✅ **链式调用**: 链式的API调用
 - ✅ **完整功能**: 支持索引、文档、搜索、聚合、批量操作、集群管理
 - ✅ **类型安全**: 使用 Go 结构体，避免手写 JSON
 - ✅ **易于使用**: 简洁的 API，降低学习成本
 - ✅ **高性能**: 支持批量操作和连接池
 - ✅ **错误处理**: 完善的错误处理和重试机制
-- ✅ **链式Debug**: 类似GORM的Debug模式，局部控制日志输出
-- ✅ **AutoMigrate**: 类似GORM的自动迁移，通过结构体标签定义映射
+- ✅ **链式Debug**: Debug模式，局部控制日志输出
+- ✅ **AutoMigrate**: 自动迁移，通过结构体标签定义映射
 
 ## 快速开始
 
@@ -66,7 +66,7 @@ exists, _ := builder.NewIndexBuilder(esClient, "products").Exists(ctx)
 err = builder.NewIndexBuilder(esClient, "products").Delete(ctx)
 ```
 
-#### AutoMigrate（类似 GORM）
+#### AutoMigrate
 
 ```go
 // 定义结构体，使用 es 标签定义字段映射
@@ -90,6 +90,43 @@ err := esClient.AutoMigrate(&Product{})
 
 ### 2. 文档操作
 
+本库支持两种 API 风格：**简洁风格**（类似 GORM）和 **Builder 风格**（更灵活）。
+
+#### 简洁风格（推荐）
+
+```go
+// 定义结构体
+type Product struct {
+    Name     string  `json:"name" es:"type:text"`
+    Price    float64 `json:"price" es:"type:float"`
+    Category string  `json:"category" es:"type:keyword"`
+}
+
+func (p *Product) IndexName() string { return "products" }
+
+// 创建文档
+product := &Product{Name: "iPhone 15", Price: 999.99, Category: "electronics"}
+resp, err := esClient.Create(ctx, product)
+
+// 创建文档（指定 ID）
+resp, err := esClient.CreateWithID(ctx, "product-1", product)
+
+// 更新文档
+product.Price = 899.99
+resp, err := esClient.Update(ctx, "product-1", product)
+
+// Upsert（存在则更新，不存在则创建）
+resp, err := esClient.Upsert(ctx, "product-1", product)
+
+// 获取文档
+getResp, err := esClient.Get(ctx, "products", "product-1")
+
+// 删除文档
+delResp, err := esClient.Delete(ctx, "products", "product-1")
+```
+
+#### Builder 风格（更灵活）
+
 ```go
 // 创建文档
 resp, err := builder.NewDocumentBuilder(esClient, "products").
@@ -97,6 +134,12 @@ resp, err := builder.NewDocumentBuilder(esClient, "products").
     Set("name", "iPhone 15 Pro").
     Set("price", 999.99).
     Set("category", "electronics").
+    Do(ctx)
+
+// 使用 Model 方法从结构体创建（自动推断索引名）
+resp, err := builder.NewDocumentBuilder(esClient, "").
+    Model(&Product{Name: "iPhone", Price: 999.99}).
+    ID("1").
     Do(ctx)
 
 // 获取文档
@@ -131,6 +174,15 @@ searchResp, err := builder.NewSearchBuilder(esClient, "products").
     Size(10).
     Do(ctx)
 
+// 搜索结果扫描到结构体切片
+var products []Product
+if err := searchResp.Scan(&products); err != nil {
+    // handle error
+}
+for _, p := range products {
+    fmt.Printf("%s: $%.2f\n", p.Name, p.Price)
+}
+
 // 复杂布尔查询
 resp, err := builder.NewSearchBuilder(esClient, "products").
     Term("category", "electronics").           // AND
@@ -146,6 +198,14 @@ resp, err := builder.NewSearchBuilder(esClient, "products").
 count, _ := builder.NewSearchBuilder(esClient, "products").
     Match("status", "active").
     Count(ctx)
+
+// 使用 Find 方法（简洁风格）
+resp, _ := esClient.Find("products").
+    Match("name", "iPhone").
+    Size(10).
+    Do(ctx)
+var results []Product
+resp.Scan(&results)
 ```
 
 [查看完整搜索文档](docs/search.md)

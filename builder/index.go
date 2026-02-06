@@ -221,19 +221,34 @@ func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...Pro
 	return b
 }
 
+// AutoMigrate 自动迁移
 func (b *IndexBuilder) AutoMigrate(model interface{}) *IndexBuilder {
 	t := reflect.TypeOf(model)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	// 如果索引名为空，自动推断（类似 GORM）
+
 	if b.index == "" {
 		if idxName, ok := model.(IndexName); ok {
 			b.index = idxName.IndexName()
 		} else {
+			// 默认使用复数索引名
 			b.index = toSnakeCase(t.Name() + "s")
 		}
 	}
+
+	// 解析字段映射并设置到 mappings
+	properties := parseStructFields(t)
+	if len(properties) > 0 {
+		b.mappings["properties"] = properties
+	}
+	return b
+}
+
+// parseStructFields 解析结构体字段（支持递归）
+func parseStructFields(t reflect.Type) map[string]interface{} {
+	properties := make(map[string]interface{})
+
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		tag := field.Tag.Get("es")
@@ -246,23 +261,41 @@ func (b *IndexBuilder) AutoMigrate(model interface{}) *IndexBuilder {
 		if !ok {
 			continue
 		}
-		var options []PropertyOption
+
+		fieldName := toSnakeCase(field.Name)
+		fieldMapping := map[string]interface{}{
+			"type": fieldType,
+		}
+
+		// 添加其他属性
 		for k, v := range props {
 			if k == "type" {
 				continue
 			}
-			key, val := k, v
-			options = append(options, func(f map[string]interface{}) {
-				f[key] = val
-			})
+			fieldMapping[k] = v
 		}
-		// 字段名转 snake_case
-		fieldName := toSnakeCase(field.Name)
-		b.AddProperty(fieldName, fieldType, options...)
+
+		// 处理 object 或 nested 类型，递归解析嵌套结构体
+		if fieldType == "object" || fieldType == "nested" {
+			nestedType := field.Type
+			if nestedType.Kind() == reflect.Ptr {
+				nestedType = nestedType.Elem()
+			}
+			if nestedType.Kind() == reflect.Struct {
+				nestedProps := parseStructFields(nestedType)
+				if len(nestedProps) > 0 {
+					fieldMapping["properties"] = nestedProps
+				}
+			}
+		}
+
+		properties[fieldName] = fieldMapping
 	}
-	return b
+
+	return properties
 }
 
+// parseTag 解析 tag
 func parseTag(tag string) map[string]string {
 	result := make(map[string]string)
 	pairs := strings.Split(tag, ";")
@@ -274,6 +307,8 @@ func parseTag(tag string) map[string]string {
 	}
 	return result
 }
+
+// toSnakeCase 转换为 snake_case
 func toSnakeCase(s string) string {
 	var buf strings.Builder
 	for i, r := range s {
