@@ -28,7 +28,7 @@ func (b *ClusterBuilder) Debug() *ClusterBuilder {
 }
 
 // printDebug 打印请求调试信息
-func (b *ClusterBuilder) printDebug(method, path string, body interface{}) {
+func (b *ClusterBuilder) printDebug(method, path string, body any) {
 	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
 	if body != nil {
 		data, _ := json.MarshalIndent(body, "", "  ")
@@ -38,7 +38,7 @@ func (b *ClusterBuilder) printDebug(method, path string, body interface{}) {
 
 // printResponse 打印响应调试信息
 func (b *ClusterBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
+	var pretty any
 	json.Unmarshal(respBody, &pretty)
 	data, _ := json.MarshalIndent(pretty, "", "  ")
 	fmt.Printf("Response:\n%s\n\n", string(data))
@@ -118,16 +118,16 @@ func (b *ClusterBuilder) IndexHealth(ctx context.Context, index string) (*Cluste
 
 // ClusterStateResponse 集群状态响应
 type ClusterStateResponse struct {
-	ClusterName  string                 `json:"cluster_name"`
-	ClusterUUID  string                 `json:"cluster_uuid"`
-	Version      int                    `json:"version"`
-	StateUUID    string                 `json:"state_uuid"`
-	MasterNode   string                 `json:"master_node"`
-	Blocks       map[string]interface{} `json:"blocks"`
-	Nodes        map[string]interface{} `json:"nodes"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	RoutingTable map[string]interface{} `json:"routing_table"`
-	RoutingNodes map[string]interface{} `json:"routing_nodes"`
+	ClusterName  string         `json:"cluster_name"`
+	ClusterUUID  string         `json:"cluster_uuid"`
+	Version      int            `json:"version"`
+	StateUUID    string         `json:"state_uuid"`
+	MasterNode   string         `json:"master_node"`
+	Blocks       map[string]any `json:"blocks"`
+	Nodes        map[string]any `json:"nodes"`
+	Metadata     map[string]any `json:"metadata"`
+	RoutingTable map[string]any `json:"routing_table"`
+	RoutingNodes map[string]any `json:"routing_nodes"`
 }
 
 // State 获取集群状态
@@ -155,16 +155,16 @@ type ClusterStatsResponse struct {
 	Timestamp   int64  `json:"timestamp"`
 	Status      string `json:"status"`
 	Indices     struct {
-		Count      int                    `json:"count"`
-		Shards     map[string]interface{} `json:"shards"`
-		Docs       map[string]interface{} `json:"docs"`
-		Store      map[string]interface{} `json:"store"`
-		FieldData  map[string]interface{} `json:"fielddata"`
-		QueryCache map[string]interface{} `json:"query_cache"`
-		Completion map[string]interface{} `json:"completion"`
-		Segments   map[string]interface{} `json:"segments"`
+		Count      int            `json:"count"`
+		Shards     map[string]any `json:"shards"`
+		Docs       map[string]any `json:"docs"`
+		Store      map[string]any `json:"store"`
+		FieldData  map[string]any `json:"fielddata"`
+		QueryCache map[string]any `json:"query_cache"`
+		Completion map[string]any `json:"completion"`
+		Segments   map[string]any `json:"segments"`
 	} `json:"indices"`
-	Nodes map[string]interface{} `json:"nodes"`
+	Nodes map[string]any `json:"nodes"`
 }
 
 // Stats 获取集群统计信息
@@ -199,8 +199,8 @@ func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, erro
 
 // NodesInfoResponse 节点信息响应
 type NodesInfoResponse struct {
-	ClusterName string                            `json:"cluster_name"`
-	Nodes       map[string]map[string]interface{} `json:"nodes"`
+	ClusterName string                    `json:"cluster_name"`
+	Nodes       map[string]map[string]any `json:"nodes"`
 }
 
 // NodesInfo 获取节点信息
@@ -223,8 +223,8 @@ func (b *ClusterBuilder) NodesInfo(ctx context.Context) (*NodesInfoResponse, err
 
 // NodesStatsResponse 节点统计响应
 type NodesStatsResponse struct {
-	ClusterName string                            `json:"cluster_name"`
-	Nodes       map[string]map[string]interface{} `json:"nodes"`
+	ClusterName string                    `json:"cluster_name"`
+	Nodes       map[string]map[string]any `json:"nodes"`
 }
 
 // NodesStats 获取节点统计
@@ -247,8 +247,8 @@ func (b *ClusterBuilder) NodesStats(ctx context.Context) (*NodesStatsResponse, e
 
 // TasksResponse 任务响应
 type TasksResponse struct {
-	Nodes map[string]interface{} `json:"nodes"`
-	Tasks map[string]interface{} `json:"tasks"`
+	Nodes map[string]any `json:"nodes"`
+	Tasks map[string]any `json:"tasks"`
 }
 
 // Tasks 获取正在运行的任务
@@ -271,8 +271,8 @@ func (b *ClusterBuilder) Tasks(ctx context.Context) (*TasksResponse, error) {
 
 // ClusterSettingsResponse 集群设置响应
 type ClusterSettingsResponse struct {
-	Persistent map[string]interface{} `json:"persistent"`
-	Transient  map[string]interface{} `json:"transient"`
+	Persistent map[string]any `json:"persistent"`
+	Transient  map[string]any `json:"transient"`
 }
 
 // GetSettings 获取集群设置
@@ -292,9 +292,9 @@ func (b *ClusterBuilder) GetSettings(ctx context.Context) (*ClusterSettingsRespo
 }
 
 // UpdateSettings 更新集群设置
-func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transient map[string]interface{}) error {
+func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transient map[string]any) error {
 	path := "/_cluster/settings"
-	body := make(map[string]interface{})
+	body := make(map[string]any)
 	if persistent != nil {
 		body["persistent"] = persistent
 	}
@@ -325,20 +325,20 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 
 // AllocationExplainResponse 分配解释响应
 type AllocationExplainResponse struct {
-	Index                   string                   `json:"index"`
-	Shard                   int                      `json:"shard"`
-	Primary                 bool                     `json:"primary"`
-	CurrentState            string                   `json:"current_state"`
-	UnassignedInfo          map[string]interface{}   `json:"unassigned_info,omitempty"`
-	CanAllocate             string                   `json:"can_allocate,omitempty"`
-	AllocateExplanation     string                   `json:"allocate_explanation,omitempty"`
-	NodeAllocationDecisions []map[string]interface{} `json:"node_allocation_decisions,omitempty"`
+	Index                   string           `json:"index"`
+	Shard                   int              `json:"shard"`
+	Primary                 bool             `json:"primary"`
+	CurrentState            string           `json:"current_state"`
+	UnassignedInfo          map[string]any   `json:"unassigned_info,omitempty"`
+	CanAllocate             string           `json:"can_allocate,omitempty"`
+	AllocateExplanation     string           `json:"allocate_explanation,omitempty"`
+	NodeAllocationDecisions []map[string]any `json:"node_allocation_decisions,omitempty"`
 }
 
 // AllocationExplain 解释分片分配
 func (b *ClusterBuilder) AllocationExplain(ctx context.Context, index string, shard int, primary bool) (*AllocationExplainResponse, error) {
 	path := "/_cluster/allocation/explain"
-	body := map[string]interface{}{
+	body := map[string]any{
 		"index":   index,
 		"shard":   shard,
 		"primary": primary,
@@ -360,7 +360,7 @@ func (b *ClusterBuilder) AllocationExplain(ctx context.Context, index string, sh
 // ========== 远程集群 ==========
 
 // RemoteClustersResponse 远程集群响应
-type RemoteClustersResponse map[string]map[string]interface{}
+type RemoteClustersResponse map[string]map[string]any
 
 // RemoteClusters 获取远程集群信息
 func (b *ClusterBuilder) RemoteClusters(ctx context.Context) (RemoteClustersResponse, error) {

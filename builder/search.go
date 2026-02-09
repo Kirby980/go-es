@@ -10,22 +10,22 @@ import (
 
 // SearchBuilder 搜索构建器
 type SearchBuilder struct {
-	client              ESClient
-	index               string
-	query               map[string]interface{}
-	filters             []map[string]interface{}
-	must                []map[string]interface{}
-	should              []map[string]interface{}
-	mustNot             []map[string]interface{}
-	minimumShouldMatch  interface{} // 最少匹配 should 条件数量
-	from                int
-	size                int
-	sort                []map[string]interface{}
-	aggs                map[string]interface{}
-	source              []string
-	highlight           map[string]interface{}
-	minScore            *float64 // 最小评分
-	debug               bool     // 调试模式标志
+	client             ESClient
+	index              string
+	query              map[string]any
+	filters            []map[string]any
+	must               []map[string]any
+	should             []map[string]any
+	mustNot            []map[string]any
+	minimumShouldMatch any // 最少匹配 should 条件数量
+	from               int
+	size               int
+	sort               []map[string]any
+	aggs               map[string]any
+	source             []string
+	highlight          map[string]any
+	minScore           *float64 // 最小评分
+	DebugHelper
 }
 
 // NewSearchBuilder 创建搜索构建器
@@ -33,19 +33,19 @@ func NewSearchBuilder(c ESClient, index string) *SearchBuilder {
 	return &SearchBuilder{
 		client:  c,
 		index:   index,
-		filters: make([]map[string]interface{}, 0),
-		must:    make([]map[string]interface{}, 0),
-		should:  make([]map[string]interface{}, 0),
-		mustNot: make([]map[string]interface{}, 0),
+		filters: make([]map[string]any, 0),
+		must:    make([]map[string]any, 0),
+		should:  make([]map[string]any, 0),
+		mustNot: make([]map[string]any, 0),
 		size:    10,
-		aggs:    make(map[string]interface{}),
+		aggs:    make(map[string]any),
 	}
 }
 
 // Match 添加 match 查询
-func (b *SearchBuilder) Match(field string, value interface{}) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *SearchBuilder) Match(field string, value any) *SearchBuilder {
+	b.must = append(b.must, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -53,9 +53,9 @@ func (b *SearchBuilder) Match(field string, value interface{}) *SearchBuilder {
 }
 
 // MatchPhrase 添加 match_phrase 查询
-func (b *SearchBuilder) MatchPhrase(field string, value interface{}) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match_phrase": map[string]interface{}{
+func (b *SearchBuilder) MatchPhrase(field string, value any) *SearchBuilder {
+	b.must = append(b.must, map[string]any{
+		"match_phrase": map[string]any{
 			field: value,
 		},
 	})
@@ -63,9 +63,9 @@ func (b *SearchBuilder) MatchPhrase(field string, value interface{}) *SearchBuil
 }
 
 // Term 添加 term 查询
-func (b *SearchBuilder) Term(field string, value interface{}) *SearchBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *SearchBuilder) Term(field string, value any) *SearchBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -73,9 +73,9 @@ func (b *SearchBuilder) Term(field string, value interface{}) *SearchBuilder {
 }
 
 // Terms 添加 terms 查询
-func (b *SearchBuilder) Terms(field string, values ...interface{}) *SearchBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"terms": map[string]interface{}{
+func (b *SearchBuilder) Terms(field string, values ...any) *SearchBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"terms": map[string]any{
 			field: values,
 		},
 	})
@@ -83,16 +83,16 @@ func (b *SearchBuilder) Terms(field string, values ...interface{}) *SearchBuilde
 }
 
 // Range 添加范围查询
-func (b *SearchBuilder) Range(field string, gte, lte interface{}) *SearchBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *SearchBuilder) Range(field string, gte, lte any) *SearchBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.filters = append(b.filters, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -101,8 +101,8 @@ func (b *SearchBuilder) Range(field string, gte, lte interface{}) *SearchBuilder
 
 // Exists 添加字段存在查询
 func (b *SearchBuilder) Exists(field string) *SearchBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"exists": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"exists": map[string]any{
 			"field": field,
 		},
 	})
@@ -111,8 +111,8 @@ func (b *SearchBuilder) Exists(field string) *SearchBuilder {
 
 // Wildcard 添加通配符查询
 func (b *SearchBuilder) Wildcard(field string, value string) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"wildcard": map[string]interface{}{
+	b.must = append(b.must, map[string]any{
+		"wildcard": map[string]any{
 			field: value,
 		},
 	})
@@ -121,8 +121,8 @@ func (b *SearchBuilder) Wildcard(field string, value string) *SearchBuilder {
 
 // Prefix 添加前缀查询
 func (b *SearchBuilder) Prefix(field string, value string) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"prefix": map[string]interface{}{
+	b.must = append(b.must, map[string]any{
+		"prefix": map[string]any{
 			field: value,
 		},
 	})
@@ -131,8 +131,8 @@ func (b *SearchBuilder) Prefix(field string, value string) *SearchBuilder {
 
 // Regexp 添加正则表达式查询
 func (b *SearchBuilder) Regexp(field string, value string) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"regexp": map[string]interface{}{
+	b.must = append(b.must, map[string]any{
+		"regexp": map[string]any{
 			field: value,
 		},
 	})
@@ -140,15 +140,15 @@ func (b *SearchBuilder) Regexp(field string, value string) *SearchBuilder {
 }
 
 // Fuzzy 添加模糊查询
-func (b *SearchBuilder) Fuzzy(field string, value string, fuzziness interface{}) *SearchBuilder {
-	fuzzyQuery := map[string]interface{}{
+func (b *SearchBuilder) Fuzzy(field string, value string, fuzziness any) *SearchBuilder {
+	fuzzyQuery := map[string]any{
 		"value": value,
 	}
 	if fuzziness != nil {
 		fuzzyQuery["fuzziness"] = fuzziness
 	}
-	b.must = append(b.must, map[string]interface{}{
-		"fuzzy": map[string]interface{}{
+	b.must = append(b.must, map[string]any{
+		"fuzzy": map[string]any{
 			field: fuzzyQuery,
 		},
 	})
@@ -157,16 +157,16 @@ func (b *SearchBuilder) Fuzzy(field string, value string, fuzziness interface{})
 
 // MatchAll 匹配所有文档
 func (b *SearchBuilder) MatchAll() *SearchBuilder {
-	b.query = map[string]interface{}{
-		"match_all": map[string]interface{}{},
+	b.query = map[string]any{
+		"match_all": map[string]any{},
 	}
 	return b
 }
 
 // MultiMatch 多字段匹配
 func (b *SearchBuilder) MultiMatch(query string, fields ...string) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"multi_match": map[string]interface{}{
+	b.must = append(b.must, map[string]any{
+		"multi_match": map[string]any{
 			"query":  query,
 			"fields": fields,
 		},
@@ -176,13 +176,13 @@ func (b *SearchBuilder) MultiMatch(query string, fields ...string) *SearchBuilde
 
 // QueryString 查询字符串
 func (b *SearchBuilder) QueryString(query string, fields ...string) *SearchBuilder {
-	qs := map[string]interface{}{
+	qs := map[string]any{
 		"query": query,
 	}
 	if len(fields) > 0 {
 		qs["fields"] = fields
 	}
-	b.must = append(b.must, map[string]interface{}{
+	b.must = append(b.must, map[string]any{
 		"query_string": qs,
 	})
 	return b
@@ -190,8 +190,8 @@ func (b *SearchBuilder) QueryString(query string, fields ...string) *SearchBuild
 
 // IDs 按 ID 查询
 func (b *SearchBuilder) IDs(ids ...string) *SearchBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"ids": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"ids": map[string]any{
 			"values": ids,
 		},
 	})
@@ -200,10 +200,10 @@ func (b *SearchBuilder) IDs(ids ...string) *SearchBuilder {
 
 // GeoDistance 地理距离查询
 func (b *SearchBuilder) GeoDistance(field string, lat, lon float64, distance string) *SearchBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"geo_distance": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"geo_distance": map[string]any{
 			"distance": distance,
-			field: map[string]interface{}{
+			field: map[string]any{
 				"lat": lat,
 				"lon": lon,
 			},
@@ -214,14 +214,14 @@ func (b *SearchBuilder) GeoDistance(field string, lat, lon float64, distance str
 
 // GeoBoundingBox 地理边界框查询
 func (b *SearchBuilder) GeoBoundingBox(field string, topLat, topLon, bottomLat, bottomLon float64) *SearchBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"geo_bounding_box": map[string]interface{}{
-			field: map[string]interface{}{
-				"top_left": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"geo_bounding_box": map[string]any{
+			field: map[string]any{
+				"top_left": map[string]any{
 					"lat": topLat,
 					"lon": topLon,
 				},
-				"bottom_right": map[string]interface{}{
+				"bottom_right": map[string]any{
 					"lat": bottomLat,
 					"lon": bottomLon,
 				},
@@ -232,9 +232,9 @@ func (b *SearchBuilder) GeoBoundingBox(field string, topLat, topLon, bottomLat, 
 }
 
 // Nested 嵌套查询
-func (b *SearchBuilder) Nested(path string, query map[string]interface{}) *SearchBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"nested": map[string]interface{}{
+func (b *SearchBuilder) Nested(path string, query map[string]any) *SearchBuilder {
+	b.must = append(b.must, map[string]any{
+		"nested": map[string]any{
 			"path":  path,
 			"query": query,
 		},
@@ -252,7 +252,7 @@ func (b *SearchBuilder) MinScore(score float64) *SearchBuilder {
 // 参数可以是：
 // - 整数：至少匹配的 should 条件数量，如 2 表示至少匹配2个条件
 // - 字符串：百分比或表达式，如 "75%" 表示至少匹配75%的条件
-func (b *SearchBuilder) MinimumShouldMatch(value interface{}) *SearchBuilder {
+func (b *SearchBuilder) MinimumShouldMatch(value any) *SearchBuilder {
 	b.minimumShouldMatch = value
 	return b
 }
@@ -261,8 +261,8 @@ func (b *SearchBuilder) MinimumShouldMatch(value interface{}) *SearchBuilder {
 func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilder {
 	for _, condition := range conditions {
 		temp := &SearchBuilder{
-			must:    make([]map[string]interface{}, 0),
-			filters: make([]map[string]interface{}, 0),
+			must:    make([]map[string]any, 0),
+			filters: make([]map[string]any, 0),
 		}
 		condition(temp)
 		if len(temp.must) > 0 {
@@ -278,9 +278,9 @@ func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilde
 // ========== Should 条件（更友好的 API）==========
 
 // MatchShould 添加 match 查询到 should 条件
-func (b *SearchBuilder) MatchShould(field string, value interface{}) *SearchBuilder {
-	b.should = append(b.should, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *SearchBuilder) MatchShould(field string, value any) *SearchBuilder {
+	b.should = append(b.should, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -288,9 +288,9 @@ func (b *SearchBuilder) MatchShould(field string, value interface{}) *SearchBuil
 }
 
 // TermShould 添加 term 查询到 should 条件
-func (b *SearchBuilder) TermShould(field string, value interface{}) *SearchBuilder {
-	b.should = append(b.should, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *SearchBuilder) TermShould(field string, value any) *SearchBuilder {
+	b.should = append(b.should, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -298,16 +298,16 @@ func (b *SearchBuilder) TermShould(field string, value interface{}) *SearchBuild
 }
 
 // RangeShould 添加范围查询到 should 条件
-func (b *SearchBuilder) RangeShould(field string, gte, lte interface{}) *SearchBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *SearchBuilder) RangeShould(field string, gte, lte any) *SearchBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.should = append(b.should, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.should = append(b.should, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -317,9 +317,9 @@ func (b *SearchBuilder) RangeShould(field string, gte, lte interface{}) *SearchB
 // ========== Must Not 条件（更友好的 API）==========
 
 // MustNot 添加 must_not 条件（term 查询）
-func (b *SearchBuilder) MustNot(field string, value interface{}) *SearchBuilder {
-	b.mustNot = append(b.mustNot, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *SearchBuilder) MustNot(field string, value any) *SearchBuilder {
+	b.mustNot = append(b.mustNot, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -327,9 +327,9 @@ func (b *SearchBuilder) MustNot(field string, value interface{}) *SearchBuilder 
 }
 
 // MatchMustNot 添加 match 查询到 must_not 条件
-func (b *SearchBuilder) MatchMustNot(field string, value interface{}) *SearchBuilder {
-	b.mustNot = append(b.mustNot, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *SearchBuilder) MatchMustNot(field string, value any) *SearchBuilder {
+	b.mustNot = append(b.mustNot, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -337,21 +337,21 @@ func (b *SearchBuilder) MatchMustNot(field string, value interface{}) *SearchBui
 }
 
 // TermMustNot 添加 term 查询到 must_not 条件（等同于 MustNot，提供别名以保持一致性）
-func (b *SearchBuilder) TermMustNot(field string, value interface{}) *SearchBuilder {
+func (b *SearchBuilder) TermMustNot(field string, value any) *SearchBuilder {
 	return b.MustNot(field, value)
 }
 
 // RangeMustNot 添加范围查询到 must_not 条件
-func (b *SearchBuilder) RangeMustNot(field string, gte, lte interface{}) *SearchBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *SearchBuilder) RangeMustNot(field string, gte, lte any) *SearchBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.mustNot = append(b.mustNot, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.mustNot = append(b.mustNot, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -373,8 +373,8 @@ func (b *SearchBuilder) Size(size int) *SearchBuilder {
 
 // Sort 添加排序
 func (b *SearchBuilder) Sort(field string, order string) *SearchBuilder {
-	b.sort = append(b.sort, map[string]interface{}{
-		field: map[string]interface{}{
+	b.sort = append(b.sort, map[string]any{
+		field: map[string]any{
 			"order": order,
 		},
 	})
@@ -389,8 +389,8 @@ func (b *SearchBuilder) Source(fields ...string) *SearchBuilder {
 
 // Agg 添加聚合
 func (b *SearchBuilder) Agg(name string, aggType string, field string) *SearchBuilder {
-	b.aggs[name] = map[string]interface{}{
-		aggType: map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		aggType: map[string]any{
 			"field": field,
 		},
 	}
@@ -399,11 +399,11 @@ func (b *SearchBuilder) Agg(name string, aggType string, field string) *SearchBu
 
 // Highlight 添加高亮
 func (b *SearchBuilder) Highlight(fields ...string) *SearchBuilder {
-	highlightFields := make(map[string]interface{})
+	highlightFields := make(map[string]any)
 	for _, field := range fields {
-		highlightFields[field] = map[string]interface{}{}
+		highlightFields[field] = map[string]any{}
 	}
-	b.highlight = map[string]interface{}{
+	b.highlight = map[string]any{
 		"fields": highlightFields,
 	}
 	return b
@@ -426,14 +426,14 @@ type SearchResponse struct {
 		} `json:"total"`
 		MaxScore float64 `json:"max_score"`
 		Hits     []struct {
-			Index     string                 `json:"_index"`
-			ID        string                 `json:"_id"`
-			Score     float64                `json:"_score"`
-			Source    map[string]interface{} `json:"_source"`
-			Highlight map[string][]string    `json:"highlight,omitempty"`
+			Index     string              `json:"_index"`
+			ID        string              `json:"_id"`
+			Score     float64             `json:"_score"`
+			Source    map[string]any      `json:"_source"`
+			Highlight map[string][]string `json:"highlight,omitempty"`
 		} `json:"hits"`
 	} `json:"hits"`
-	Aggregations map[string]interface{} `json:"aggregations,omitempty"`
+	Aggregations map[string]any `json:"aggregations,omitempty"`
 }
 
 // Scan 将搜索结果扫描到结构体切片中
@@ -483,12 +483,12 @@ func (r *SearchResponse) Scan(dest any) error {
 }
 
 // Build 构建查询 DSL
-func (b *SearchBuilder) Build() map[string]interface{} {
-	body := make(map[string]interface{})
+func (b *SearchBuilder) Build() map[string]any {
+	body := make(map[string]any)
 
 	// 构建 bool 查询
 	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]interface{})
+		boolQuery := make(map[string]any)
 		if len(b.must) > 0 {
 			boolQuery["must"] = b.must
 		}
@@ -505,7 +505,7 @@ func (b *SearchBuilder) Build() map[string]interface{} {
 		if b.minimumShouldMatch != nil {
 			boolQuery["minimum_should_match"] = b.minimumShouldMatch
 		}
-		body["query"] = map[string]interface{}{
+		body["query"] = map[string]any{
 			"bool": boolQuery,
 		}
 	}
@@ -544,30 +544,8 @@ func (b *SearchBuilder) Build() map[string]interface{} {
 
 // Debug 启用调试模式（链式调用）
 func (b *SearchBuilder) Debug() *SearchBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
-}
-
-// printDebug 打印请求调试信息
-func (b *SearchBuilder) printDebug(method, path string, body interface{}) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *SearchBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *SearchBuilder) resetDebug() {
-	b.debug = false
 }
 
 // Do 执行搜索
@@ -576,9 +554,9 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -587,8 +565,9 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var resp SearchResponse
@@ -601,7 +580,7 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 
 // CountResponse 计数响应
 type CountResponse struct {
-	Count int `json:"count"`
+	Count  int `json:"count"`
 	Shards struct {
 		Total      int `json:"total"`
 		Successful int `json:"successful"`
@@ -615,9 +594,9 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 	path := fmt.Sprintf("/%s/_count", b.index)
 
 	// 构建查询条件（不需要分页、排序等）
-	body := make(map[string]interface{})
+	body := make(map[string]any)
 	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]interface{})
+		boolQuery := make(map[string]any)
 		if len(b.must) > 0 {
 			boolQuery["must"] = b.must
 		}
@@ -630,15 +609,15 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 		if len(b.mustNot) > 0 {
 			boolQuery["must_not"] = b.mustNot
 		}
-		body["query"] = map[string]interface{}{
+		body["query"] = map[string]any{
 			"bool": boolQuery,
 		}
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -647,8 +626,9 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var resp CountResponse

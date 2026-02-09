@@ -203,7 +203,7 @@ func TestClusterBuilder_UpdateSettings(t *testing.T) {
 	// 更新临时设置
 	err := clusterBuilder.UpdateSettings(ctx,
 		nil, // persistent
-		map[string]interface{}{
+		map[string]any{
 			"cluster.routing.allocation.enable": "all",
 		},
 	)

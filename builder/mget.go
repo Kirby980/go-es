@@ -12,6 +12,7 @@ type MGetBuilder struct {
 	client ESClient
 	index  string
 	ids    []string
+	DebugHelper
 }
 
 // NewMGetBuilder 创建批量获取构建器
@@ -37,15 +38,21 @@ type MGetResponse struct {
 // Do 执行批量获取
 func (b *MGetBuilder) Do(ctx context.Context) (*MGetResponse, error) {
 	path := fmt.Sprintf("/%s/_mget", b.index)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"ids": b.ids,
 	}
-
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
+	}
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
 	if err != nil {
 		return nil, err
 	}
-
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
+	}
 	var resp MGetResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %w", err)

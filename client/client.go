@@ -131,7 +131,7 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 // Do 执行 HTTP 请求
-func (c *Client) Do(ctx context.Context, method, path string, body interface{}) ([]byte, error) {
+func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte, error) {
 	var reqBody io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)

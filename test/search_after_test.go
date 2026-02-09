@@ -48,7 +48,7 @@ func prepareSearchAfterTestData(t *testing.T, client *client.Client, indexName s
 	// 批量插入测试数据
 	bulk := builder.NewBulkBuilder(client).Index(indexName)
 	for i := 1; i <= docCount; i++ {
-		bulk.Add("", "", map[string]interface{}{
+		bulk.Add("", "", map[string]any{
 			"id":         i,
 			"title":      "商品 " + string(rune(i)),
 			"category":   getCategory(i),
@@ -631,7 +631,7 @@ func TestSearchAfterBuilder_Build(t *testing.T) {
 		t.Error("应该包含search_after字段")
 	}
 
-	searchAfterValues, ok := body2["search_after"].([]interface{})
+	searchAfterValues, ok := body2["search_after"].([]any)
 	if !ok || len(searchAfterValues) != 2 {
 		t.Error("search_after应该包含2个值")
 	}

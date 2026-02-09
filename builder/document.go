@@ -13,8 +13,8 @@ type DocumentBuilder struct {
 	client  ESClient
 	index   string
 	id      string
-	doc     map[string]interface{}
-	script  map[string]interface{}
+	doc     map[string]any
+	script  map[string]any
 	refresh string // refresh 参数: true, false, wait_for
 	debug   bool   // 调试模式标志
 }
@@ -24,7 +24,7 @@ func NewDocumentBuilder(c ESClient, index string) *DocumentBuilder {
 	return &DocumentBuilder{
 		client: c,
 		index:  index,
-		doc:    make(map[string]interface{}),
+		doc:    make(map[string]any),
 	}
 }
 
@@ -57,13 +57,13 @@ func (b *DocumentBuilder) ID(id string) *DocumentBuilder {
 }
 
 // Set 设置字段值
-func (b *DocumentBuilder) Set(field string, value interface{}) *DocumentBuilder {
+func (b *DocumentBuilder) Set(field string, value any) *DocumentBuilder {
 	b.doc[field] = value
 	return b
 }
 
 // SetMap 批量设置字段
-func (b *DocumentBuilder) SetMap(data map[string]interface{}) *DocumentBuilder {
+func (b *DocumentBuilder) SetMap(data map[string]any) *DocumentBuilder {
 	for k, v := range data {
 		b.doc[k] = v
 	}
@@ -71,7 +71,7 @@ func (b *DocumentBuilder) SetMap(data map[string]interface{}) *DocumentBuilder {
 }
 
 // SetStruct 从结构体设置
-func (b *DocumentBuilder) SetStruct(data interface{}) *DocumentBuilder {
+func (b *DocumentBuilder) SetStruct(data any) *DocumentBuilder {
 	jsonData, _ := json.Marshal(data)
 	json.Unmarshal(jsonData, &b.doc)
 	return b
@@ -79,23 +79,23 @@ func (b *DocumentBuilder) SetStruct(data interface{}) *DocumentBuilder {
 
 // SetObject 设置嵌套对象
 func (b *DocumentBuilder) SetObject(key string, builder func(*NestedObject)) *DocumentBuilder {
-	nested := &NestedObject{data: make(map[string]interface{})}
+	nested := &NestedObject{data: make(map[string]any)}
 	builder(nested)
 	b.doc[key] = nested.data
 	return b
 }
 
 // SetArray 设置数组字段
-func (b *DocumentBuilder) SetArray(key string, values ...interface{}) *DocumentBuilder {
+func (b *DocumentBuilder) SetArray(key string, values ...any) *DocumentBuilder {
 	b.doc[key] = values
 	return b
 }
 
 // SetObjectArray 设置对象数组
 func (b *DocumentBuilder) SetObjectArray(key string, builders ...func(*NestedObject)) *DocumentBuilder {
-	arr := make([]map[string]interface{}, len(builders))
+	arr := make([]map[string]any, len(builders))
 	for i, builder := range builders {
-		nested := &NestedObject{data: make(map[string]interface{})}
+		nested := &NestedObject{data: make(map[string]any)}
 		builder(nested)
 		arr[i] = nested.data
 	}
@@ -127,7 +127,7 @@ func (b *DocumentBuilder) Debug() *DocumentBuilder {
 }
 
 // printDebug 打印请求调试信息
-func (b *DocumentBuilder) printDebug(method, path string, body interface{}) {
+func (b *DocumentBuilder) printDebug(method, path string, body any) {
 	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
 	if body != nil {
 		data, _ := json.MarshalIndent(body, "", "  ")
@@ -137,7 +137,7 @@ func (b *DocumentBuilder) printDebug(method, path string, body interface{}) {
 
 // printResponse 打印响应调试信息
 func (b *DocumentBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
+	var pretty any
 	json.Unmarshal(respBody, &pretty)
 	data, _ := json.MarshalIndent(pretty, "", "  ")
 	fmt.Printf("Response:\n%s\n\n", string(data))
@@ -149,8 +149,8 @@ func (b *DocumentBuilder) resetDebug() {
 }
 
 // Script 设置脚本更新
-func (b *DocumentBuilder) Script(source string, params map[string]interface{}) *DocumentBuilder {
-	b.script = map[string]interface{}{
+func (b *DocumentBuilder) Script(source string, params map[string]any) *DocumentBuilder {
+	b.script = map[string]any{
 		"source": source,
 		"lang":   "painless",
 	}
@@ -175,11 +175,11 @@ type DocumentResponse struct {
 
 // GetResponse 获取文档响应
 type GetResponse struct {
-	Index   string                 `json:"_index"`
-	ID      string                 `json:"_id"`
-	Version int                    `json:"_version"`
-	Found   bool                   `json:"found"`
-	Source  map[string]interface{} `json:"_source"`
+	Index   string         `json:"_index"`
+	ID      string         `json:"_id"`
+	Version int            `json:"_version"`
+	Found   bool           `json:"found"`
+	Source  map[string]any `json:"_source"`
 }
 
 // Do 索引文档（创建或更新）
@@ -264,7 +264,7 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 	path := fmt.Sprintf("/%s/_update/%s", b.index, b.id)
 	path = b.buildPath(path)
 
-	updateBody := make(map[string]interface{})
+	updateBody := make(map[string]any)
 	if b.script != nil {
 		updateBody["script"] = b.script
 	} else {
@@ -304,7 +304,7 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 	path := fmt.Sprintf("/%s/_update/%s", b.index, b.id)
 	path = b.buildPath(path)
 
-	updateBody := map[string]interface{}{
+	updateBody := map[string]any{
 		"doc":           b.doc,
 		"doc_as_upsert": true,
 	}

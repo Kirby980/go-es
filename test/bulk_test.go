@@ -25,15 +25,15 @@ func TestBulkBuilder_IndexOperations(t *testing.T) {
 	// 批量索引
 	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Add("", "bulk1", map[string]interface{}{
+		Add("", "bulk1", map[string]any{
 			"title": "批量文档1",
 			"views": 100,
 		}).
-		Add("", "bulk2", map[string]interface{}{
+		Add("", "bulk2", map[string]any{
 			"title": "批量文档2",
 			"views": 200,
 		}).
-		Add("", "bulk3", map[string]interface{}{
+		Add("", "bulk3", map[string]any{
 			"title": "批量文档3",
 			"views": 300,
 		}).
@@ -81,11 +81,11 @@ func TestBulkBuilder_MixedOperations(t *testing.T) {
 	// 混合操作：索引、更新、删除
 	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Add("", "mixed3", map[string]interface{}{
+		Add("", "mixed3", map[string]any{
 			"title": "新文档3",
 			"views": 300,
 		}).
-		Update("", "mixed1", map[string]interface{}{
+		Update("", "mixed1", map[string]any{
 			"views": 150,
 		}).
 		Delete("", "mixed2").
@@ -120,10 +120,10 @@ func TestBulkBuilder_CreateOperations(t *testing.T) {
 	// 批量创建
 	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Create("", "create1", map[string]interface{}{
+		Create("", "create1", map[string]any{
 			"title": "创建文档1",
 		}).
-		Create("", "create2", map[string]interface{}{
+		Create("", "create2", map[string]any{
 			"title": "创建文档2",
 		}).
 		Do(ctx)
@@ -137,10 +137,10 @@ func TestBulkBuilder_CreateOperations(t *testing.T) {
 	// 再次创建相同 ID 应该部分失败
 	resp2, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Create("", "create1", map[string]interface{}{
+		Create("", "create1", map[string]any{
 			"title": "重复文档",
 		}).
-		Create("", "create3", map[string]interface{}{
+		Create("", "create3", map[string]any{
 			"title": "新文档3",
 		}).
 		Do(ctx)
@@ -187,10 +187,10 @@ func TestBulkBuilder_UpdateOperations(t *testing.T) {
 	// 批量更新
 	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Update("", "update1", map[string]interface{}{
+		Update("", "update1", map[string]any{
 			"views": 150,
 		}).
-		Update("", "update2", map[string]interface{}{
+		Update("", "update2", map[string]any{
 			"views": 250,
 		}).
 		Do(ctx)
@@ -281,8 +281,8 @@ func TestBulkBuilder_Clear(t *testing.T) {
 
 	builder := builder.NewBulkBuilder(client).
 		Index("test").
-		Add("", "1", map[string]interface{}{"title": "doc1"}).
-		Add("", "2", map[string]interface{}{"title": "doc2"})
+		Add("", "1", map[string]any{"title": "doc1"}).
+		Add("", "2", map[string]any{"title": "doc2"})
 
 	if builder.Count() != 2 {
 		t.Errorf("期望 2 个操作, 实际=%d", builder.Count())
@@ -304,8 +304,8 @@ func TestBulkBuilder_Count(t *testing.T) {
 
 	builder := builder.NewBulkBuilder(client).
 		Index("test").
-		Add("", "1", map[string]interface{}{"title": "doc1"}).
-		Update("", "2", map[string]interface{}{"title": "doc2"}).
+		Add("", "1", map[string]any{"title": "doc1"}).
+		Update("", "2", map[string]any{"title": "doc2"}).
 		Delete("", "3")
 
 	if builder.Count() != 3 {
@@ -322,8 +322,8 @@ func TestBulkBuilder_Build(t *testing.T) {
 
 	builder := builder.NewBulkBuilder(client).
 		Index("test").
-		Add("", "1", map[string]interface{}{"title": "doc1"}).
-		Update("", "2", map[string]interface{}{"title": "doc2"}).
+		Add("", "1", map[string]any{"title": "doc1"}).
+		Update("", "2", map[string]any{"title": "doc2"}).
 		Delete("", "3")
 
 	body := builder.Build()
@@ -350,12 +350,12 @@ func TestBulkBuilder_ErrorHandling(t *testing.T) {
 	// 创建一些会成功和会失败的操作
 	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Add("", "success1", map[string]interface{}{
+		Add("", "success1", map[string]any{
 			"title": "成功文档",
 			"views": 100,
 		}).
 		// 这个可能会失败（如果映射不匹配）
-		Add("", "success2", map[string]interface{}{
+		Add("", "success2", map[string]any{
 			"title": "另一个成功文档",
 			"views": "invalid", // 尝试用字符串赋值给整数字段
 		}).
@@ -519,14 +519,14 @@ func TestBulkBuilder_MixedAPIStyles(t *testing.T) {
 	// 混用传统 map 方式和链式调用方式
 	resp, err := builder.NewBulkBuilder(client).
 		Index(indexName).
-		Add("", "map1", map[string]interface{}{
+		Add("", "map1", map[string]any{
 			"title": "Map方式1",
 			"views": 100,
 		}).
 		AddDoc("chain1").
 		Set("title", "链式方式1").
 		Set("views", 200).
-		Add("", "map2", map[string]interface{}{
+		Add("", "map2", map[string]any{
 			"title": "Map方式2",
 			"views": 300,
 		}).
@@ -599,12 +599,12 @@ func TestBulkBuilder_ChainedWithbuilderNestedObject(t *testing.T) {
 		ID("nested1").
 		Get(ctx)
 
-	user := getResp.Source["user"].(map[string]interface{})
+	user := getResp.Source["user"].(map[string]any)
 	if user["name"] != "张三" {
 		t.Errorf("user.name 应该为 '张三', 实际=%v", user["name"])
 	}
 
-	address := user["address"].(map[string]interface{})
+	address := user["address"].(map[string]any)
 	if address["city"] != "北京" {
 		t.Errorf("user.address.city 应该为 '北京', 实际=%v", address["city"])
 	}
@@ -660,12 +660,12 @@ func TestBulkBuilder_ChainedWithObjectArray(t *testing.T) {
 		ID("array1").
 		Get(ctx)
 
-	comments := getResp.Source["comments"].([]interface{})
+	comments := getResp.Source["comments"].([]any)
 	if len(comments) != 2 {
 		t.Errorf("应该有 2 条评论, 实际=%d", len(comments))
 	}
 
-	tags := getResp.Source["tags"].([]interface{})
+	tags := getResp.Source["tags"].([]any)
 	if len(tags) != 3 {
 		t.Errorf("tags 应该有 3 个元素, 实际=%d", len(tags))
 	}
@@ -731,13 +731,13 @@ func TestBulkBuilder_ComplexNested(t *testing.T) {
 		ID("complex1").
 		Get(ctx)
 
-	creator := getResp.Source["creator"].(map[string]interface{})
-	profile := creator["profile"].(map[string]interface{})
+	creator := getResp.Source["creator"].(map[string]any)
+	profile := creator["profile"].(map[string]any)
 	if profile["bio"] != "简介" {
 		t.Error("creator.profile.bio 不正确")
 	}
 
-	projects := creator["projects"].([]interface{})
+	projects := creator["projects"].([]any)
 	if len(projects) != 2 {
 		t.Errorf("projects 应该有 2 个元素, 实际=%d", len(projects))
 	}

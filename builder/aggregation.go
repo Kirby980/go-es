@@ -11,8 +11,8 @@ import (
 type AggregationBuilder struct {
 	client ESClient
 	index  string
-	query  map[string]interface{}
-	aggs   map[string]interface{}
+	query  map[string]any
+	aggs   map[string]any
 	size   int
 	debug  bool // 调试模式标志
 }
@@ -22,13 +22,13 @@ func NewAggregationBuilder(c ESClient, index string) *AggregationBuilder {
 	return &AggregationBuilder{
 		client: c,
 		index:  index,
-		aggs:   make(map[string]interface{}),
+		aggs:   make(map[string]any),
 		size:   0, // 聚合时默认不返回文档
 	}
 }
 
 // Query 设置查询条件
-func (b *AggregationBuilder) Query(query map[string]interface{}) *AggregationBuilder {
+func (b *AggregationBuilder) Query(query map[string]any) *AggregationBuilder {
 	b.query = query
 	return b
 }
@@ -43,8 +43,8 @@ func (b *AggregationBuilder) Size(size int) *AggregationBuilder {
 
 // Avg 平均值聚合
 func (b *AggregationBuilder) Avg(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"avg": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"avg": map[string]any{
 			"field": field,
 		},
 	}
@@ -53,8 +53,8 @@ func (b *AggregationBuilder) Avg(name, field string) *AggregationBuilder {
 
 // Sum 求和聚合
 func (b *AggregationBuilder) Sum(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"sum": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"sum": map[string]any{
 			"field": field,
 		},
 	}
@@ -63,8 +63,8 @@ func (b *AggregationBuilder) Sum(name, field string) *AggregationBuilder {
 
 // Min 最小值聚合
 func (b *AggregationBuilder) Min(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"min": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"min": map[string]any{
 			"field": field,
 		},
 	}
@@ -73,8 +73,8 @@ func (b *AggregationBuilder) Min(name, field string) *AggregationBuilder {
 
 // Max 最大值聚合
 func (b *AggregationBuilder) Max(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"max": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"max": map[string]any{
 			"field": field,
 		},
 	}
@@ -83,8 +83,8 @@ func (b *AggregationBuilder) Max(name, field string) *AggregationBuilder {
 
 // Count 计数聚合
 func (b *AggregationBuilder) Count(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"value_count": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"value_count": map[string]any{
 			"field": field,
 		},
 	}
@@ -93,8 +93,8 @@ func (b *AggregationBuilder) Count(name, field string) *AggregationBuilder {
 
 // Stats 统计聚合（count, min, max, avg, sum）
 func (b *AggregationBuilder) Stats(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"stats": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"stats": map[string]any{
 			"field": field,
 		},
 	}
@@ -103,8 +103,8 @@ func (b *AggregationBuilder) Stats(name, field string) *AggregationBuilder {
 
 // ExtendedStats 扩展统计聚合
 func (b *AggregationBuilder) ExtendedStats(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"extended_stats": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"extended_stats": map[string]any{
 			"field": field,
 		},
 	}
@@ -113,8 +113,8 @@ func (b *AggregationBuilder) ExtendedStats(name, field string) *AggregationBuild
 
 // Cardinality 基数聚合（唯一值数量）
 func (b *AggregationBuilder) Cardinality(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"cardinality": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"cardinality": map[string]any{
 			"field": field,
 		},
 	}
@@ -123,13 +123,13 @@ func (b *AggregationBuilder) Cardinality(name, field string) *AggregationBuilder
 
 // Percentiles 百分位聚合
 func (b *AggregationBuilder) Percentiles(name, field string, percents ...float64) *AggregationBuilder {
-	agg := map[string]interface{}{
+	agg := map[string]any{
 		"field": field,
 	}
 	if len(percents) > 0 {
 		agg["percents"] = percents
 	}
-	b.aggs[name] = map[string]interface{}{
+	b.aggs[name] = map[string]any{
 		"percentiles": agg,
 	}
 	return b
@@ -139,13 +139,13 @@ func (b *AggregationBuilder) Percentiles(name, field string, percents ...float64
 
 // Terms 词条聚合（分组）
 func (b *AggregationBuilder) Terms(name, field string, size int) *AggregationBuilder {
-	termsAgg := map[string]interface{}{
+	termsAgg := map[string]any{
 		"field": field,
 	}
 	if size > 0 {
 		termsAgg["size"] = size
 	}
-	b.aggs[name] = map[string]interface{}{
+	b.aggs[name] = map[string]any{
 		"terms": termsAgg,
 	}
 	return b
@@ -153,16 +153,16 @@ func (b *AggregationBuilder) Terms(name, field string, size int) *AggregationBui
 
 // TermsWithOrder 带排序的词条聚合
 func (b *AggregationBuilder) TermsWithOrder(name, field string, size int, orderBy string, order string) *AggregationBuilder {
-	termsAgg := map[string]interface{}{
+	termsAgg := map[string]any{
 		"field": field,
-		"order": map[string]interface{}{
+		"order": map[string]any{
 			orderBy: order,
 		},
 	}
 	if size > 0 {
 		termsAgg["size"] = size
 	}
-	b.aggs[name] = map[string]interface{}{
+	b.aggs[name] = map[string]any{
 		"terms": termsAgg,
 	}
 	return b
@@ -170,8 +170,8 @@ func (b *AggregationBuilder) TermsWithOrder(name, field string, size int, orderB
 
 // Histogram 直方图聚合
 func (b *AggregationBuilder) Histogram(name, field string, interval float64) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"histogram": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"histogram": map[string]any{
 			"field":    field,
 			"interval": interval,
 		},
@@ -181,8 +181,8 @@ func (b *AggregationBuilder) Histogram(name, field string, interval float64) *Ag
 
 // DateHistogram 日期直方图聚合
 func (b *AggregationBuilder) DateHistogram(name, field, interval string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"date_histogram": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"date_histogram": map[string]any{
 			"field":             field,
 			"calendar_interval": interval, // 1d, 1w, 1M, 1y 等
 		},
@@ -192,8 +192,8 @@ func (b *AggregationBuilder) DateHistogram(name, field, interval string) *Aggreg
 
 // DateHistogramFixed 固定间隔日期直方图
 func (b *AggregationBuilder) DateHistogramFixed(name, field, interval string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"date_histogram": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"date_histogram": map[string]any{
 			"field":          field,
 			"fixed_interval": interval, // 30s, 1m, 1h 等
 		},
@@ -202,9 +202,9 @@ func (b *AggregationBuilder) DateHistogramFixed(name, field, interval string) *A
 }
 
 // Range 范围聚合
-func (b *AggregationBuilder) Range(name, field string, ranges []map[string]interface{}) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"range": map[string]interface{}{
+func (b *AggregationBuilder) Range(name, field string, ranges []map[string]any) *AggregationBuilder {
+	b.aggs[name] = map[string]any{
+		"range": map[string]any{
 			"field":  field,
 			"ranges": ranges,
 		},
@@ -213,9 +213,9 @@ func (b *AggregationBuilder) Range(name, field string, ranges []map[string]inter
 }
 
 // DateRange 日期范围聚合
-func (b *AggregationBuilder) DateRange(name, field string, ranges []map[string]interface{}) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"date_range": map[string]interface{}{
+func (b *AggregationBuilder) DateRange(name, field string, ranges []map[string]any) *AggregationBuilder {
+	b.aggs[name] = map[string]any{
+		"date_range": map[string]any{
 			"field":  field,
 			"ranges": ranges,
 		},
@@ -224,17 +224,17 @@ func (b *AggregationBuilder) DateRange(name, field string, ranges []map[string]i
 }
 
 // Filter 过滤器聚合
-func (b *AggregationBuilder) Filter(name string, filter map[string]interface{}) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
+func (b *AggregationBuilder) Filter(name string, filter map[string]any) *AggregationBuilder {
+	b.aggs[name] = map[string]any{
 		"filter": filter,
 	}
 	return b
 }
 
 // Filters 多过滤器聚合
-func (b *AggregationBuilder) Filters(name string, filters map[string]interface{}) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"filters": map[string]interface{}{
+func (b *AggregationBuilder) Filters(name string, filters map[string]any) *AggregationBuilder {
+	b.aggs[name] = map[string]any{
+		"filters": map[string]any{
 			"filters": filters,
 		},
 	}
@@ -243,8 +243,8 @@ func (b *AggregationBuilder) Filters(name string, filters map[string]interface{}
 
 // Missing 缺失值聚合
 func (b *AggregationBuilder) Missing(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"missing": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"missing": map[string]any{
 			"field": field,
 		},
 	}
@@ -254,9 +254,9 @@ func (b *AggregationBuilder) Missing(name, field string) *AggregationBuilder {
 // ========== 嵌套聚合 ==========
 
 // SubAgg 添加子聚合
-func (b *AggregationBuilder) SubAgg(parentName string, subAgg map[string]interface{}) *AggregationBuilder {
+func (b *AggregationBuilder) SubAgg(parentName string, subAgg map[string]any) *AggregationBuilder {
 	if parent, ok := b.aggs[parentName]; ok {
-		if parentMap, ok := parent.(map[string]interface{}); ok {
+		if parentMap, ok := parent.(map[string]any); ok {
 			parentMap["aggs"] = subAgg
 		}
 	}
@@ -267,8 +267,8 @@ func (b *AggregationBuilder) SubAgg(parentName string, subAgg map[string]interfa
 
 // AvgBucket 平均桶聚合
 func (b *AggregationBuilder) AvgBucket(name, bucketsPath string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"avg_bucket": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"avg_bucket": map[string]any{
 			"buckets_path": bucketsPath,
 		},
 	}
@@ -277,8 +277,8 @@ func (b *AggregationBuilder) AvgBucket(name, bucketsPath string) *AggregationBui
 
 // SumBucket 求和桶聚合
 func (b *AggregationBuilder) SumBucket(name, bucketsPath string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"sum_bucket": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"sum_bucket": map[string]any{
 			"buckets_path": bucketsPath,
 		},
 	}
@@ -287,8 +287,8 @@ func (b *AggregationBuilder) SumBucket(name, bucketsPath string) *AggregationBui
 
 // MaxBucket 最大桶聚合
 func (b *AggregationBuilder) MaxBucket(name, bucketsPath string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"max_bucket": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"max_bucket": map[string]any{
 			"buckets_path": bucketsPath,
 		},
 	}
@@ -297,8 +297,8 @@ func (b *AggregationBuilder) MaxBucket(name, bucketsPath string) *AggregationBui
 
 // MinBucket 最小桶聚合
 func (b *AggregationBuilder) MinBucket(name, bucketsPath string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"min_bucket": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"min_bucket": map[string]any{
 			"buckets_path": bucketsPath,
 		},
 	}
@@ -307,8 +307,8 @@ func (b *AggregationBuilder) MinBucket(name, bucketsPath string) *AggregationBui
 
 // MovingAvg 移动平均聚合
 func (b *AggregationBuilder) MovingAvg(name, bucketsPath string, window int) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"moving_avg": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"moving_avg": map[string]any{
 			"buckets_path": bucketsPath,
 			"window":       window,
 		},
@@ -318,8 +318,8 @@ func (b *AggregationBuilder) MovingAvg(name, bucketsPath string, window int) *Ag
 
 // Derivative 导数聚合
 func (b *AggregationBuilder) Derivative(name, bucketsPath string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"derivative": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"derivative": map[string]any{
 			"buckets_path": bucketsPath,
 		},
 	}
@@ -328,8 +328,8 @@ func (b *AggregationBuilder) Derivative(name, bucketsPath string) *AggregationBu
 
 // CumulativeSum 累计求和聚合
 func (b *AggregationBuilder) CumulativeSum(name, bucketsPath string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"cumulative_sum": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"cumulative_sum": map[string]any{
 			"buckets_path": bucketsPath,
 		},
 	}
@@ -340,8 +340,8 @@ func (b *AggregationBuilder) CumulativeSum(name, bucketsPath string) *Aggregatio
 
 // GeoBounds 地理边界聚合
 func (b *AggregationBuilder) GeoBounds(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"geo_bounds": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"geo_bounds": map[string]any{
 			"field": field,
 		},
 	}
@@ -350,8 +350,8 @@ func (b *AggregationBuilder) GeoBounds(name, field string) *AggregationBuilder {
 
 // GeoCentroid 地理中心点聚合
 func (b *AggregationBuilder) GeoCentroid(name, field string) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"geo_centroid": map[string]interface{}{
+	b.aggs[name] = map[string]any{
+		"geo_centroid": map[string]any{
 			"field": field,
 		},
 	}
@@ -359,9 +359,9 @@ func (b *AggregationBuilder) GeoCentroid(name, field string) *AggregationBuilder
 }
 
 // GeoDistance 地理距离聚合
-func (b *AggregationBuilder) GeoDistance(name, field string, origin map[string]float64, ranges []map[string]interface{}) *AggregationBuilder {
-	b.aggs[name] = map[string]interface{}{
-		"geo_distance": map[string]interface{}{
+func (b *AggregationBuilder) GeoDistance(name, field string, origin map[string]float64, ranges []map[string]any) *AggregationBuilder {
+	b.aggs[name] = map[string]any{
+		"geo_distance": map[string]any{
 			"field":  field,
 			"origin": origin,
 			"ranges": ranges,
@@ -374,16 +374,16 @@ func (b *AggregationBuilder) GeoDistance(name, field string, origin map[string]f
 
 // AggregationResponse 聚合响应
 type AggregationResponse struct {
-	Took         int                    `json:"took"`
-	TimedOut     bool                   `json:"timed_out"`
-	Shards       map[string]interface{} `json:"_shards"`
-	Hits         map[string]interface{} `json:"hits"`
-	Aggregations map[string]interface{} `json:"aggregations"`
+	Took         int            `json:"took"`
+	TimedOut     bool           `json:"timed_out"`
+	Shards       map[string]any `json:"_shards"`
+	Hits         map[string]any `json:"hits"`
+	Aggregations map[string]any `json:"aggregations"`
 }
 
 // Build 构建聚合请求
-func (b *AggregationBuilder) Build() map[string]interface{} {
-	body := map[string]interface{}{
+func (b *AggregationBuilder) Build() map[string]any {
+	body := map[string]any{
 		"size": b.size,
 		"aggs": b.aggs,
 	}
@@ -402,7 +402,7 @@ func (b *AggregationBuilder) Debug() *AggregationBuilder {
 }
 
 // printDebug 打印请求调试信息
-func (b *AggregationBuilder) printDebug(method, path string, body interface{}) {
+func (b *AggregationBuilder) printDebug(method, path string, body any) {
 	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
 	if body != nil {
 		data, _ := json.MarshalIndent(body, "", "  ")
@@ -412,7 +412,7 @@ func (b *AggregationBuilder) printDebug(method, path string, body interface{}) {
 
 // printResponse 打印响应调试信息
 func (b *AggregationBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
+	var pretty any
 	json.Unmarshal(respBody, &pretty)
 	data, _ := json.MarshalIndent(pretty, "", "  ")
 	fmt.Printf("Response:\n%s\n\n", string(data))

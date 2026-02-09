@@ -33,7 +33,7 @@ func prepareSearchTestData(t *testing.T, esClient *client.Client, indexName stri
 	time.Sleep(500 * time.Millisecond)
 
 	// 插入测试数据
-	documents := []map[string]interface{}{
+	documents := []map[string]any{
 		{
 			"title":     "iPhone 15 Pro Max",
 			"content":   "最新款苹果手机，性能强劲",

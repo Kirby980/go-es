@@ -239,9 +239,9 @@ dateHistResp, _ := builder.NewAggregationBuilder(esClient, "orders").
 ```go
 bulkResp, err := builder.NewBulkBuilder(esClient).
     Index("products").
-    Add("", "1", map[string]interface{}{"name": "iPad Air", "price": 599.99}).
-    Add("", "2", map[string]interface{}{"name": "Apple Watch", "price": 399.99}).
-    Update("", "3", map[string]interface{}{"price": 349.99}).
+    Add("", "1", map[string]any{"name": "iPad Air", "price": 599.99}).
+    Add("", "2", map[string]any{"name": "Apple Watch", "price": 399.99}).
+    Update("", "3", map[string]any{"price": 349.99}).
     Delete("", "4").
     Do(ctx)
 

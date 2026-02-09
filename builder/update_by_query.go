@@ -11,12 +11,12 @@ import (
 type UpdateByQueryBuilder struct {
 	client  ESClient
 	index   string
-	filters []map[string]interface{}
-	must    []map[string]interface{}
-	should  []map[string]interface{}
-	mustNot []map[string]interface{}
-	script  map[string]interface{}
-	debug   bool
+	filters []map[string]any
+	must    []map[string]any
+	should  []map[string]any
+	mustNot []map[string]any
+	script  map[string]any
+	DebugHelper
 }
 
 // NewUpdateByQueryBuilder 创建按查询更新构建器
@@ -24,17 +24,17 @@ func NewUpdateByQueryBuilder(c ESClient, index string) *UpdateByQueryBuilder {
 	return &UpdateByQueryBuilder{
 		client:  c,
 		index:   index,
-		filters: make([]map[string]interface{}, 0),
-		must:    make([]map[string]interface{}, 0),
-		should:  make([]map[string]interface{}, 0),
-		mustNot: make([]map[string]interface{}, 0),
+		filters: make([]map[string]any, 0),
+		must:    make([]map[string]any, 0),
+		should:  make([]map[string]any, 0),
+		mustNot: make([]map[string]any, 0),
 	}
 }
 
 // Match 添加 match 查询条件
-func (b *UpdateByQueryBuilder) Match(field string, value interface{}) *UpdateByQueryBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *UpdateByQueryBuilder) Match(field string, value any) *UpdateByQueryBuilder {
+	b.must = append(b.must, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -42,9 +42,9 @@ func (b *UpdateByQueryBuilder) Match(field string, value interface{}) *UpdateByQ
 }
 
 // Term 添加 term 查询条件
-func (b *UpdateByQueryBuilder) Term(field string, value interface{}) *UpdateByQueryBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *UpdateByQueryBuilder) Term(field string, value any) *UpdateByQueryBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -52,9 +52,9 @@ func (b *UpdateByQueryBuilder) Term(field string, value interface{}) *UpdateByQu
 }
 
 // Terms 添加 terms 查询条件
-func (b *UpdateByQueryBuilder) Terms(field string, values ...interface{}) *UpdateByQueryBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"terms": map[string]interface{}{
+func (b *UpdateByQueryBuilder) Terms(field string, values ...any) *UpdateByQueryBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"terms": map[string]any{
 			field: values,
 		},
 	})
@@ -62,16 +62,16 @@ func (b *UpdateByQueryBuilder) Terms(field string, values ...interface{}) *Updat
 }
 
 // Range 添加范围查询条件
-func (b *UpdateByQueryBuilder) Range(field string, gte, lte interface{}) *UpdateByQueryBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *UpdateByQueryBuilder) Range(field string, gte, lte any) *UpdateByQueryBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.filters = append(b.filters, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -79,8 +79,8 @@ func (b *UpdateByQueryBuilder) Range(field string, gte, lte interface{}) *Update
 }
 
 // Script 设置更新脚本
-func (b *UpdateByQueryBuilder) Script(source string, params map[string]interface{}) *UpdateByQueryBuilder {
-	b.script = map[string]interface{}{
+func (b *UpdateByQueryBuilder) Script(source string, params map[string]any) *UpdateByQueryBuilder {
+	b.script = map[string]any{
 		"source": source,
 		"lang":   "painless",
 	}
@@ -91,13 +91,13 @@ func (b *UpdateByQueryBuilder) Script(source string, params map[string]interface
 }
 
 // Set 设置字段值（简化的脚本更新）
-func (b *UpdateByQueryBuilder) Set(field string, value interface{}) *UpdateByQueryBuilder {
+func (b *UpdateByQueryBuilder) Set(field string, value any) *UpdateByQueryBuilder {
 	// 如果已有脚本，追加
 	if b.script != nil {
 		existingSource := b.script["source"].(string)
 		b.script["source"] = existingSource + fmt.Sprintf("; ctx._source.%s = params.%s", field, field)
 	} else {
-		b.script = map[string]interface{}{
+		b.script = map[string]any{
 			"source": fmt.Sprintf("ctx._source.%s = params.%s", field, field),
 			"lang":   "painless",
 		}
@@ -105,48 +105,26 @@ func (b *UpdateByQueryBuilder) Set(field string, value interface{}) *UpdateByQue
 
 	// 添加参数
 	if b.script["params"] == nil {
-		b.script["params"] = make(map[string]interface{})
+		b.script["params"] = make(map[string]any)
 	}
-	b.script["params"].(map[string]interface{})[field] = value
+	b.script["params"].(map[string]any)[field] = value
 
 	return b
 }
 
 // Debug 启用调试模式
 func (b *UpdateByQueryBuilder) Debug() *UpdateByQueryBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
 }
 
-// printDebug 打印请求调试信息
-func (b *UpdateByQueryBuilder) printDebug(method, path string, body interface{}) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *UpdateByQueryBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *UpdateByQueryBuilder) resetDebug() {
-	b.debug = false
-}
-
 // Build 构建请求体
-func (b *UpdateByQueryBuilder) Build() map[string]interface{} {
-	body := make(map[string]interface{})
+func (b *UpdateByQueryBuilder) Build() map[string]any {
+	body := make(map[string]any)
 
 	// 构建查询条件
 	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]interface{})
+		boolQuery := make(map[string]any)
 		if len(b.must) > 0 {
 			boolQuery["must"] = b.must
 		}
@@ -159,7 +137,7 @@ func (b *UpdateByQueryBuilder) Build() map[string]interface{} {
 		if len(b.mustNot) > 0 {
 			boolQuery["must_not"] = b.mustNot
 		}
-		body["query"] = map[string]interface{}{
+		body["query"] = map[string]any{
 			"bool": boolQuery,
 		}
 	}
@@ -174,22 +152,22 @@ func (b *UpdateByQueryBuilder) Build() map[string]interface{} {
 
 // UpdateByQueryResponse 更新响应
 type UpdateByQueryResponse struct {
-	Took             int    `json:"took"`
-	TimedOut         bool   `json:"timed_out"`
-	Total            int    `json:"total"`
-	Updated          int    `json:"updated"`
-	Deleted          int    `json:"deleted"`
-	Batches          int    `json:"batches"`
-	VersionConflicts int    `json:"version_conflicts"`
-	Noops            int    `json:"noops"`
+	Took             int  `json:"took"`
+	TimedOut         bool `json:"timed_out"`
+	Total            int  `json:"total"`
+	Updated          int  `json:"updated"`
+	Deleted          int  `json:"deleted"`
+	Batches          int  `json:"batches"`
+	VersionConflicts int  `json:"version_conflicts"`
+	Noops            int  `json:"noops"`
 	Retries          struct {
 		Bulk   int `json:"bulk"`
 		Search int `json:"search"`
 	} `json:"retries"`
-	ThrottledMillis      int                      `json:"throttled_millis"`
-	RequestsPerSecond    float64                  `json:"requests_per_second"`
-	ThrottledUntilMillis int                      `json:"throttled_until_millis"`
-	Failures             []map[string]interface{} `json:"failures"`
+	ThrottledMillis      int              `json:"throttled_millis"`
+	RequestsPerSecond    float64          `json:"requests_per_second"`
+	ThrottledUntilMillis int              `json:"throttled_until_millis"`
+	Failures             []map[string]any `json:"failures"`
 }
 
 // Do 执行更新
@@ -202,9 +180,9 @@ func (b *UpdateByQueryBuilder) Do(ctx context.Context) (*UpdateByQueryResponse, 
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -213,8 +191,9 @@ func (b *UpdateByQueryBuilder) Do(ctx context.Context) (*UpdateByQueryResponse, 
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var resp UpdateByQueryResponse

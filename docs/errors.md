@@ -11,7 +11,7 @@ type ESError struct {
     StatusCode int                      // HTTP状态码
     Type       string                   // 错误类型
     Reason     string                   // 错误原因
-    RootCause  []map[string]interface{} // 根本原因
+    RootCause  []map[string]any // 根本原因
     RawBody    []byte                   // 原始响应体
 }
 ```
@@ -132,8 +132,8 @@ if err != nil {
 ```go
 bulkResp, err := builder.NewBulkBuilder(esClient).
     Index("products").
-    Add("", "1", map[string]interface{}{"name": "商品1"}).
-    Add("", "2", map[string]interface{}{"name": "商品2"}).
+    Add("", "1", map[string]any{"name": "商品1"}).
+    Add("", "2", map[string]any{"name": "商品2"}).
     Do(ctx)
 
 if err != nil {

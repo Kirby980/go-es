@@ -9,7 +9,7 @@ import (
 // 不依赖 client 包，避免循环引用
 type ESClient interface {
 	// Do 执行 HTTP 请求（JSON 格式）
-	Do(ctx context.Context, method, path string, body interface{}) ([]byte, error)
+	Do(ctx context.Context, method, path string, body any) ([]byte, error)
 	// GetAddress 获取 ES 地址（用于 bulk 等需要自定义 Content-Type 的场景）
 	GetAddress() string
 	// DoRequest 执行自定义 HTTP 请求（用于 bulk 等需要 ndjson 格式的场景）

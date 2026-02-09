@@ -11,14 +11,14 @@ import (
 type ScrollBuilder struct {
 	client    ESClient
 	index     string
-	filters   []map[string]interface{}
-	must      []map[string]interface{}
-	should    []map[string]interface{}
-	mustNot   []map[string]interface{}
+	filters   []map[string]any
+	must      []map[string]any
+	should    []map[string]any
+	mustNot   []map[string]any
 	size      int
 	keepAlive string
 	scrollID  string
-	debug     bool
+	DebugHelper
 }
 
 // NewScrollBuilder 创建Scroll构建器
@@ -26,19 +26,19 @@ func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
 	return &ScrollBuilder{
 		client:    c,
 		index:     index,
-		filters:   make([]map[string]interface{}, 0),
-		must:      make([]map[string]interface{}, 0),
-		should:    make([]map[string]interface{}, 0),
-		mustNot:   make([]map[string]interface{}, 0),
+		filters:   make([]map[string]any, 0),
+		must:      make([]map[string]any, 0),
+		should:    make([]map[string]any, 0),
+		mustNot:   make([]map[string]any, 0),
 		size:      1000,
 		keepAlive: "5m",
 	}
 }
 
 // Match 添加 match 查询条件
-func (b *ScrollBuilder) Match(field string, value interface{}) *ScrollBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *ScrollBuilder) Match(field string, value any) *ScrollBuilder {
+	b.must = append(b.must, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -46,9 +46,9 @@ func (b *ScrollBuilder) Match(field string, value interface{}) *ScrollBuilder {
 }
 
 // Term 添加 term 查询条件
-func (b *ScrollBuilder) Term(field string, value interface{}) *ScrollBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *ScrollBuilder) Term(field string, value any) *ScrollBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -56,16 +56,16 @@ func (b *ScrollBuilder) Term(field string, value interface{}) *ScrollBuilder {
 }
 
 // Range 添加范围查询条件
-func (b *ScrollBuilder) Range(field string, gte, lte interface{}) *ScrollBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *ScrollBuilder) Range(field string, gte, lte any) *ScrollBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.filters = append(b.filters, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -86,39 +86,17 @@ func (b *ScrollBuilder) KeepAlive(keepAlive string) *ScrollBuilder {
 
 // Debug 启用调试模式
 func (b *ScrollBuilder) Debug() *ScrollBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
 }
 
-// printDebug 打印请求调试信息
-func (b *ScrollBuilder) printDebug(method, path string, body interface{}) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *ScrollBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *ScrollBuilder) resetDebug() {
-	b.debug = false
-}
-
 // Build 构建查询体
-func (b *ScrollBuilder) Build() map[string]interface{} {
-	body := make(map[string]interface{})
+func (b *ScrollBuilder) Build() map[string]any {
+	body := make(map[string]any)
 
 	// 构建查询条件
 	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]interface{})
+		boolQuery := make(map[string]any)
 		if len(b.must) > 0 {
 			boolQuery["must"] = b.must
 		}
@@ -131,7 +109,7 @@ func (b *ScrollBuilder) Build() map[string]interface{} {
 		if len(b.mustNot) > 0 {
 			boolQuery["must_not"] = b.mustNot
 		}
-		body["query"] = map[string]interface{}{
+		body["query"] = map[string]any{
 			"bool": boolQuery,
 		}
 	}
@@ -159,11 +137,11 @@ type ScrollResponse struct {
 		} `json:"total"`
 		MaxScore float64 `json:"max_score"`
 		Hits     []struct {
-			Index     string                 `json:"_index"`
-			ID        string                 `json:"_id"`
-			Score     float64                `json:"_score"`
-			Source    map[string]interface{} `json:"_source"`
-			Highlight map[string][]string    `json:"highlight,omitempty"`
+			Index     string              `json:"_index"`
+			ID        string              `json:"_id"`
+			Score     float64             `json:"_score"`
+			Source    map[string]any      `json:"_source"`
+			Highlight map[string][]string `json:"highlight,omitempty"`
 		} `json:"hits"`
 	} `json:"hits"`
 }
@@ -175,8 +153,8 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -186,7 +164,8 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.printResponse(respBody)
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var resp ScrollResponse
@@ -207,15 +186,15 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 	}
 
 	path := "/_search/scroll"
-	body := map[string]interface{}{
+	body := map[string]any{
 		"scroll":    b.keepAlive,
 		"scroll_id": b.scrollID,
 	}
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -225,7 +204,8 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.printResponse(respBody)
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var resp ScrollResponse
@@ -246,14 +226,14 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 	}
 
 	path := "/_search/scroll"
-	body := map[string]interface{}{
+	body := map[string]any{
 		"scroll_id": b.scrollID,
 	}
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.printDebug("DELETE", path, body)
-		defer b.resetDebug()
+		b.PrintDebug("DELETE", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, body)
@@ -263,7 +243,8 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.printResponse(respBody)
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	b.scrollID = ""

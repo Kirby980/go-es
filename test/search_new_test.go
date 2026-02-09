@@ -51,7 +51,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
 	defer builder.NewIndexBuilder(esClient, index).Delete(ctx)
 
 	// 插入测试数据
-	docs := []map[string]interface{}{
+	docs := []map[string]any{
 		{"category": "tech", "brand": "Apple", "price": 999},
 		{"category": "programming", "brand": "Samsung", "price": 799},
 		{"category": "database", "brand": "Huawei", "price": 699},
@@ -104,10 +104,10 @@ func TestSearchBuilder_TermShould(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{"brand": "Apple"})
-	bulk.Add("", "2", map[string]interface{}{"brand": "Samsung"})
-	bulk.Add("", "3", map[string]interface{}{"brand": "Huawei"})
-	bulk.Add("", "4", map[string]interface{}{"brand": "Xiaomi"})
+	bulk.Add("", "1", map[string]any{"brand": "Apple"})
+	bulk.Add("", "2", map[string]any{"brand": "Samsung"})
+	bulk.Add("", "3", map[string]any{"brand": "Huawei"})
+	bulk.Add("", "4", map[string]any{"brand": "Xiaomi"})
 	_, err = bulk.Do(ctx)
 	if err != nil {
 		t.Fatalf("批量插入失败: %v", err)
@@ -149,10 +149,10 @@ func TestSearchBuilder_RangeShould(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{"price": 100})
-	bulk.Add("", "2", map[string]interface{}{"price": 500})
-	bulk.Add("", "3", map[string]interface{}{"price": 1500})
-	bulk.Add("", "4", map[string]interface{}{"price": 2500})
+	bulk.Add("", "1", map[string]any{"price": 100})
+	bulk.Add("", "2", map[string]any{"price": 500})
+	bulk.Add("", "3", map[string]any{"price": 1500})
+	bulk.Add("", "4", map[string]any{"price": 2500})
 	_, err = bulk.Do(ctx)
 	if err != nil {
 		t.Fatalf("批量插入失败: %v", err)
@@ -194,10 +194,10 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{"tag": "new"})
-	bulk.Add("", "2", map[string]interface{}{"tag": "popular"})
-	bulk.Add("", "3", map[string]interface{}{"tag": "recommended"})
-	bulk.Add("", "4", map[string]interface{}{"tag": "trending"})
+	bulk.Add("", "1", map[string]any{"tag": "new"})
+	bulk.Add("", "2", map[string]any{"tag": "popular"})
+	bulk.Add("", "3", map[string]any{"tag": "recommended"})
+	bulk.Add("", "4", map[string]any{"tag": "trending"})
 	_, err = bulk.Do(ctx)
 	if err != nil {
 		t.Fatalf("批量插入失败: %v", err)
@@ -262,10 +262,10 @@ func TestSearchBuilder_MatchMustNot(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{"title": "iPhone 15 Pro"})
-	bulk.Add("", "2", map[string]interface{}{"title": "Samsung Galaxy S24"})
-	bulk.Add("", "3", map[string]interface{}{"title": "refurbished iPhone 14"})
-	bulk.Add("", "4", map[string]interface{}{"title": "Huawei Mate 60"})
+	bulk.Add("", "1", map[string]any{"title": "iPhone 15 Pro"})
+	bulk.Add("", "2", map[string]any{"title": "Samsung Galaxy S24"})
+	bulk.Add("", "3", map[string]any{"title": "refurbished iPhone 14"})
+	bulk.Add("", "4", map[string]any{"title": "Huawei Mate 60"})
 	_, err = bulk.Do(ctx)
 	if err != nil {
 		t.Fatalf("批量插入失败: %v", err)
@@ -307,10 +307,10 @@ func TestSearchBuilder_TermMustNot(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{"status": "active"})
-	bulk.Add("", "2", map[string]interface{}{"status": "pending"})
-	bulk.Add("", "3", map[string]interface{}{"status": "deleted"})
-	bulk.Add("", "4", map[string]interface{}{"status": "active"})
+	bulk.Add("", "1", map[string]any{"status": "active"})
+	bulk.Add("", "2", map[string]any{"status": "pending"})
+	bulk.Add("", "3", map[string]any{"status": "deleted"})
+	bulk.Add("", "4", map[string]any{"status": "active"})
 	_, err = bulk.Do(ctx)
 	if err != nil {
 		t.Fatalf("批量插入失败: %v", err)
@@ -352,10 +352,10 @@ func TestSearchBuilder_RangeMustNot(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{"age": 15})
-	bulk.Add("", "2", map[string]interface{}{"age": 25})
-	bulk.Add("", "3", map[string]interface{}{"age": 35})
-	bulk.Add("", "4", map[string]interface{}{"age": 45})
+	bulk.Add("", "1", map[string]any{"age": 15})
+	bulk.Add("", "2", map[string]any{"age": 25})
+	bulk.Add("", "3", map[string]any{"age": 35})
+	bulk.Add("", "4", map[string]any{"age": 45})
 	_, err = bulk.Do(ctx)
 	if err != nil {
 		t.Fatalf("批量插入失败: %v", err)
@@ -403,35 +403,35 @@ func TestSearchBuilder_ComplexLogic(t *testing.T) {
 
 	// 插入测试数据
 	bulk := builder.NewBulkBuilder(esClient).Index(index)
-	bulk.Add("", "1", map[string]interface{}{
+	bulk.Add("", "1", map[string]any{
 		"category": "electronics",
 		"status":   "active",
 		"brand":    "Apple",
 		"price":    999,
 		"title":    "iPhone 15 Pro",
 	})
-	bulk.Add("", "2", map[string]interface{}{
+	bulk.Add("", "2", map[string]any{
 		"category": "electronics",
 		"status":   "active",
 		"brand":    "Samsung",
 		"price":    899,
 		"title":    "Samsung Galaxy S24",
 	})
-	bulk.Add("", "3", map[string]interface{}{
+	bulk.Add("", "3", map[string]any{
 		"category": "electronics",
 		"status":   "active",
 		"brand":    "Huawei",
 		"price":    799,
 		"title":    "Huawei Mate 60",
 	})
-	bulk.Add("", "4", map[string]interface{}{
+	bulk.Add("", "4", map[string]any{
 		"category": "electronics",
 		"status":   "inactive",
 		"brand":    "Apple",
 		"price":    699,
 		"title":    "refurbished iPhone 14",
 	})
-	bulk.Add("", "5", map[string]interface{}{
+	bulk.Add("", "5", map[string]any{
 		"category": "clothing",
 		"status":   "active",
 		"brand":    "Nike",

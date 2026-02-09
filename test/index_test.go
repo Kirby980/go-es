@@ -281,8 +281,8 @@ func TestIndexBuilder_MultipleAliases(t *testing.T) {
 		AddProperty("status", "keyword").
 		AddAlias("alias1", nil).
 		AddAlias("alias2", nil).
-		AddAlias("filtered_alias", map[string]interface{}{
-			"term": map[string]interface{}{
+		AddAlias("filtered_alias", map[string]any{
+			"term": map[string]any{
 				"status": "active",
 			},
 		}).

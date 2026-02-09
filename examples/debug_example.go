@@ -32,7 +32,7 @@ func DebugExample() {
 
 	// 带Debug的搜索 - 会打印请求和响应
 	_, _ = builder.NewSearchBuilder(esClient, "products").
-		Debug().  // 启用调试模式
+		Debug(). // 启用调试模式
 		Match("name", "iPhone").
 		Range("price", 500, 1500).
 		Sort("price", "desc").
@@ -52,7 +52,7 @@ func DebugExample() {
 
 	// 带Debug的文档操作
 	_, _ = builder.NewDocumentBuilder(esClient, "products").
-		Debug().  // 启用调试模式
+		Debug(). // 启用调试模式
 		ID("1").
 		Set("name", "iPhone 15 Pro").
 		Set("price", 999.99).
@@ -70,13 +70,13 @@ func DebugExample() {
 
 	// 带Debug的批量操作
 	_, _ = builder.NewBulkBuilder(esClient).
-		Debug().  // 启用调试模式
+		Debug(). // 启用调试模式
 		Index("products").
-		Add("", "3", map[string]interface{}{
+		Add("", "3", map[string]any{
 			"name":  "MacBook Pro",
 			"price": 1999.99,
 		}).
-		Add("", "4", map[string]interface{}{
+		Add("", "4", map[string]any{
 			"name":  "Apple Watch",
 			"price": 399.99,
 		}).
@@ -87,7 +87,7 @@ func DebugExample() {
 
 	// 带Debug的索引创建
 	_ = builder.NewIndexBuilder(esClient, "test-index").
-		Debug().  // 启用调试模式
+		Debug(). // 启用调试模式
 		Shards(1).
 		Replicas(0).
 		AddProperty("title", "text").
@@ -96,7 +96,7 @@ func DebugExample() {
 
 	// 清理：删除测试索引
 	_ = builder.NewIndexBuilder(esClient, "test-index").
-		Debug().  // 删除时也可以看到debug信息
+		Debug(). // 删除时也可以看到debug信息
 		Delete(ctx)
 
 	// ========== AggregationBuilder Debug示例 ==========
@@ -104,7 +104,7 @@ func DebugExample() {
 
 	// 带Debug的聚合查询
 	_, _ = builder.NewAggregationBuilder(esClient, "products").
-		Debug().  // 启用调试模式
+		Debug(). // 启用调试模式
 		Avg("avg_price", "price").
 		Terms("by_category", "category", 10).
 		Do(ctx)

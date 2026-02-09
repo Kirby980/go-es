@@ -98,7 +98,7 @@ resp, err := builder.NewDocumentBuilder(esClient, "products").
 ### 从 Map 设置
 
 ```go
-data := map[string]interface{}{
+data := map[string]any{
     "name":  "MacBook Pro",
     "price": 1999.99,
 }
@@ -145,7 +145,7 @@ updateResp, err := builder.NewDocumentBuilder(esClient, "products").
 scriptResp, err := builder.NewDocumentBuilder(esClient, "products").
     ID("1").
     Script("ctx._source.quantity -= params.count",
-           map[string]interface{}{"count": 5}).
+           map[string]any{"count": 5}).
     Update(ctx)
 ```
 

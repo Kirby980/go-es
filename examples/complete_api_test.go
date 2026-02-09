@@ -118,7 +118,7 @@ func TestCompleteAPI(t *testing.T) {
 		// 使用脚本更新
 		scriptResp, err := builder.NewDocumentBuilder(esClient, indexName).
 			ID("1").
-			Script("ctx._source.quantity -= params.count", map[string]interface{}{"count": 5}).
+			Script("ctx._source.quantity -= params.count", map[string]any{"count": 5}).
 			Update(ctx)
 
 		if err != nil {
@@ -148,22 +148,22 @@ func TestCompleteAPI(t *testing.T) {
 
 		bulkResp, err := builder.NewBulkBuilder(esClient).
 			Index(indexName).
-			Add("", "3", map[string]interface{}{
+			Add("", "3", map[string]any{
 				"name":     "iPad Air",
 				"price":    599.99,
 				"category": "electronics",
 			}).
-			Add("", "4", map[string]interface{}{
+			Add("", "4", map[string]any{
 				"name":     "Apple Watch",
 				"price":    399.99,
 				"category": "wearables",
 			}).
-			Add("", "5", map[string]interface{}{
+			Add("", "5", map[string]any{
 				"name":     "AirPods Pro",
 				"price":    249.99,
 				"category": "audio",
 			}).
-			Update("", "1", map[string]interface{}{
+			Update("", "1", map[string]any{
 				"rating": 4.9,
 			}).
 			Do(ctx)
@@ -305,7 +305,7 @@ func TestCompleteAPI(t *testing.T) {
 
 		// 范围聚合
 		rangeResp, err := builder.NewAggregationBuilder(esClient, indexName).
-			Range("price_ranges", "price", []map[string]interface{}{
+			Range("price_ranges", "price", []map[string]any{
 				{"key": "cheap", "to": 300},
 				{"key": "medium", "from": 300, "to": 1000},
 				{"key": "expensive", "from": 1000},
@@ -406,9 +406,9 @@ func TestRealWorldScenario(t *testing.T) {
 	// 3. 批量更新库存
 	bulkResp, _ := builder.NewBulkBuilder(esClient).
 		Index("products").
-		Update("", "1", map[string]interface{}{"quantity": 80}).
-		Update("", "2", map[string]interface{}{"quantity": 50}).
-		Update("", "3", map[string]interface{}{"quantity": 120}).
+		Update("", "1", map[string]any{"quantity": 80}).
+		Update("", "2", map[string]any{"quantity": 50}).
+		Update("", "3", map[string]any{"quantity": 120}).
 		Do(ctx)
 
 	fmt.Printf("批量更新: 成功 %d 个\n", bulkResp.SuccessCount())

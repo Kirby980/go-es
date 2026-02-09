@@ -6,11 +6,11 @@ import (
 )
 
 type ESError struct {
-	StatusCode int                      // HTTP状态码
-	Type       string                   // 错误类型
-	Reason     string                   // 错误原因
-	RootCause  []map[string]interface{} // 根本原因
-	RawBody    []byte                   // 原始响应体
+	StatusCode int              // HTTP状态码
+	Type       string           // 错误类型
+	Reason     string           // 错误原因
+	RootCause  []map[string]any // 根本原因
+	RawBody    []byte           // 原始响应体
 }
 
 func (e *ESError) Error() string {
@@ -40,9 +40,9 @@ func (e *ESError) IsTimeout() bool {
 func ParseESError(statusCode int, body []byte) *ESError {
 	var errResp struct {
 		Error struct {
-			Type      string                   `json:"type"`
-			Reason    string                   `json:"reason"`
-			RootCause []map[string]interface{} `json:"root_cause"`
+			Type      string           `json:"type"`
+			Reason    string           `json:"reason"`
+			RootCause []map[string]any `json:"root_cause"`
 		} `json:"error"`
 		Status int `json:"status"`
 	}

@@ -22,8 +22,8 @@ type BulkBuilder struct {
 // bulkOperation 批量操作项
 type bulkOperation struct {
 	action string
-	meta   map[string]interface{}
-	doc    map[string]interface{}
+	meta   map[string]any
+	doc    map[string]any
 }
 
 // NewBulkBuilder 创建批量操作构建器
@@ -57,7 +57,7 @@ func (b *BulkBuilder) commitCurrent() {
 	if b.currentOp != nil {
 		// 如果是 update 操作，需要包装成 {"doc": {...}}
 		if b.currentOp.action == "update" && b.currentOp.doc != nil {
-			b.currentOp.doc = map[string]interface{}{"doc": b.currentOp.doc}
+			b.currentOp.doc = map[string]any{"doc": b.currentOp.doc}
 		}
 		b.operations = append(b.operations, *b.currentOp)
 		b.currentOp = nil
@@ -65,7 +65,7 @@ func (b *BulkBuilder) commitCurrent() {
 }
 
 // Add 添加索引操作
-func (b *BulkBuilder) Add(index, id string, doc map[string]interface{}) *BulkBuilder {
+func (b *BulkBuilder) Add(index, id string, doc map[string]any) *BulkBuilder {
 	b.commitCurrent() // 先提交链式构建的操作（如果有）
 	b.isFlush()
 
@@ -73,7 +73,7 @@ func (b *BulkBuilder) Add(index, id string, doc map[string]interface{}) *BulkBui
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 	}
 	if id != "" {
@@ -122,14 +122,14 @@ func (b *BulkBuilder) Flush(ctx context.Context) (*BulkResponse, error) {
 }
 
 // Create 添加创建操作（文档已存在则失败）
-func (b *BulkBuilder) Create(index, id string, doc map[string]interface{}) *BulkBuilder {
+func (b *BulkBuilder) Create(index, id string, doc map[string]any) *BulkBuilder {
 	b.commitCurrent() // 先提交链式构建的操作（如果有）
 
 	if index == "" {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 		"_id":    id,
 	}
@@ -143,14 +143,14 @@ func (b *BulkBuilder) Create(index, id string, doc map[string]interface{}) *Bulk
 }
 
 // Update 添加更新操作
-func (b *BulkBuilder) Update(index, id string, doc map[string]interface{}) *BulkBuilder {
+func (b *BulkBuilder) Update(index, id string, doc map[string]any) *BulkBuilder {
 	b.commitCurrent() // 先提交链式构建的操作（如果有）
 
 	if index == "" {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 		"_id":    id,
 	}
@@ -158,7 +158,7 @@ func (b *BulkBuilder) Update(index, id string, doc map[string]interface{}) *Bulk
 	b.operations = append(b.operations, bulkOperation{
 		action: "update",
 		meta:   meta,
-		doc:    map[string]interface{}{"doc": doc},
+		doc:    map[string]any{"doc": doc},
 	})
 	return b
 }
@@ -171,7 +171,7 @@ func (b *BulkBuilder) Delete(index, id string) *BulkBuilder {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 		"_id":    id,
 	}
@@ -198,7 +198,7 @@ func (b *BulkBuilder) AddDocWithIndex(index, id string) *BulkBuilder {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 	}
 	if id != "" {
@@ -208,7 +208,7 @@ func (b *BulkBuilder) AddDocWithIndex(index, id string) *BulkBuilder {
 	b.currentOp = &bulkOperation{
 		action: "index",
 		meta:   meta,
-		doc:    make(map[string]interface{}),
+		doc:    make(map[string]any),
 	}
 
 	return b
@@ -228,7 +228,7 @@ func (b *BulkBuilder) CreateDocWithIndex(index, id string) *BulkBuilder {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 		"_id":    id,
 	}
@@ -236,7 +236,7 @@ func (b *BulkBuilder) CreateDocWithIndex(index, id string) *BulkBuilder {
 	b.currentOp = &bulkOperation{
 		action: "create",
 		meta:   meta,
-		doc:    make(map[string]interface{}),
+		doc:    make(map[string]any),
 	}
 
 	return b
@@ -256,7 +256,7 @@ func (b *BulkBuilder) UpdateDocWithIndex(index, id string) *BulkBuilder {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 		"_id":    id,
 	}
@@ -264,7 +264,7 @@ func (b *BulkBuilder) UpdateDocWithIndex(index, id string) *BulkBuilder {
 	b.currentOp = &bulkOperation{
 		action: "update",
 		meta:   meta,
-		doc:    make(map[string]interface{}),
+		doc:    make(map[string]any),
 	}
 
 	return b
@@ -284,7 +284,7 @@ func (b *BulkBuilder) DeleteDocWithIndex(index, id string) *BulkBuilder {
 		index = b.index
 	}
 
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"_index": index,
 		"_id":    id,
 	}
@@ -299,7 +299,7 @@ func (b *BulkBuilder) DeleteDocWithIndex(index, id string) *BulkBuilder {
 }
 
 // Set 设置字段值（链式调用，需要先调用 AddDoc/CreateDoc/UpdateDoc）
-func (b *BulkBuilder) Set(key string, value interface{}) *BulkBuilder {
+func (b *BulkBuilder) Set(key string, value any) *BulkBuilder {
 	if b.currentOp == nil {
 		// 如果没有当前操作，抛出 panic 提示用户
 		panic("Set() must be called after AddDoc/CreateDoc/UpdateDoc")
@@ -309,7 +309,7 @@ func (b *BulkBuilder) Set(key string, value interface{}) *BulkBuilder {
 }
 
 // SetFromStruct 从结构体设置字段（链式调用）
-func (b *BulkBuilder) SetFromStruct(data interface{}) *BulkBuilder {
+func (b *BulkBuilder) SetFromStruct(data any) *BulkBuilder {
 	if b.currentOp == nil {
 		panic("SetFromStruct() must be called after AddDoc/CreateDoc/UpdateDoc")
 	}
@@ -323,14 +323,14 @@ func (b *BulkBuilder) SetObject(key string, builder func(*NestedObject)) *BulkBu
 	if b.currentOp == nil {
 		panic("SetObject() must be called after AddDoc/CreateDoc/UpdateDoc")
 	}
-	nested := &NestedObject{data: make(map[string]interface{})}
+	nested := &NestedObject{data: make(map[string]any)}
 	builder(nested)
 	b.currentOp.doc[key] = nested.data
 	return b
 }
 
 // SetArray 设置数组字段（链式调用）
-func (b *BulkBuilder) SetArray(key string, values ...interface{}) *BulkBuilder {
+func (b *BulkBuilder) SetArray(key string, values ...any) *BulkBuilder {
 	if b.currentOp == nil {
 		panic("SetArray() must be called after AddDoc/CreateDoc/UpdateDoc")
 	}
@@ -343,9 +343,9 @@ func (b *BulkBuilder) SetObjectArray(key string, builders ...func(*NestedObject)
 	if b.currentOp == nil {
 		panic("SetObjectArray() must be called after AddDoc/CreateDoc/UpdateDoc")
 	}
-	arr := make([]map[string]interface{}, len(builders))
+	arr := make([]map[string]any, len(builders))
 	for i, builder := range builders {
-		nested := &NestedObject{data: make(map[string]interface{})}
+		nested := &NestedObject{data: make(map[string]any)}
 		builder(nested)
 		arr[i] = nested.data
 	}
@@ -354,16 +354,16 @@ func (b *BulkBuilder) SetObjectArray(key string, builders ...func(*NestedObject)
 }
 
 // AddFromStruct 从结构体添加索引操作
-func (b *BulkBuilder) AddFromStruct(index, id string, data interface{}) *BulkBuilder {
-	doc := make(map[string]interface{})
+func (b *BulkBuilder) AddFromStruct(index, id string, data any) *BulkBuilder {
+	doc := make(map[string]any)
 	jsonData, _ := json.Marshal(data)
 	json.Unmarshal(jsonData, &doc)
 	return b.Add(index, id, doc)
 }
 
 // UpdateFromStruct 从结构体添加更新操作
-func (b *BulkBuilder) UpdateFromStruct(index, id string, data interface{}) *BulkBuilder {
-	doc := make(map[string]interface{})
+func (b *BulkBuilder) UpdateFromStruct(index, id string, data any) *BulkBuilder {
+	doc := make(map[string]any)
 	jsonData, _ := json.Marshal(data)
 	json.Unmarshal(jsonData, &doc)
 	return b.Update(index, id, doc)
@@ -428,7 +428,7 @@ func (b *BulkBuilder) Build() []byte {
 
 	for _, op := range b.operations {
 		// 写入操作行
-		action := map[string]interface{}{
+		action := map[string]any{
 			op.action: op.meta,
 		}
 		actionLine, _ := json.Marshal(action)
@@ -463,7 +463,7 @@ func (b *BulkBuilder) printDebug(method, path string, body []byte) {
 
 // printResponse 打印响应调试信息
 func (b *BulkBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
+	var pretty any
 	json.Unmarshal(respBody, &pretty)
 	data, _ := json.MarshalIndent(pretty, "", "  ")
 	fmt.Printf("Response:\n%s\n\n", string(data))

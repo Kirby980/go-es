@@ -12,19 +12,19 @@ import (
 type SearchAfterBuilder struct {
 	client             ESClient
 	index              string
-	filters            []map[string]interface{}
-	must               []map[string]interface{}
-	should             []map[string]interface{}
-	mustNot            []map[string]interface{}
-	minimumShouldMatch interface{} // 最少匹配 should 条件数量
+	filters            []map[string]any
+	must               []map[string]any
+	should             []map[string]any
+	mustNot            []map[string]any
+	minimumShouldMatch any // 最少匹配 should 条件数量
 	size               int
-	sort               []map[string]interface{}
-	searchAfter        []interface{} // 上一页最后一个文档的 sort 值
+	sort               []map[string]any
+	searchAfter        []any // 上一页最后一个文档的 sort 值
 	source             []string
-	highlight          map[string]interface{}
+	highlight          map[string]any
 	minScore           *float64
-	debug              bool
 	lastResponse       *SearchAfterResponse // 保存上次响应用于自动获取下一页
+	DebugHelper
 }
 
 // NewSearchAfterBuilder 创建SearchAfter构建器
@@ -32,20 +32,20 @@ func NewSearchAfterBuilder(c ESClient, index string) *SearchAfterBuilder {
 	return &SearchAfterBuilder{
 		client:    c,
 		index:     index,
-		filters:   make([]map[string]interface{}, 0),
-		must:      make([]map[string]interface{}, 0),
-		should:    make([]map[string]interface{}, 0),
-		mustNot:   make([]map[string]interface{}, 0),
+		filters:   make([]map[string]any, 0),
+		must:      make([]map[string]any, 0),
+		should:    make([]map[string]any, 0),
+		mustNot:   make([]map[string]any, 0),
 		size:      10,
-		sort:      make([]map[string]interface{}, 0),
-		highlight: make(map[string]interface{}),
+		sort:      make([]map[string]any, 0),
+		highlight: make(map[string]any),
 	}
 }
 
 // Match 添加 match 查询条件
-func (b *SearchAfterBuilder) Match(field string, value interface{}) *SearchAfterBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *SearchAfterBuilder) Match(field string, value any) *SearchAfterBuilder {
+	b.must = append(b.must, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -53,9 +53,9 @@ func (b *SearchAfterBuilder) Match(field string, value interface{}) *SearchAfter
 }
 
 // MatchPhrase 添加 match_phrase 查询
-func (b *SearchAfterBuilder) MatchPhrase(field string, value interface{}) *SearchAfterBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match_phrase": map[string]interface{}{
+func (b *SearchAfterBuilder) MatchPhrase(field string, value any) *SearchAfterBuilder {
+	b.must = append(b.must, map[string]any{
+		"match_phrase": map[string]any{
 			field: value,
 		},
 	})
@@ -63,9 +63,9 @@ func (b *SearchAfterBuilder) MatchPhrase(field string, value interface{}) *Searc
 }
 
 // Term 添加 term 查询条件
-func (b *SearchAfterBuilder) Term(field string, value interface{}) *SearchAfterBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *SearchAfterBuilder) Term(field string, value any) *SearchAfterBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -73,9 +73,9 @@ func (b *SearchAfterBuilder) Term(field string, value interface{}) *SearchAfterB
 }
 
 // Terms 添加 terms 查询
-func (b *SearchAfterBuilder) Terms(field string, values ...interface{}) *SearchAfterBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"terms": map[string]interface{}{
+func (b *SearchAfterBuilder) Terms(field string, values ...any) *SearchAfterBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"terms": map[string]any{
 			field: values,
 		},
 	})
@@ -83,16 +83,16 @@ func (b *SearchAfterBuilder) Terms(field string, values ...interface{}) *SearchA
 }
 
 // Range 添加范围查询条件
-func (b *SearchAfterBuilder) Range(field string, gte, lte interface{}) *SearchAfterBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *SearchAfterBuilder) Range(field string, gte, lte any) *SearchAfterBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.filters = append(b.filters, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -101,8 +101,8 @@ func (b *SearchAfterBuilder) Range(field string, gte, lte interface{}) *SearchAf
 
 // Exists 添加字段存在性查询
 func (b *SearchAfterBuilder) Exists(field string) *SearchAfterBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"exists": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"exists": map[string]any{
 			"field": field,
 		},
 	})
@@ -110,9 +110,9 @@ func (b *SearchAfterBuilder) Exists(field string) *SearchAfterBuilder {
 }
 
 // MatchShould 添加 match should 条件（OR关系）
-func (b *SearchAfterBuilder) MatchShould(field string, value interface{}) *SearchAfterBuilder {
-	b.should = append(b.should, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *SearchAfterBuilder) MatchShould(field string, value any) *SearchAfterBuilder {
+	b.should = append(b.should, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -120,9 +120,9 @@ func (b *SearchAfterBuilder) MatchShould(field string, value interface{}) *Searc
 }
 
 // TermShould 添加 term should 条件（OR关系）
-func (b *SearchAfterBuilder) TermShould(field string, value interface{}) *SearchAfterBuilder {
-	b.should = append(b.should, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *SearchAfterBuilder) TermShould(field string, value any) *SearchAfterBuilder {
+	b.should = append(b.should, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -130,9 +130,9 @@ func (b *SearchAfterBuilder) TermShould(field string, value interface{}) *Search
 }
 
 // MatchMustNot 添加 match must_not 条件（NOT关系）
-func (b *SearchAfterBuilder) MatchMustNot(field string, value interface{}) *SearchAfterBuilder {
-	b.mustNot = append(b.mustNot, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *SearchAfterBuilder) MatchMustNot(field string, value any) *SearchAfterBuilder {
+	b.mustNot = append(b.mustNot, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -140,7 +140,7 @@ func (b *SearchAfterBuilder) MatchMustNot(field string, value interface{}) *Sear
 }
 
 // MinimumShouldMatch 设置最少匹配的 should 条件数量
-func (b *SearchAfterBuilder) MinimumShouldMatch(value interface{}) *SearchAfterBuilder {
+func (b *SearchAfterBuilder) MinimumShouldMatch(value any) *SearchAfterBuilder {
 	b.minimumShouldMatch = value
 	return b
 }
@@ -154,22 +154,22 @@ func (b *SearchAfterBuilder) Size(size int) *SearchAfterBuilder {
 // Sort 添加排序字段
 // 注意：Search After 必须至少有一个排序字段，建议最后加上 _id 作为 tie-breaker
 func (b *SearchAfterBuilder) Sort(field string, order string) *SearchAfterBuilder {
-	b.sort = append(b.sort, map[string]interface{}{
+	b.sort = append(b.sort, map[string]any{
 		field: order,
 	})
 	return b
 }
 
 // SortBy 使用复杂排序选项
-func (b *SearchAfterBuilder) SortBy(field string, options map[string]interface{}) *SearchAfterBuilder {
-	b.sort = append(b.sort, map[string]interface{}{
+func (b *SearchAfterBuilder) SortBy(field string, options map[string]any) *SearchAfterBuilder {
+	b.sort = append(b.sort, map[string]any{
 		field: options,
 	})
 	return b
 }
 
 // SearchAfter 手动设置 search_after 值（上一页最后一个文档的 sort 值）
-func (b *SearchAfterBuilder) SearchAfter(values ...interface{}) *SearchAfterBuilder {
+func (b *SearchAfterBuilder) SearchAfter(values ...any) *SearchAfterBuilder {
 	b.searchAfter = values
 	return b
 }
@@ -182,11 +182,11 @@ func (b *SearchAfterBuilder) Source(fields ...string) *SearchAfterBuilder {
 
 // Highlight 添加高亮字段
 func (b *SearchAfterBuilder) Highlight(fields ...string) *SearchAfterBuilder {
-	highlightFields := make(map[string]interface{})
+	highlightFields := make(map[string]any)
 	for _, field := range fields {
-		highlightFields[field] = map[string]interface{}{}
+		highlightFields[field] = map[string]any{}
 	}
-	b.highlight = map[string]interface{}{
+	b.highlight = map[string]any{
 		"fields": highlightFields,
 	}
 	return b
@@ -200,39 +200,17 @@ func (b *SearchAfterBuilder) MinScore(score float64) *SearchAfterBuilder {
 
 // Debug 启用调试模式
 func (b *SearchAfterBuilder) Debug() *SearchAfterBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
 }
 
-// printDebug 打印请求调试信息
-func (b *SearchAfterBuilder) printDebug(method, path string, body interface{}) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *SearchAfterBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *SearchAfterBuilder) resetDebug() {
-	b.debug = false
-}
-
 // Build 构建查询体
-func (b *SearchAfterBuilder) Build() map[string]interface{} {
-	body := make(map[string]interface{})
+func (b *SearchAfterBuilder) Build() map[string]any {
+	body := make(map[string]any)
 
 	// 构建查询条件
 	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]interface{})
+		boolQuery := make(map[string]any)
 		if len(b.must) > 0 {
 			boolQuery["must"] = b.must
 		}
@@ -248,7 +226,7 @@ func (b *SearchAfterBuilder) Build() map[string]interface{} {
 		if b.minimumShouldMatch != nil {
 			boolQuery["minimum_should_match"] = b.minimumShouldMatch
 		}
-		body["query"] = map[string]interface{}{
+		body["query"] = map[string]any{
 			"bool": boolQuery,
 		}
 	}
@@ -261,7 +239,7 @@ func (b *SearchAfterBuilder) Build() map[string]interface{} {
 		body["sort"] = b.sort
 	} else {
 		// 默认按 _id 排序（如果用户没指定）
-		body["sort"] = []map[string]interface{}{
+		body["sort"] = []map[string]any{
 			{"_id": "asc"},
 		}
 	}
@@ -306,12 +284,12 @@ type SearchAfterResponse struct {
 		} `json:"total"`
 		MaxScore *float64 `json:"max_score"`
 		Hits     []struct {
-			Index     string                 `json:"_index"`
-			ID        string                 `json:"_id"`
-			Score     float64                `json:"_score"`
-			Source    map[string]interface{} `json:"_source"`
-			Sort      []interface{}          `json:"sort"` // Search After 的关键：每个文档的排序值
-			Highlight map[string][]string    `json:"highlight,omitempty"`
+			Index     string              `json:"_index"`
+			ID        string              `json:"_id"`
+			Score     float64             `json:"_score"`
+			Source    map[string]any      `json:"_source"`
+			Sort      []any               `json:"sort"` // Search After 的关键：每个文档的排序值
+			Highlight map[string][]string `json:"highlight,omitempty"`
 		} `json:"hits"`
 	} `json:"hits"`
 }
@@ -322,9 +300,9 @@ func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, erro
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -333,8 +311,9 @@ func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, erro
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var resp SearchAfterResponse
@@ -378,7 +357,7 @@ func (b *SearchAfterBuilder) HasMore(resp *SearchAfterResponse) bool {
 }
 
 // GetLastSortValues 获取最后一个文档的 sort 值（用于手动分页）
-func (b *SearchAfterBuilder) GetLastSortValues(resp *SearchAfterResponse) []interface{} {
+func (b *SearchAfterBuilder) GetLastSortValues(resp *SearchAfterResponse) []any {
 	if len(resp.Hits.Hits) == 0 {
 		return nil
 	}

@@ -61,7 +61,7 @@ dateHistResp, err := builder.NewAggregationBuilder(esClient, "orders").
 
 ```go
 rangeResp, err := builder.NewAggregationBuilder(esClient, "products").
-    Range("price_ranges", "price", []map[string]interface{}{
+    Range("price_ranges", "price", []map[string]any{
         {"key": "cheap", "to": 300},
         {"key": "medium", "from": 300, "to": 1000},
         {"key": "expensive", "from": 1000},
@@ -73,7 +73,7 @@ rangeResp, err := builder.NewAggregationBuilder(esClient, "products").
 
 ```go
 dateRangeResp, err := builder.NewAggregationBuilder(esClient, "orders").
-    DateRange("date_ranges", "created_at", []map[string]interface{}{
+    DateRange("date_ranges", "created_at", []map[string]any{
         {"key": "last_week", "from": "now-7d/d", "to": "now"},
         {"key": "last_month", "from": "now-1M/M", "to": "now"},
     }).
@@ -85,21 +85,21 @@ dateRangeResp, err := builder.NewAggregationBuilder(esClient, "orders").
 ```go
 // 单过滤器
 aggResp, err := builder.NewAggregationBuilder(esClient, "products").
-    Filter("expensive_products", map[string]interface{}{
-        "range": map[string]interface{}{
-            "price": map[string]interface{}{"gte": 1000},
+    Filter("expensive_products", map[string]any{
+        "range": map[string]any{
+            "price": map[string]any{"gte": 1000},
         },
     }).
     Do(ctx)
 
 // 多过滤器
 aggResp, err := builder.NewAggregationBuilder(esClient, "products").
-    Filters("price_categories", map[string]interface{}{
-        "cheap": map[string]interface{}{
-            "range": map[string]interface{}{"price": map[string]interface{}{"lt": 300}},
+    Filters("price_categories", map[string]any{
+        "cheap": map[string]any{
+            "range": map[string]any{"price": map[string]any{"lt": 300}},
         },
-        "expensive": map[string]interface{}{
-            "range": map[string]interface{}{"price": map[string]interface{}{"gte": 1000}},
+        "expensive": map[string]any{
+            "range": map[string]any{"price": map[string]any{"gte": 1000}},
         },
     }).
     Do(ctx)

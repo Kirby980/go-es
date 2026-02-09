@@ -130,7 +130,7 @@ func TestAggregationBuilder_Range(t *testing.T) {
 
 	// 范围聚合
 	resp, err := builder.NewAggregationBuilder(client, indexName).
-		Range("price_ranges", "price", []map[string]interface{}{
+		Range("price_ranges", "price", []map[string]any{
 			{"key": "cheap", "to": 500},
 			{"key": "medium", "from": 500, "to": 1000},
 			{"key": "expensive", "from": 1000},
@@ -207,8 +207,8 @@ func TestAggregationBuilder_Filter(t *testing.T) {
 
 	// 过滤器聚合
 	_, err := builder.NewAggregationBuilder(client, indexName).
-		Filter("electronics_only", map[string]interface{}{
-			"term": map[string]interface{}{
+		Filter("electronics_only", map[string]any{
+			"term": map[string]any{
 				"category": "electronics",
 			},
 		}).
@@ -259,11 +259,11 @@ func TestAggregationBuilder_WithQuery(t *testing.T) {
 
 	// 带查询条件的聚合
 	_, err := builder.NewAggregationBuilder(client, indexName).
-		Query(map[string]interface{}{
-			"bool": map[string]interface{}{
-				"filter": []map[string]interface{}{
+		Query(map[string]any{
+			"bool": map[string]any{
+				"filter": []map[string]any{
 					{
-						"term": map[string]interface{}{
+						"term": map[string]any{
 							"category": "electronics",
 						},
 					},

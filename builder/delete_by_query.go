@@ -11,10 +11,10 @@ import (
 type DeleteByQueryBuilder struct {
 	client  ESClient
 	index   string
-	filters []map[string]interface{}
-	must    []map[string]interface{}
-	should  []map[string]interface{}
-	mustNot []map[string]interface{}
+	filters []map[string]any
+	must    []map[string]any
+	should  []map[string]any
+	mustNot []map[string]any
 	debug   bool
 }
 
@@ -23,17 +23,17 @@ func NewDeleteByQueryBuilder(c ESClient, index string) *DeleteByQueryBuilder {
 	return &DeleteByQueryBuilder{
 		client:  c,
 		index:   index,
-		filters: make([]map[string]interface{}, 0),
-		must:    make([]map[string]interface{}, 0),
-		should:  make([]map[string]interface{}, 0),
-		mustNot: make([]map[string]interface{}, 0),
+		filters: make([]map[string]any, 0),
+		must:    make([]map[string]any, 0),
+		should:  make([]map[string]any, 0),
+		mustNot: make([]map[string]any, 0),
 	}
 }
 
 // Match 添加 match 查询条件
-func (b *DeleteByQueryBuilder) Match(field string, value interface{}) *DeleteByQueryBuilder {
-	b.must = append(b.must, map[string]interface{}{
-		"match": map[string]interface{}{
+func (b *DeleteByQueryBuilder) Match(field string, value any) *DeleteByQueryBuilder {
+	b.must = append(b.must, map[string]any{
+		"match": map[string]any{
 			field: value,
 		},
 	})
@@ -41,9 +41,9 @@ func (b *DeleteByQueryBuilder) Match(field string, value interface{}) *DeleteByQ
 }
 
 // Term 添加 term 查询条件
-func (b *DeleteByQueryBuilder) Term(field string, value interface{}) *DeleteByQueryBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"term": map[string]interface{}{
+func (b *DeleteByQueryBuilder) Term(field string, value any) *DeleteByQueryBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"term": map[string]any{
 			field: value,
 		},
 	})
@@ -51,9 +51,9 @@ func (b *DeleteByQueryBuilder) Term(field string, value interface{}) *DeleteByQu
 }
 
 // Terms 添加 terms 查询条件
-func (b *DeleteByQueryBuilder) Terms(field string, values ...interface{}) *DeleteByQueryBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"terms": map[string]interface{}{
+func (b *DeleteByQueryBuilder) Terms(field string, values ...any) *DeleteByQueryBuilder {
+	b.filters = append(b.filters, map[string]any{
+		"terms": map[string]any{
 			field: values,
 		},
 	})
@@ -61,16 +61,16 @@ func (b *DeleteByQueryBuilder) Terms(field string, values ...interface{}) *Delet
 }
 
 // Range 添加范围查询条件
-func (b *DeleteByQueryBuilder) Range(field string, gte, lte interface{}) *DeleteByQueryBuilder {
-	rangeQuery := make(map[string]interface{})
+func (b *DeleteByQueryBuilder) Range(field string, gte, lte any) *DeleteByQueryBuilder {
+	rangeQuery := make(map[string]any)
 	if gte != nil {
 		rangeQuery["gte"] = gte
 	}
 	if lte != nil {
 		rangeQuery["lte"] = lte
 	}
-	b.filters = append(b.filters, map[string]interface{}{
-		"range": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"range": map[string]any{
 			field: rangeQuery,
 		},
 	})
@@ -79,8 +79,8 @@ func (b *DeleteByQueryBuilder) Range(field string, gte, lte interface{}) *Delete
 
 // Exists 添加字段存在查询
 func (b *DeleteByQueryBuilder) Exists(field string) *DeleteByQueryBuilder {
-	b.filters = append(b.filters, map[string]interface{}{
-		"exists": map[string]interface{}{
+	b.filters = append(b.filters, map[string]any{
+		"exists": map[string]any{
 			"field": field,
 		},
 	})
@@ -94,7 +94,7 @@ func (b *DeleteByQueryBuilder) Debug() *DeleteByQueryBuilder {
 }
 
 // printDebug 打印请求调试信息
-func (b *DeleteByQueryBuilder) printDebug(method, path string, body interface{}) {
+func (b *DeleteByQueryBuilder) printDebug(method, path string, body any) {
 	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
 	if body != nil {
 		data, _ := json.MarshalIndent(body, "", "  ")
@@ -104,7 +104,7 @@ func (b *DeleteByQueryBuilder) printDebug(method, path string, body interface{})
 
 // printResponse 打印响应调试信息
 func (b *DeleteByQueryBuilder) printResponse(respBody []byte) {
-	var pretty interface{}
+	var pretty any
 	json.Unmarshal(respBody, &pretty)
 	data, _ := json.MarshalIndent(pretty, "", "  ")
 	fmt.Printf("Response:\n%s\n\n", string(data))
@@ -116,12 +116,12 @@ func (b *DeleteByQueryBuilder) resetDebug() {
 }
 
 // Build 构建请求体
-func (b *DeleteByQueryBuilder) Build() map[string]interface{} {
-	body := make(map[string]interface{})
+func (b *DeleteByQueryBuilder) Build() map[string]any {
+	body := make(map[string]any)
 
 	// 构建查询条件
 	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]interface{})
+		boolQuery := make(map[string]any)
 		if len(b.must) > 0 {
 			boolQuery["must"] = b.must
 		}
@@ -134,7 +134,7 @@ func (b *DeleteByQueryBuilder) Build() map[string]interface{} {
 		if len(b.mustNot) > 0 {
 			boolQuery["must_not"] = b.mustNot
 		}
-		body["query"] = map[string]interface{}{
+		body["query"] = map[string]any{
 			"bool": boolQuery,
 		}
 	}
@@ -144,21 +144,21 @@ func (b *DeleteByQueryBuilder) Build() map[string]interface{} {
 
 // DeleteByQueryResponse 删除响应
 type DeleteByQueryResponse struct {
-	Took             int    `json:"took"`
-	TimedOut         bool   `json:"timed_out"`
-	Total            int    `json:"total"`
-	Deleted          int    `json:"deleted"`
-	Batches          int    `json:"batches"`
-	VersionConflicts int    `json:"version_conflicts"`
-	Noops            int    `json:"noops"`
+	Took             int  `json:"took"`
+	TimedOut         bool `json:"timed_out"`
+	Total            int  `json:"total"`
+	Deleted          int  `json:"deleted"`
+	Batches          int  `json:"batches"`
+	VersionConflicts int  `json:"version_conflicts"`
+	Noops            int  `json:"noops"`
 	Retries          struct {
 		Bulk   int `json:"bulk"`
 		Search int `json:"search"`
 	} `json:"retries"`
-	ThrottledMillis      int                      `json:"throttled_millis"`
-	RequestsPerSecond    float64                  `json:"requests_per_second"`
-	ThrottledUntilMillis int                      `json:"throttled_until_millis"`
-	Failures             []map[string]interface{} `json:"failures"`
+	ThrottledMillis      int              `json:"throttled_millis"`
+	RequestsPerSecond    float64          `json:"requests_per_second"`
+	ThrottledUntilMillis int              `json:"throttled_until_millis"`
+	Failures             []map[string]any `json:"failures"`
 }
 
 // Do 执行删除

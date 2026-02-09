@@ -12,12 +12,12 @@ import (
 
 // IndexBuilder 索引构建器
 type IndexBuilder struct {
-	client   ESClient
-	index    string
-	settings map[string]interface{}
-	mappings map[string]interface{}
-	aliases  map[string]interface{}
-	debug    bool // 调试模式标志
+	client      ESClient
+	index       string
+	settings    map[string]any
+	mappings    map[string]any
+	aliases     map[string]any
+	DebugHelper // debug模式
 }
 
 // NewIndexBuilder 创建索引构建器
@@ -25,9 +25,9 @@ func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
 	return &IndexBuilder{
 		client:   c,
 		index:    index,
-		settings: make(map[string]interface{}),
-		mappings: make(map[string]interface{}),
-		aliases:  make(map[string]interface{}),
+		settings: make(map[string]any),
+		mappings: make(map[string]any),
+		aliases:  make(map[string]any),
 	}
 }
 
@@ -53,16 +53,16 @@ func (b *IndexBuilder) RefreshInterval(interval string) *IndexBuilder {
 // 例如：AddCustomAnalyzer("ik_case_sensitive", "ik_smart")
 func (b *IndexBuilder) AddCustomAnalyzer(name string, tokenizer string, filters ...string) *IndexBuilder {
 	if b.settings["analysis"] == nil {
-		b.settings["analysis"] = make(map[string]interface{})
+		b.settings["analysis"] = make(map[string]any)
 	}
-	analysis := b.settings["analysis"].(map[string]interface{})
+	analysis := b.settings["analysis"].(map[string]any)
 
 	if analysis["analyzer"] == nil {
-		analysis["analyzer"] = make(map[string]interface{})
+		analysis["analyzer"] = make(map[string]any)
 	}
-	analyzers := analysis["analyzer"].(map[string]interface{})
+	analyzers := analysis["analyzer"].(map[string]any)
 
-	analyzer := map[string]interface{}{
+	analyzer := map[string]any{
 		"type":      "custom",
 		"tokenizer": tokenizer,
 	}
@@ -78,21 +78,21 @@ func (b *IndexBuilder) AddCustomAnalyzer(name string, tokenizer string, filters 
 }
 
 // AnalyzerOption 分析器选项
-type AnalyzerOption func(map[string]interface{})
+type AnalyzerOption func(map[string]any)
 
 // AddAnalyzer 添加分析器（完整版，支持所有选项）
 func (b *IndexBuilder) AddAnalyzer(name string, options ...AnalyzerOption) *IndexBuilder {
 	if b.settings["analysis"] == nil {
-		b.settings["analysis"] = make(map[string]interface{})
+		b.settings["analysis"] = make(map[string]any)
 	}
-	analysis := b.settings["analysis"].(map[string]interface{})
+	analysis := b.settings["analysis"].(map[string]any)
 
 	if analysis["analyzer"] == nil {
-		analysis["analyzer"] = make(map[string]interface{})
+		analysis["analyzer"] = make(map[string]any)
 	}
-	analyzers := analysis["analyzer"].(map[string]interface{})
+	analyzers := analysis["analyzer"].(map[string]any)
 
-	analyzer := make(map[string]interface{})
+	analyzer := make(map[string]any)
 
 	// 应用选项
 	for _, opt := range options {
@@ -105,49 +105,49 @@ func (b *IndexBuilder) AddAnalyzer(name string, options ...AnalyzerOption) *Inde
 
 // WithAnalyzerType 设置分析器类型
 func WithAnalyzerType(analyzerType string) AnalyzerOption {
-	return func(analyzer map[string]interface{}) {
+	return func(analyzer map[string]any) {
 		analyzer["type"] = analyzerType
 	}
 }
 
 // WithTokenizer 设置分词器
 func WithTokenizer(tokenizer string) AnalyzerOption {
-	return func(analyzer map[string]interface{}) {
+	return func(analyzer map[string]any) {
 		analyzer["tokenizer"] = tokenizer
 	}
 }
 
 // WithTokenFilters 设置 token filters
 func WithTokenFilters(filters ...string) AnalyzerOption {
-	return func(analyzer map[string]interface{}) {
+	return func(analyzer map[string]any) {
 		analyzer["filter"] = filters
 	}
 }
 
 // WithCharFilters 设置 char filters
 func WithCharFilters(filters ...string) AnalyzerOption {
-	return func(analyzer map[string]interface{}) {
+	return func(analyzer map[string]any) {
 		analyzer["char_filter"] = filters
 	}
 }
 
 // TokenizerOption 分词器选项
-type TokenizerOption func(map[string]interface{})
+type TokenizerOption func(map[string]any)
 
 // AddTokenizer 添加自定义分词器（用于需要配置 tokenizer 本身的场景）
 // 例如：AddTokenizer("ik_smart_case_sensitive", WithTokenizerType("ik_smart"), WithEnableLowercase(false))
 func (b *IndexBuilder) AddTokenizer(name string, options ...TokenizerOption) *IndexBuilder {
 	if b.settings["analysis"] == nil {
-		b.settings["analysis"] = make(map[string]interface{})
+		b.settings["analysis"] = make(map[string]any)
 	}
-	analysis := b.settings["analysis"].(map[string]interface{})
+	analysis := b.settings["analysis"].(map[string]any)
 
 	if analysis["tokenizer"] == nil {
-		analysis["tokenizer"] = make(map[string]interface{})
+		analysis["tokenizer"] = make(map[string]any)
 	}
-	tokenizers := analysis["tokenizer"].(map[string]interface{})
+	tokenizers := analysis["tokenizer"].(map[string]any)
 
-	tokenizer := make(map[string]interface{})
+	tokenizer := make(map[string]any)
 
 	// 应用选项
 	for _, opt := range options {
@@ -160,42 +160,42 @@ func (b *IndexBuilder) AddTokenizer(name string, options ...TokenizerOption) *In
 
 // WithTokenizerType 设置分词器类型
 func WithTokenizerType(tokenizerType string) TokenizerOption {
-	return func(tokenizer map[string]interface{}) {
+	return func(tokenizer map[string]any) {
 		tokenizer["type"] = tokenizerType
 	}
 }
 
 // WithEnableLowercase 设置是否启用小写转换（IK 分词器专用）
 func WithEnableLowercase(enable bool) TokenizerOption {
-	return func(tokenizer map[string]interface{}) {
+	return func(tokenizer map[string]any) {
 		tokenizer["enable_lowercase"] = enable
 	}
 }
 
 // WithMaxTokenLength 设置最大 token 长度
 func WithMaxTokenLength(length int) TokenizerOption {
-	return func(tokenizer map[string]interface{}) {
+	return func(tokenizer map[string]any) {
 		tokenizer["max_token_length"] = length
 	}
 }
 
 // WithTokenizerMinGram 设置 n-gram 最小长度
 func WithTokenizerMinGram(minGram int) TokenizerOption {
-	return func(tokenizer map[string]interface{}) {
+	return func(tokenizer map[string]any) {
 		tokenizer["min_gram"] = minGram
 	}
 }
 
 // WithTokenizerMaxGram 设置 n-gram 最大长度
 func WithTokenizerMaxGram(maxGram int) TokenizerOption {
-	return func(tokenizer map[string]interface{}) {
+	return func(tokenizer map[string]any) {
 		tokenizer["max_gram"] = maxGram
 	}
 }
 
 // WithTokenChars 设置 token 字符类型
 func WithTokenChars(chars ...string) TokenizerOption {
-	return func(tokenizer map[string]interface{}) {
+	return func(tokenizer map[string]any) {
 		tokenizer["token_chars"] = chars
 	}
 }
@@ -204,11 +204,11 @@ func WithTokenChars(chars ...string) TokenizerOption {
 // 通用模板
 func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...PropertyOption) *IndexBuilder {
 	if b.mappings["properties"] == nil {
-		b.mappings["properties"] = make(map[string]interface{})
+		b.mappings["properties"] = make(map[string]any)
 	}
 
-	properties := b.mappings["properties"].(map[string]interface{})
-	field := map[string]interface{}{
+	properties := b.mappings["properties"].(map[string]any)
+	field := map[string]any{
 		"type": fieldType,
 	}
 
@@ -222,7 +222,7 @@ func (b *IndexBuilder) AddProperty(name string, fieldType string, options ...Pro
 }
 
 // AutoMigrate 自动迁移
-func (b *IndexBuilder) AutoMigrate(model interface{}) *IndexBuilder {
+func (b *IndexBuilder) AutoMigrate(model any) *IndexBuilder {
 	t := reflect.TypeOf(model)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -246,8 +246,8 @@ func (b *IndexBuilder) AutoMigrate(model interface{}) *IndexBuilder {
 }
 
 // parseStructFields 解析结构体字段（支持递归）
-func parseStructFields(t reflect.Type) map[string]interface{} {
-	properties := make(map[string]interface{})
+func parseStructFields(t reflect.Type) map[string]any {
+	properties := make(map[string]any)
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -263,7 +263,7 @@ func parseStructFields(t reflect.Type) map[string]interface{} {
 		}
 
 		fieldName := toSnakeCase(field.Name)
-		fieldMapping := map[string]interface{}{
+		fieldMapping := map[string]any{
 			"type": fieldType,
 		}
 
@@ -321,51 +321,51 @@ func toSnakeCase(s string) string {
 }
 
 // PropertyOption 字段选项
-type PropertyOption func(map[string]interface{})
+type PropertyOption func(map[string]any)
 
 // WithAnalyzer 设置分词器
 func WithAnalyzer(analyzer string) PropertyOption {
-	return func(field map[string]interface{}) {
+	return func(field map[string]any) {
 		field["analyzer"] = analyzer
 	}
 }
 
 // WithIndex 设置是否索引
 func WithIndex(index bool) PropertyOption {
-	return func(field map[string]interface{}) {
+	return func(field map[string]any) {
 		field["index"] = index
 	}
 }
 
 // WithStore 设置是否存储
 func WithStore(store bool) PropertyOption {
-	return func(field map[string]interface{}) {
+	return func(field map[string]any) {
 		field["store"] = store
 	}
 }
 
 // WithFormat 设置日期格式
 func WithFormat(format string) PropertyOption {
-	return func(field map[string]interface{}) {
+	return func(field map[string]any) {
 		field["format"] = format
 	}
 }
 
 // WithFields 添加多字段
-func WithFields(fields map[string]interface{}) PropertyOption {
-	return func(field map[string]interface{}) {
+func WithFields(fields map[string]any) PropertyOption {
+	return func(field map[string]any) {
 		field["fields"] = fields
 	}
 }
 
 // WithSubField 添加子字段（多字段映射）
 func WithSubField(name string, fieldType string, options ...PropertyOption) PropertyOption {
-	return func(field map[string]interface{}) {
+	return func(field map[string]any) {
 		if field["fields"] == nil {
-			field["fields"] = make(map[string]interface{})
+			field["fields"] = make(map[string]any)
 		}
 
-		subField := map[string]interface{}{
+		subField := map[string]any{
 			"type": fieldType,
 		}
 
@@ -374,18 +374,18 @@ func WithSubField(name string, fieldType string, options ...PropertyOption) Prop
 			opt(subField)
 		}
 
-		field["fields"].(map[string]interface{})[name] = subField
+		field["fields"].(map[string]any)[name] = subField
 	}
 }
 
 // WithSubProperties 添加子属性（嵌套属性）
 func WithSubProperties(name string, fileType string, options ...PropertyOption) PropertyOption {
-	return func(m map[string]interface{}) {
+	return func(m map[string]any) {
 		if m["properties"] == nil {
-			m["properties"] = make(map[string]interface{})
+			m["properties"] = make(map[string]any)
 		}
 
-		subField := map[string]interface{}{
+		subField := map[string]any{
 			"type": fileType,
 		}
 
@@ -394,20 +394,20 @@ func WithSubProperties(name string, fileType string, options ...PropertyOption) 
 			opt(subField)
 		}
 
-		m["properties"].(map[string]interface{})[name] = subField
+		m["properties"].(map[string]any)[name] = subField
 	}
 }
 
 // WithIgnoreAbove 设置 keyword 类型的 ignore_above 参数
 func WithIgnoreAbove(limit int) PropertyOption {
-	return func(field map[string]interface{}) {
+	return func(field map[string]any) {
 		field["ignore_above"] = limit
 	}
 }
 
 // AddAlias 添加别名
-func (b *IndexBuilder) AddAlias(alias string, filter map[string]interface{}) *IndexBuilder {
-	aliasConfig := make(map[string]interface{})
+func (b *IndexBuilder) AddAlias(alias string, filter map[string]any) *IndexBuilder {
+	aliasConfig := make(map[string]any)
 	if filter != nil {
 		aliasConfig["filter"] = filter
 	}
@@ -416,8 +416,8 @@ func (b *IndexBuilder) AddAlias(alias string, filter map[string]interface{}) *In
 }
 
 // Build 构建索引定义
-func (b *IndexBuilder) Build() map[string]interface{} {
-	body := make(map[string]interface{})
+func (b *IndexBuilder) Build() map[string]any {
+	body := make(map[string]any)
 
 	if len(b.settings) > 0 {
 		body["settings"] = b.settings
@@ -436,34 +436,8 @@ func (b *IndexBuilder) Build() map[string]interface{} {
 
 // Debug 启用调试模式（链式调用）
 func (b *IndexBuilder) Debug() *IndexBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
-}
-
-// printDebug 打印请求调试信息
-func (b *IndexBuilder) printDebug(method, path string, body interface{}) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *IndexBuilder) printResponse(respBody []byte) {
-	if len(respBody) == 0 {
-		fmt.Printf("Response: (empty)\n\n")
-		return
-	}
-	var pretty interface{}
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *IndexBuilder) resetDebug() {
-	b.debug = false
 }
 
 // Create 创建索引
@@ -472,9 +446,9 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("PUT", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("PUT", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
@@ -483,8 +457,9 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -498,14 +473,14 @@ func (b *IndexBuilder) Do(ctx context.Context) error {
 // UpdateSettings 更新索引设置
 func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 	path := fmt.Sprintf("/%s/_settings", b.index)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"settings": b.settings,
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("PUT", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("PUT", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
@@ -514,8 +489,9 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -526,9 +502,9 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 	path := fmt.Sprintf("/%s/_mapping", b.index)
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("PUT", path, b.mappings)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("PUT", path, b.mappings)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.mappings)
@@ -537,8 +513,9 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -549,9 +526,9 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	path := fmt.Sprintf("/%s", b.index)
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("DELETE", path, nil)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("DELETE", path, nil)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
@@ -560,8 +537,9 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -579,9 +557,9 @@ func (b *IndexBuilder) Exists(ctx context.Context) (bool, error) {
 
 // IndexInfo 索引信息
 type IndexInfo struct {
-	Aliases  map[string]interface{} `json:"aliases"`
-	Mappings map[string]interface{} `json:"mappings"`
-	Settings map[string]interface{} `json:"settings"`
+	Aliases  map[string]any `json:"aliases"`
+	Mappings map[string]any `json:"mappings"`
+	Settings map[string]any `json:"settings"`
 }
 
 // Get 获取索引信息
@@ -589,9 +567,9 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	path := fmt.Sprintf("/%s", b.index)
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("GET", path, nil)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("GET", path, nil)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -600,8 +578,9 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
+		defer b.SetDebug(false)
 	}
 
 	var result map[string]*IndexInfo

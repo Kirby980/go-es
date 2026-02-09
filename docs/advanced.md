@@ -21,15 +21,15 @@ bulkResp, err := builder.NewBulkBuilder(esClient).
 		}
 	}).
     Index("products").
-    Add("", "1", map[string]interface{}{
+    Add("", "1", map[string]any{
         "name": "iPad Air",
         "price": 599.99,
     }).
-    Add("", "2", map[string]interface{}{
+    Add("", "2", map[string]any{
         "name": "Apple Watch",
         "price": 399.99,
     }).
-    Update("", "3", map[string]interface{}{
+    Update("", "3", map[string]any{
         "price": 349.99,
     }).
     Delete("", "4").
@@ -270,7 +270,7 @@ settings, err := clusterBuilder.GetSettings(ctx)
 
 // 更新集群设置
 err := clusterBuilder.UpdateSettings(ctx,
-    map[string]interface{}{
+    map[string]any{
         "indices.recovery.max_bytes_per_sec": "50mb",
     }, nil)
 ```

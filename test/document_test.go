@@ -294,7 +294,7 @@ func TestDocumentBuilder_ScriptUpdate(t *testing.T) {
 	scriptResp, err := builder.NewDocumentBuilder(client, indexName).
 		ID("script-1").
 		Script("ctx._source.views += params.increment",
-			map[string]interface{}{"increment": 50}).
+			map[string]any{"increment": 50}).
 		Update(ctx)
 
 	if err != nil {
@@ -471,7 +471,7 @@ func TestDocumentBuilder_SetMap(t *testing.T) {
 	}()
 
 	// 使用 SetMap 批量设置
-	data := map[string]interface{}{
+	data := map[string]any{
 		"title":     "批量设置测试",
 		"author":    "王五",
 		"views":     300,
@@ -811,12 +811,12 @@ func TestDocumentBuilder_builderNestedObject(t *testing.T) {
 		ID("nested-1").
 		Get(ctx)
 
-	user := getResp.Source["user"].(map[string]interface{})
+	user := getResp.Source["user"].(map[string]any)
 	if user["name"] != "张三" {
 		t.Errorf("user.name 应该为 '张三', 实际=%v", user["name"])
 	}
 
-	address := user["address"].(map[string]interface{})
+	address := user["address"].(map[string]any)
 	if address["city"] != "北京" {
 		t.Errorf("user.address.city 应该为 '北京', 实际=%v", address["city"])
 	}
@@ -871,12 +871,12 @@ func TestDocumentBuilder_ObjectArray(t *testing.T) {
 		ID("array-1").
 		Get(ctx)
 
-	comments := getResp.Source["comments"].([]interface{})
+	comments := getResp.Source["comments"].([]any)
 	if len(comments) != 3 {
 		t.Errorf("应该有 3 条评论, 实际=%d", len(comments))
 	}
 
-	firstComment := comments[0].(map[string]interface{})
+	firstComment := comments[0].(map[string]any)
 	if firstComment["author"] != "用户1" {
 		t.Errorf("第一条评论作者应该为 '用户1', 实际=%v", firstComment["author"])
 	}
@@ -955,37 +955,37 @@ func TestDocumentBuilder_ComplexNested(t *testing.T) {
 	}
 
 	// 验证数组
-	tags := getResp.Source["tags"].([]interface{})
+	tags := getResp.Source["tags"].([]any)
 	if len(tags) != 3 {
 		t.Errorf("tags 应该有 3 个元素, 实际=%d", len(tags))
 	}
 
 	// 验证嵌套对象
-	creator := getResp.Source["creator"].(map[string]interface{})
+	creator := getResp.Source["creator"].(map[string]any)
 	if creator["name"] != "李四" {
 		t.Error("creator.name 不正确")
 	}
 
 	// 验证多层嵌套
-	profile := creator["profile"].(map[string]interface{})
+	profile := creator["profile"].(map[string]any)
 	if profile["bio"] != "资深开发者" {
 		t.Error("creator.profile.bio 不正确")
 	}
 
 	// 验证嵌套对象数组
-	projects := creator["projects"].([]interface{})
+	projects := creator["projects"].([]any)
 	if len(projects) != 2 {
 		t.Errorf("projects 应该有 2 个元素, 实际=%d", len(projects))
 	}
 
 	// 验证复杂对象数组
-	reviews := getResp.Source["reviews"].([]interface{})
+	reviews := getResp.Source["reviews"].([]any)
 	if len(reviews) != 2 {
 		t.Errorf("reviews 应该有 2 个元素, 实际=%d", len(reviews))
 	}
 
-	firstReview := reviews[0].(map[string]interface{})
-	reviewer := firstReview["reviewer"].(map[string]interface{})
+	firstReview := reviews[0].(map[string]any)
+	reviewer := firstReview["reviewer"].(map[string]any)
 	if reviewer["name"] != "王五" {
 		t.Error("reviews[0].reviewer.name 不正确")
 	}

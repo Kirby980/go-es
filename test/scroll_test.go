@@ -47,7 +47,7 @@ func prepareScrollTestData(t *testing.T, client *client.Client, indexName string
 	// 批量插入测试数据
 	bulk := builder.NewBulkBuilder(client).Index(indexName)
 	for i := 1; i <= docCount; i++ {
-		bulk.Add("", "", map[string]interface{}{
+		bulk.Add("", "", map[string]any{
 			"id":         i,
 			"title":      "测试文档 " + string(rune(i)),
 			"status":     getStatus(i),
@@ -463,11 +463,11 @@ func TestScrollBuilder_HasMore(t *testing.T) {
 	// 测试有数据的情况
 	resp1 := &builder.ScrollResponse{}
 	resp1.Hits.Hits = make([]struct {
-		Index     string                 `json:"_index"`
-		ID        string                 `json:"_id"`
-		Score     float64                `json:"_score"`
-		Source    map[string]interface{} `json:"_source"`
-		Highlight map[string][]string    `json:"highlight,omitempty"`
+		Index     string              `json:"_index"`
+		ID        string              `json:"_id"`
+		Score     float64             `json:"_score"`
+		Source    map[string]any      `json:"_source"`
+		Highlight map[string][]string `json:"highlight,omitempty"`
 	}, 5)
 
 	if !scroll.HasMore(resp1) {
