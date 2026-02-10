@@ -165,7 +165,6 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	var resp ScrollResponse
@@ -205,7 +204,6 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	var resp ScrollResponse
@@ -244,7 +242,6 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	b.scrollID = ""

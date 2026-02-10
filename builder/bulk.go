@@ -10,11 +10,11 @@ import (
 
 // BulkBuilder 批量操作构建器
 type BulkBuilder struct {
-	client        ESClient
-	index         string
-	operations    []bulkOperation
-	currentOp     *bulkOperation      // 当前正在构建的操作（用于链式调用）
-	debug         bool                // 调试模式标志
+	client     ESClient
+	index      string
+	operations []bulkOperation
+	currentOp  *bulkOperation // 当前正在构建的操作（用于链式调用）
+	DebugHelper
 	autoFlushSize int                 // 自动刷新大小
 	onFlush       func(*BulkResponse) // 分批回调
 }
@@ -448,30 +448,8 @@ func (b *BulkBuilder) Build() []byte {
 
 // Debug 启用调试模式（链式调用）
 func (b *BulkBuilder) Debug() *BulkBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
-}
-
-// printDebug 打印请求调试信息
-func (b *BulkBuilder) printDebug(method, path string, body []byte) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		// Bulk API 使用 NDJSON 格式，直接打印
-		fmt.Printf("Request Body (NDJSON):\n%s\n", string(body))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *BulkBuilder) printResponse(respBody []byte) {
-	var pretty any
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *BulkBuilder) resetDebug() {
-	b.debug = false
 }
 
 // Do 执行批量操作
@@ -486,9 +464,9 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	// 创建请求
@@ -508,8 +486,8 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
 	}
 
 	var resp BulkResponse

@@ -51,7 +51,6 @@ func (b *MGetBuilder) Do(ctx context.Context) (*MGetResponse, error) {
 	}
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 	var resp MGetResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {

@@ -459,7 +459,6 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -491,7 +490,6 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -515,7 +513,6 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -539,7 +536,6 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	return nil
@@ -580,7 +576,6 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	var result map[string]*IndexInfo

@@ -15,7 +15,7 @@ type DeleteByQueryBuilder struct {
 	must    []map[string]any
 	should  []map[string]any
 	mustNot []map[string]any
-	debug   bool
+	DebugHelper
 }
 
 // NewDeleteByQueryBuilder 创建按查询删除构建器
@@ -89,30 +89,8 @@ func (b *DeleteByQueryBuilder) Exists(field string) *DeleteByQueryBuilder {
 
 // Debug 启用调试模式
 func (b *DeleteByQueryBuilder) Debug() *DeleteByQueryBuilder {
-	b.debug = true
+	b.SetDebug(true)
 	return b
-}
-
-// printDebug 打印请求调试信息
-func (b *DeleteByQueryBuilder) printDebug(method, path string, body any) {
-	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
-	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
-	}
-}
-
-// printResponse 打印响应调试信息
-func (b *DeleteByQueryBuilder) printResponse(respBody []byte) {
-	var pretty any
-	json.Unmarshal(respBody, &pretty)
-	data, _ := json.MarshalIndent(pretty, "", "  ")
-	fmt.Printf("Response:\n%s\n\n", string(data))
-}
-
-// resetDebug 执行后重置debug标志（让每次调用可以独立控制）
-func (b *DeleteByQueryBuilder) resetDebug() {
-	b.debug = false
 }
 
 // Build 构建请求体
@@ -172,9 +150,9 @@ func (b *DeleteByQueryBuilder) Do(ctx context.Context) (*DeleteByQueryResponse, 
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
-		b.printDebug("POST", path, body)
-		defer b.resetDebug()
+	if b.IsDebug() {
+		b.PrintDebug("POST", path, body)
+		defer b.SetDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -183,8 +161,8 @@ func (b *DeleteByQueryBuilder) Do(ctx context.Context) (*DeleteByQueryResponse, 
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
-		b.printResponse(respBody)
+	if b.IsDebug() {
+		b.PrintResponse(respBody)
 	}
 
 	var resp DeleteByQueryResponse

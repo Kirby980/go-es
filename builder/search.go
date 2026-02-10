@@ -567,7 +567,6 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	var resp SearchResponse
@@ -628,7 +627,6 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 	// 如果启用调试模式，打印响应信息
 	if b.IsDebug() {
 		b.PrintResponse(respBody)
-		defer b.SetDebug(false)
 	}
 
 	var resp CountResponse
