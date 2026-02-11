@@ -98,6 +98,10 @@ func (b *DocumentBuilder) SetStruct(data any) *DocumentBuilder {
 func (b *DocumentBuilder) SetObject(key string, builder func(*NestedObject)) *DocumentBuilder {
 	nested := &NestedObject{data: make(map[string]any)}
 	builder(nested)
+	if nested.err != nil {
+		b.err = fmt.Errorf("Error building nested object: %w", nested.err)
+		return b
+	}
 	b.doc[key] = nested.data
 	return b
 }
@@ -114,6 +118,10 @@ func (b *DocumentBuilder) SetObjectArray(key string, builders ...func(*NestedObj
 	for i, builder := range builders {
 		nested := &NestedObject{data: make(map[string]any)}
 		builder(nested)
+		if nested.err != nil {
+			b.err = fmt.Errorf("Error building nested object: %w", nested.err)
+			return b
+		}
 		arr[i] = nested.data
 	}
 	b.doc[key] = arr

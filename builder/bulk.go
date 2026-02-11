@@ -17,6 +17,7 @@ type BulkBuilder struct {
 	DebugHelper
 	autoFlushSize int                 // 自动刷新大小
 	onFlush       func(*BulkResponse) // 分批回调
+	err           error
 }
 
 // bulkOperation 批量操作项
@@ -301,8 +302,9 @@ func (b *BulkBuilder) DeleteDocWithIndex(index, id string) *BulkBuilder {
 // Set 设置字段值（链式调用，需要先调用 AddDoc/CreateDoc/UpdateDoc）
 func (b *BulkBuilder) Set(key string, value any) *BulkBuilder {
 	if b.currentOp == nil {
-		// 如果没有当前操作，抛出 panic 提示用户
-		panic("Set() must be called after AddDoc/CreateDoc/UpdateDoc")
+		// 如果没有当前操作，报错
+		b.err = fmt.Errorf("Set() must be called after AddDoc/CreateDoc/UpdateDoc")
+		return b
 	}
 	b.currentOp.doc[key] = value
 	return b
@@ -311,9 +313,14 @@ func (b *BulkBuilder) Set(key string, value any) *BulkBuilder {
 // SetFromStruct 从结构体设置字段（链式调用）
 func (b *BulkBuilder) SetFromStruct(data any) *BulkBuilder {
 	if b.currentOp == nil {
-		panic("SetFromStruct() must be called after AddDoc/CreateDoc/UpdateDoc")
+		b.err = fmt.Errorf("SetFromStruct() must be called after AddDoc/CreateDoc/UpdateDoc")
+		return b
 	}
-	jsonData, _ := json.Marshal(data)
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		b.err = fmt.Errorf("SetFromStruct() error: %v", err)
+		return b
+	}
 	json.Unmarshal(jsonData, &b.currentOp.doc)
 	return b
 }
@@ -321,10 +328,15 @@ func (b *BulkBuilder) SetFromStruct(data any) *BulkBuilder {
 // SetObject 设置嵌套对象（链式调用）
 func (b *BulkBuilder) SetObject(key string, builder func(*NestedObject)) *BulkBuilder {
 	if b.currentOp == nil {
-		panic("SetObject() must be called after AddDoc/CreateDoc/UpdateDoc")
+		b.err = fmt.Errorf("SetObject () must be called after AddDoc/CreateDoc/UpdateDoc")
+		return b
 	}
 	nested := &NestedObject{data: make(map[string]any)}
 	builder(nested)
+	if nested.err != nil {
+		b.err = fmt.Errorf("SetObject() error: %v", nested.err)
+		return b
+	}
 	b.currentOp.doc[key] = nested.data
 	return b
 }
@@ -332,7 +344,8 @@ func (b *BulkBuilder) SetObject(key string, builder func(*NestedObject)) *BulkBu
 // SetArray 设置数组字段（链式调用）
 func (b *BulkBuilder) SetArray(key string, values ...any) *BulkBuilder {
 	if b.currentOp == nil {
-		panic("SetArray() must be called after AddDoc/CreateDoc/UpdateDoc")
+		b.err = fmt.Errorf("SetArray() must be called after AddDoc/CreateDoc/UpdateDoc")
+		return b
 	}
 	b.currentOp.doc[key] = values
 	return b
@@ -341,12 +354,17 @@ func (b *BulkBuilder) SetArray(key string, values ...any) *BulkBuilder {
 // SetObjectArray 设置对象数组（链式调用）
 func (b *BulkBuilder) SetObjectArray(key string, builders ...func(*NestedObject)) *BulkBuilder {
 	if b.currentOp == nil {
-		panic("SetObjectArray() must be called after AddDoc/CreateDoc/UpdateDoc")
+		b.err = fmt.Errorf("SetObjectArray() must be called after AddDoc/CreateDoc/UpdateDoc")
+		return b
 	}
 	arr := make([]map[string]any, len(builders))
 	for i, builder := range builders {
 		nested := &NestedObject{data: make(map[string]any)}
 		builder(nested)
+		if nested.err != nil {
+			b.err = fmt.Errorf("SetObjectArray() error: %v", nested.err)
+			return b
+		}
 		arr[i] = nested.data
 	}
 	b.currentOp.doc[key] = arr
@@ -356,16 +374,32 @@ func (b *BulkBuilder) SetObjectArray(key string, builders ...func(*NestedObject)
 // AddFromStruct 从结构体添加索引操作
 func (b *BulkBuilder) AddFromStruct(index, id string, data any) *BulkBuilder {
 	doc := make(map[string]any)
-	jsonData, _ := json.Marshal(data)
-	json.Unmarshal(jsonData, &doc)
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		b.err = fmt.Errorf("AddFromStruct Marshal  error: %v", err)
+		return b
+	}
+	err = json.Unmarshal(jsonData, &doc)
+	if err != nil {
+		b.err = fmt.Errorf("AddFromStruct Unmarshal error: %v", err)
+		return b
+	}
 	return b.Add(index, id, doc)
 }
 
 // UpdateFromStruct 从结构体添加更新操作
 func (b *BulkBuilder) UpdateFromStruct(index, id string, data any) *BulkBuilder {
 	doc := make(map[string]any)
-	jsonData, _ := json.Marshal(data)
-	json.Unmarshal(jsonData, &doc)
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		b.err = fmt.Errorf("UpdateFromStruct Marshal error: %v", err)
+		return b
+	}
+	err = json.Unmarshal(jsonData, &doc)
+	if err != nil {
+		b.err = fmt.Errorf("UpdateFromStruct Unmarshal error: %v", err)
+		return b
+	}
 	return b.Update(index, id, doc)
 }
 
@@ -456,6 +490,9 @@ func (b *BulkBuilder) Debug() *BulkBuilder {
 func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	b.commitCurrent() // 提交链式构建的操作（如果有）
 
+	if b.err != nil {
+		return nil, b.err
+	}
 	if len(b.operations) == 0 {
 		return nil, fmt.Errorf("没有待执行的批量操作")
 	}

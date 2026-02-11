@@ -157,6 +157,10 @@ func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte,
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
 			time.Sleep(c.config.RetryBackoff)
+			// 重置 body 读取位置
+			if seeker, ok := req.Body.(io.Seeker); ok {
+				seeker.Seek(0, io.SeekStart)
+			}
 		}
 
 		resp, err = c.httpClient.Do(req)

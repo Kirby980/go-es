@@ -1,10 +1,14 @@
 package builder
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // NestedObject 嵌套对象构建器（用于构建嵌套字段）
 type NestedObject struct {
 	data map[string]any
+	err  error
 }
 
 // Set 设置嵌套对象的字段
@@ -41,7 +45,15 @@ func (o *NestedObject) SetObjectArray(key string, builders ...func(*NestedObject
 
 // SetFromStruct 从结构体设置字段
 func (o *NestedObject) SetFromStruct(data any) *NestedObject {
-	jsonData, _ := json.Marshal(data)
-	json.Unmarshal(jsonData, &o.data)
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		o.err = fmt.Errorf("SetFromStruct() error: %w", err)
+		return o
+	}
+	err = json.Unmarshal(jsonData, &o.data)
+	if err != nil {
+		o.err = fmt.Errorf("SetFromStruct() error: %w", err)
+		return o
+	}
 	return o
 }
