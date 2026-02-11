@@ -453,6 +453,9 @@ func (r *SearchResponse) Scan(dest any) error {
 
 	// 遍历搜索结果
 	for _, hit := range r.Hits.Hits {
+		if hit.Source == nil {
+			continue
+		}
 		// 将 Source 转为 JSON 再解析到结构体
 		jsonData, err := json.Marshal(hit.Source)
 		if err != nil {

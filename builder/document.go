@@ -16,6 +16,7 @@ type DocumentBuilder struct {
 	doc     map[string]any
 	script  map[string]any
 	refresh string // refresh 参数: true, false, wait_for
+	err     error
 	DebugHelper
 }
 
@@ -45,8 +46,16 @@ func (b *DocumentBuilder) Model(model any) *DocumentBuilder {
 		}
 	}
 	// 设置文档数据
-	jsonData, _ := json.Marshal(model)
-	json.Unmarshal(jsonData, &b.doc)
+	jsonData, err := json.Marshal(model)
+	if err != nil {
+		b.err = fmt.Errorf("Error marshalling model: %w", err)
+		return b
+	}
+	err = json.Unmarshal(jsonData, &b.doc)
+	if err != nil {
+		b.err = fmt.Errorf("Error unmarshalling model: %w", err)
+		return b
+	}
 	return b
 }
 
@@ -72,8 +81,16 @@ func (b *DocumentBuilder) SetMap(data map[string]any) *DocumentBuilder {
 
 // SetStruct 从结构体设置
 func (b *DocumentBuilder) SetStruct(data any) *DocumentBuilder {
-	jsonData, _ := json.Marshal(data)
-	json.Unmarshal(jsonData, &b.doc)
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		b.err = fmt.Errorf("Error marshalling model: %w", err)
+		return b
+	}
+	err = json.Unmarshal(jsonData, &b.doc)
+	if err != nil {
+		b.err = fmt.Errorf("Error unmarshalling model: %w", err)
+		return b
+	}
 	return b
 }
 
@@ -151,19 +168,14 @@ type DocumentResponse struct {
 	} `json:"_shards"`
 }
 
-// GetResponse 获取文档响应
-type GetResponse struct {
-	Index   string         `json:"_index"`
-	ID      string         `json:"_id"`
-	Version int            `json:"_version"`
-	Found   bool           `json:"found"`
-	Source  map[string]any `json:"_source"`
-}
-
 // Do 索引文档（创建或更新）
 func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	var path string
 	var method string
+
+	if b.err != nil {
+		return nil, b.err
+	}
 
 	if b.id != "" {
 		path = fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
@@ -388,4 +400,13 @@ func (b *DocumentBuilder) Exists(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+// GetResponse 获取文档响应
+type GetResponse struct {
+	Index   string         `json:"_index"`
+	ID      string         `json:"_id"`
+	Version int            `json:"_version"`
+	Found   bool           `json:"found"`
+	Source  map[string]any `json:"_source"`
 }
