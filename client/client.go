@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/Kirby980/go-es/config"
@@ -16,9 +17,10 @@ import (
 
 // Client Elasticsearch 客户端
 type Client struct {
-	config     *config.Config
-	httpClient *http.Client
-	addresses  []string
+	config       *config.Config
+	httpClient   *http.Client
+	addresses    []string
+	addressIndex atomic.Uint32
 }
 
 // New 创建新的 ES 客户端
@@ -58,10 +60,11 @@ func (c *Client) Close() error {
 
 // GetAddress 获取第一个地址
 func (c *Client) GetAddress() string {
-	if len(c.addresses) > 0 {
-		return c.addresses[0]
+	if len(c.addresses) == 0 {
+		return ""
 	}
-	return ""
+	idx := c.addressIndex.Add(1)
+	return c.addresses[idx%uint32(len(c.addresses))]
 }
 
 // DoRequest 执行自定义 HTTP 请求
