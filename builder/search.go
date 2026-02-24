@@ -10,102 +10,29 @@ import (
 
 // SearchBuilder 搜索构建器
 type SearchBuilder struct {
-	client             ESClient
-	index              string
-	query              map[string]any
-	filters            []map[string]any
-	must               []map[string]any
-	should             []map[string]any
-	mustNot            []map[string]any
-	minimumShouldMatch any // 最少匹配 should 条件数量
-	from               int
-	size               int
-	sort               []map[string]any
-	aggs               map[string]any
-	source             []string
-	highlight          map[string]any
-	minScore           *float64 // 最小评分
+	client    ESClient
+	index     string
+	query     map[string]any
+	from      int
+	size      int
+	sort      []map[string]any
+	aggs      map[string]any
+	source    []string
+	highlight map[string]any
+	minScore  *float64 // 最小评分
+	BoolQuery[SearchBuilder]
 	DebugHelper
 }
 
 // NewSearchBuilder 创建搜索构建器
 func NewSearchBuilder(c ESClient, index string) *SearchBuilder {
-	return &SearchBuilder{
-		client:  c,
-		index:   index,
-		filters: make([]map[string]any, 0),
-		must:    make([]map[string]any, 0),
-		should:  make([]map[string]any, 0),
-		mustNot: make([]map[string]any, 0),
-		size:    10,
-		aggs:    make(map[string]any),
+	b := &SearchBuilder{
+		client: c,
+		index:  index,
+		size:   10,
+		aggs:   make(map[string]any),
 	}
-}
-
-// Match 添加 match 查询
-func (b *SearchBuilder) Match(field string, value any) *SearchBuilder {
-	b.must = append(b.must, map[string]any{
-		"match": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// MatchPhrase 添加 match_phrase 查询
-func (b *SearchBuilder) MatchPhrase(field string, value any) *SearchBuilder {
-	b.must = append(b.must, map[string]any{
-		"match_phrase": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Term 添加 term 查询
-func (b *SearchBuilder) Term(field string, value any) *SearchBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"term": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Terms 添加 terms 查询
-func (b *SearchBuilder) Terms(field string, values ...any) *SearchBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"terms": map[string]any{
-			field: values,
-		},
-	})
-	return b
-}
-
-// Range 添加范围查询
-func (b *SearchBuilder) Range(field string, gte, lte any) *SearchBuilder {
-	rangeQuery := make(map[string]any)
-	if gte != nil {
-		rangeQuery["gte"] = gte
-	}
-	if lte != nil {
-		rangeQuery["lte"] = lte
-	}
-	b.filters = append(b.filters, map[string]any{
-		"range": map[string]any{
-			field: rangeQuery,
-		},
-	})
-	return b
-}
-
-// Exists 添加字段存在查询
-func (b *SearchBuilder) Exists(field string) *SearchBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"exists": map[string]any{
-			"field": field,
-		},
-	})
+	b.initBoolQuery(b)
 	return b
 }
 
@@ -248,22 +175,11 @@ func (b *SearchBuilder) MinScore(score float64) *SearchBuilder {
 	return b
 }
 
-// MinimumShouldMatch 设置最少匹配 should 条件数量
-// 参数可以是：
-// - 整数：至少匹配的 should 条件数量，如 2 表示至少匹配2个条件
-// - 字符串：百分比或表达式，如 "75%" 表示至少匹配75%的条件
-func (b *SearchBuilder) MinimumShouldMatch(value any) *SearchBuilder {
-	b.minimumShouldMatch = value
-	return b
-}
-
 // Should 添加 should 条件（至少匹配一个）
 func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilder {
 	for _, condition := range conditions {
-		temp := &SearchBuilder{
-			must:    make([]map[string]any, 0),
-			filters: make([]map[string]any, 0),
-		}
+		temp := &SearchBuilder{}
+		temp.initBoolQuery(temp)
 		condition(temp)
 		if len(temp.must) > 0 {
 			b.should = append(b.should, temp.must...)
@@ -272,89 +188,6 @@ func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilde
 			b.should = append(b.should, temp.filters...)
 		}
 	}
-	return b
-}
-
-// ========== Should 条件（更友好的 API）==========
-
-// MatchShould 添加 match 查询到 should 条件
-func (b *SearchBuilder) MatchShould(field string, value any) *SearchBuilder {
-	b.should = append(b.should, map[string]any{
-		"match": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// TermShould 添加 term 查询到 should 条件
-func (b *SearchBuilder) TermShould(field string, value any) *SearchBuilder {
-	b.should = append(b.should, map[string]any{
-		"term": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// RangeShould 添加范围查询到 should 条件
-func (b *SearchBuilder) RangeShould(field string, gte, lte any) *SearchBuilder {
-	rangeQuery := make(map[string]any)
-	if gte != nil {
-		rangeQuery["gte"] = gte
-	}
-	if lte != nil {
-		rangeQuery["lte"] = lte
-	}
-	b.should = append(b.should, map[string]any{
-		"range": map[string]any{
-			field: rangeQuery,
-		},
-	})
-	return b
-}
-
-// ========== Must Not 条件（更友好的 API）==========
-
-// MustNot 添加 must_not 条件（term 查询）
-func (b *SearchBuilder) MustNot(field string, value any) *SearchBuilder {
-	b.mustNot = append(b.mustNot, map[string]any{
-		"term": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// MatchMustNot 添加 match 查询到 must_not 条件
-func (b *SearchBuilder) MatchMustNot(field string, value any) *SearchBuilder {
-	b.mustNot = append(b.mustNot, map[string]any{
-		"match": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// TermMustNot 添加 term 查询到 must_not 条件（等同于 MustNot，提供别名以保持一致性）
-func (b *SearchBuilder) TermMustNot(field string, value any) *SearchBuilder {
-	return b.MustNot(field, value)
-}
-
-// RangeMustNot 添加范围查询到 must_not 条件
-func (b *SearchBuilder) RangeMustNot(field string, gte, lte any) *SearchBuilder {
-	rangeQuery := make(map[string]any)
-	if gte != nil {
-		rangeQuery["gte"] = gte
-	}
-	if lte != nil {
-		rangeQuery["lte"] = lte
-	}
-	b.mustNot = append(b.mustNot, map[string]any{
-		"range": map[string]any{
-			field: rangeQuery,
-		},
-	})
 	return b
 }
 
@@ -490,27 +323,8 @@ func (b *SearchBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建 bool 查询
-	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]any)
-		if len(b.must) > 0 {
-			boolQuery["must"] = b.must
-		}
-		if len(b.filters) > 0 {
-			boolQuery["filter"] = b.filters
-		}
-		if len(b.should) > 0 {
-			boolQuery["should"] = b.should
-		}
-		if len(b.mustNot) > 0 {
-			boolQuery["must_not"] = b.mustNot
-		}
-		// 最少匹配 should 条件数量
-		if b.minimumShouldMatch != nil {
-			boolQuery["minimum_should_match"] = b.minimumShouldMatch
-		}
-		body["query"] = map[string]any{
-			"bool": boolQuery,
-		}
+	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+		body["query"] = boolQ
 	}
 
 	// 最小评分
@@ -597,23 +411,8 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 
 	// 构建查询条件（不需要分页、排序等）
 	body := make(map[string]any)
-	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]any)
-		if len(b.must) > 0 {
-			boolQuery["must"] = b.must
-		}
-		if len(b.filters) > 0 {
-			boolQuery["filter"] = b.filters
-		}
-		if len(b.should) > 0 {
-			boolQuery["should"] = b.should
-		}
-		if len(b.mustNot) > 0 {
-			boolQuery["must_not"] = b.mustNot
-		}
-		body["query"] = map[string]any{
-			"bool": boolQuery,
-		}
+	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+		body["query"] = boolQ
 	}
 
 	// 如果启用调试模式，打印请求信息

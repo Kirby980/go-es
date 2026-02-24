@@ -9,72 +9,20 @@ import (
 
 // UpdateByQueryBuilder 按查询更新构建器
 type UpdateByQueryBuilder struct {
-	client  ESClient
-	index   string
-	filters []map[string]any
-	must    []map[string]any
-	should  []map[string]any
-	mustNot []map[string]any
-	script  map[string]any
+	client ESClient
+	index  string
+	script map[string]any
+	BoolQuery[UpdateByQueryBuilder]
 	DebugHelper
 }
 
 // NewUpdateByQueryBuilder 创建按查询更新构建器
 func NewUpdateByQueryBuilder(c ESClient, index string) *UpdateByQueryBuilder {
-	return &UpdateByQueryBuilder{
-		client:  c,
-		index:   index,
-		filters: make([]map[string]any, 0),
-		must:    make([]map[string]any, 0),
-		should:  make([]map[string]any, 0),
-		mustNot: make([]map[string]any, 0),
+	b := &UpdateByQueryBuilder{
+		client: c,
+		index:  index,
 	}
-}
-
-// Match 添加 match 查询条件
-func (b *UpdateByQueryBuilder) Match(field string, value any) *UpdateByQueryBuilder {
-	b.must = append(b.must, map[string]any{
-		"match": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Term 添加 term 查询条件
-func (b *UpdateByQueryBuilder) Term(field string, value any) *UpdateByQueryBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"term": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Terms 添加 terms 查询条件
-func (b *UpdateByQueryBuilder) Terms(field string, values ...any) *UpdateByQueryBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"terms": map[string]any{
-			field: values,
-		},
-	})
-	return b
-}
-
-// Range 添加范围查询条件
-func (b *UpdateByQueryBuilder) Range(field string, gte, lte any) *UpdateByQueryBuilder {
-	rangeQuery := make(map[string]any)
-	if gte != nil {
-		rangeQuery["gte"] = gte
-	}
-	if lte != nil {
-		rangeQuery["lte"] = lte
-	}
-	b.filters = append(b.filters, map[string]any{
-		"range": map[string]any{
-			field: rangeQuery,
-		},
-	})
+	b.initBoolQuery(b)
 	return b
 }
 
@@ -123,23 +71,8 @@ func (b *UpdateByQueryBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建查询条件
-	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]any)
-		if len(b.must) > 0 {
-			boolQuery["must"] = b.must
-		}
-		if len(b.filters) > 0 {
-			boolQuery["filter"] = b.filters
-		}
-		if len(b.should) > 0 {
-			boolQuery["should"] = b.should
-		}
-		if len(b.mustNot) > 0 {
-			boolQuery["must_not"] = b.mustNot
-		}
-		body["query"] = map[string]any{
-			"bool": boolQuery,
-		}
+	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+		body["query"] = boolQ
 	}
 
 	// 添加脚本

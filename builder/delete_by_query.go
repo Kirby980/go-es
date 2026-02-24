@@ -9,81 +9,19 @@ import (
 
 // DeleteByQueryBuilder 按查询删除构建器
 type DeleteByQueryBuilder struct {
-	client  ESClient
-	index   string
-	filters []map[string]any
-	must    []map[string]any
-	should  []map[string]any
-	mustNot []map[string]any
+	client ESClient
+	index  string
+	BoolQuery[DeleteByQueryBuilder]
 	DebugHelper
 }
 
 // NewDeleteByQueryBuilder 创建按查询删除构建器
 func NewDeleteByQueryBuilder(c ESClient, index string) *DeleteByQueryBuilder {
-	return &DeleteByQueryBuilder{
-		client:  c,
-		index:   index,
-		filters: make([]map[string]any, 0),
-		must:    make([]map[string]any, 0),
-		should:  make([]map[string]any, 0),
-		mustNot: make([]map[string]any, 0),
+	b := &DeleteByQueryBuilder{
+		client: c,
+		index:  index,
 	}
-}
-
-// Match 添加 match 查询条件
-func (b *DeleteByQueryBuilder) Match(field string, value any) *DeleteByQueryBuilder {
-	b.must = append(b.must, map[string]any{
-		"match": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Term 添加 term 查询条件
-func (b *DeleteByQueryBuilder) Term(field string, value any) *DeleteByQueryBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"term": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Terms 添加 terms 查询条件
-func (b *DeleteByQueryBuilder) Terms(field string, values ...any) *DeleteByQueryBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"terms": map[string]any{
-			field: values,
-		},
-	})
-	return b
-}
-
-// Range 添加范围查询条件
-func (b *DeleteByQueryBuilder) Range(field string, gte, lte any) *DeleteByQueryBuilder {
-	rangeQuery := make(map[string]any)
-	if gte != nil {
-		rangeQuery["gte"] = gte
-	}
-	if lte != nil {
-		rangeQuery["lte"] = lte
-	}
-	b.filters = append(b.filters, map[string]any{
-		"range": map[string]any{
-			field: rangeQuery,
-		},
-	})
-	return b
-}
-
-// Exists 添加字段存在查询
-func (b *DeleteByQueryBuilder) Exists(field string) *DeleteByQueryBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"exists": map[string]any{
-			"field": field,
-		},
-	})
+	b.initBoolQuery(b)
 	return b
 }
 
@@ -98,23 +36,8 @@ func (b *DeleteByQueryBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建查询条件
-	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]any)
-		if len(b.must) > 0 {
-			boolQuery["must"] = b.must
-		}
-		if len(b.filters) > 0 {
-			boolQuery["filter"] = b.filters
-		}
-		if len(b.should) > 0 {
-			boolQuery["should"] = b.should
-		}
-		if len(b.mustNot) > 0 {
-			boolQuery["must_not"] = b.mustNot
-		}
-		body["query"] = map[string]any{
-			"bool": boolQuery,
-		}
+	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+		body["query"] = boolQ
 	}
 
 	return body

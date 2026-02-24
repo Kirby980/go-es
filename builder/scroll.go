@@ -11,64 +11,22 @@ import (
 type ScrollBuilder struct {
 	client    ESClient
 	index     string
-	filters   []map[string]any
-	must      []map[string]any
-	should    []map[string]any
-	mustNot   []map[string]any
 	size      int
 	keepAlive string
 	scrollID  string
+	BoolQuery[ScrollBuilder]
 	DebugHelper
 }
 
 // NewScrollBuilder 创建Scroll构建器
 func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
-	return &ScrollBuilder{
+	b := &ScrollBuilder{
 		client:    c,
 		index:     index,
-		filters:   make([]map[string]any, 0),
-		must:      make([]map[string]any, 0),
-		should:    make([]map[string]any, 0),
-		mustNot:   make([]map[string]any, 0),
 		size:      1000,
 		keepAlive: "5m",
 	}
-}
-
-// Match 添加 match 查询条件
-func (b *ScrollBuilder) Match(field string, value any) *ScrollBuilder {
-	b.must = append(b.must, map[string]any{
-		"match": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Term 添加 term 查询条件
-func (b *ScrollBuilder) Term(field string, value any) *ScrollBuilder {
-	b.filters = append(b.filters, map[string]any{
-		"term": map[string]any{
-			field: value,
-		},
-	})
-	return b
-}
-
-// Range 添加范围查询条件
-func (b *ScrollBuilder) Range(field string, gte, lte any) *ScrollBuilder {
-	rangeQuery := make(map[string]any)
-	if gte != nil {
-		rangeQuery["gte"] = gte
-	}
-	if lte != nil {
-		rangeQuery["lte"] = lte
-	}
-	b.filters = append(b.filters, map[string]any{
-		"range": map[string]any{
-			field: rangeQuery,
-		},
-	})
+	b.initBoolQuery(b)
 	return b
 }
 
@@ -95,23 +53,8 @@ func (b *ScrollBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建查询条件
-	if len(b.must) > 0 || len(b.filters) > 0 || len(b.should) > 0 || len(b.mustNot) > 0 {
-		boolQuery := make(map[string]any)
-		if len(b.must) > 0 {
-			boolQuery["must"] = b.must
-		}
-		if len(b.filters) > 0 {
-			boolQuery["filter"] = b.filters
-		}
-		if len(b.should) > 0 {
-			boolQuery["should"] = b.should
-		}
-		if len(b.mustNot) > 0 {
-			boolQuery["must_not"] = b.mustNot
-		}
-		body["query"] = map[string]any{
-			"bool": boolQuery,
-		}
+	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+		body["query"] = boolQ
 	}
 
 	body["size"] = b.size
