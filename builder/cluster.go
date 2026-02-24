@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // ClusterBuilder 集群管理构建器
@@ -78,7 +79,7 @@ func (b *ClusterBuilder) Health(ctx context.Context) (*ClusterHealthResponse, er
 
 // IndexHealth 获取索引健康状态
 func (b *ClusterBuilder) IndexHealth(ctx context.Context, index string) (*ClusterHealthResponse, error) {
-	path := fmt.Sprintf("/_cluster/health/%s", index)
+	path := fmt.Sprintf("/_cluster/health/%s", url.PathEscape(index))
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err

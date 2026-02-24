@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // DeleteByQueryBuilder 按查询删除构建器
@@ -65,7 +66,7 @@ type DeleteByQueryResponse struct {
 
 // Do 执行删除
 func (b *DeleteByQueryBuilder) Do(ctx context.Context) (*DeleteByQueryResponse, error) {
-	path := fmt.Sprintf("/%s/_delete_by_query", b.index)
+	path := fmt.Sprintf("/%s/_delete_by_query", url.PathEscape(b.index))
 	body := b.Build()
 
 	// 检查是否有查询条件

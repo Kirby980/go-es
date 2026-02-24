@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 )
 
@@ -368,7 +369,7 @@ func (b *SearchBuilder) Debug() *SearchBuilder {
 
 // Do 执行搜索
 func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
-	path := fmt.Sprintf("/%s/_search", b.index)
+	path := fmt.Sprintf("/%s/_search", url.PathEscape(b.index))
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
@@ -408,7 +409,7 @@ type CountResponse struct {
 
 // Count 执行计数查询（只返回匹配文档数量，不返回文档内容）
 func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
-	path := fmt.Sprintf("/%s/_count", b.index)
+	path := fmt.Sprintf("/%s/_count", url.PathEscape(b.index))
 
 	// 构建查询条件（不需要分页、排序等）
 	body := make(map[string]any)

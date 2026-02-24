@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // AggregationBuilder 聚合构建器
@@ -404,7 +405,7 @@ func (b *AggregationBuilder) Debug() *AggregationBuilder {
 
 // Do 执行聚合
 func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, error) {
-	path := fmt.Sprintf("/%s/_search", b.index)
+	path := fmt.Sprintf("/%s/_search", url.PathEscape(b.index))
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息

@@ -6,6 +6,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 
 	"github.com/Kirby980/go-es/errors"
@@ -190,10 +191,10 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	}
 
 	if b.id != "" {
-		path = fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
+		path = fmt.Sprintf("/%s/_doc/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 		method = http.MethodPut
 	} else {
-		path = fmt.Sprintf("/%s/_doc", b.index)
+		path = fmt.Sprintf("/%s/_doc", url.PathEscape(b.index))
 		method = http.MethodPost
 	}
 
@@ -230,7 +231,7 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 		return nil, fmt.Errorf("创建文档需要指定 ID")
 	}
 
-	path := fmt.Sprintf("/%s/_create/%s", b.index, b.id)
+	path := fmt.Sprintf("/%s/_create/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	path = b.buildPath(path)
 
 	// 如果启用调试模式，打印请求信息
@@ -263,7 +264,7 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 		return nil, fmt.Errorf("更新文档需要指定 ID")
 	}
 
-	path := fmt.Sprintf("/%s/_update/%s", b.index, b.id)
+	path := fmt.Sprintf("/%s/_update/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	path = b.buildPath(path)
 
 	updateBody := make(map[string]any)
@@ -303,7 +304,7 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 		return nil, fmt.Errorf("upsert 需要指定 ID")
 	}
 
-	path := fmt.Sprintf("/%s/_update/%s", b.index, b.id)
+	path := fmt.Sprintf("/%s/_update/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	path = b.buildPath(path)
 
 	updateBody := map[string]any{
@@ -341,7 +342,7 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 		return nil, fmt.Errorf("获取文档需要指定 ID")
 	}
 
-	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
+	path := fmt.Sprintf("/%s/_doc/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 
 	// 如果启用调试模式，打印请求信息
 	if b.IsDebug() {
@@ -373,7 +374,7 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 		return nil, fmt.Errorf("删除文档需要指定 ID")
 	}
 
-	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
+	path := fmt.Sprintf("/%s/_doc/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	path = b.buildPath(path)
 
 	// 如果启用调试模式，打印请求信息
@@ -406,7 +407,7 @@ func (b *DocumentBuilder) Exists(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("检查文档需要指定 ID")
 	}
 
-	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
+	path := fmt.Sprintf("/%s/_doc/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	_, err := b.client.Do(ctx, http.MethodHead, path, nil)
 	if err != nil {
 		var esErr *errors.ESError

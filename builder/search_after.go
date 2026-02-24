@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // SearchAfterBuilder Search After深度分页构建器
@@ -170,7 +171,7 @@ type SearchAfterResponse struct {
 
 // Do 执行查询
 func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, error) {
-	path := fmt.Sprintf("/%s/_search", b.index)
+	path := fmt.Sprintf("/%s/_search", url.PathEscape(b.index))
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息

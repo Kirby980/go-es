@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // MGetBuilder 批量获取文档构建器
@@ -38,7 +39,7 @@ type MGetResponse struct {
 
 // Do 执行批量获取
 func (b *MGetBuilder) Do(ctx context.Context) (*MGetResponse, error) {
-	path := fmt.Sprintf("/%s/_mget", b.index)
+	path := fmt.Sprintf("/%s/_mget", url.PathEscape(b.index))
 	body := map[string]any{
 		"ids": b.ids,
 	}

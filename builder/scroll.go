@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // ScrollBuilder Scroll深度分页构建器
@@ -92,7 +93,7 @@ type ScrollResponse struct {
 
 // Do 执行第一次scroll查询
 func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
-	path := fmt.Sprintf("/%s/_search?scroll=%s", b.index, b.keepAlive)
+	path := fmt.Sprintf("/%s/_search?scroll=%s", url.PathEscape(b.index), b.keepAlive)
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息

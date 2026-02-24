@@ -6,6 +6,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 	"unicode"
@@ -456,7 +457,7 @@ func (b *IndexBuilder) Debug() *IndexBuilder {
 
 // Create 创建索引
 func (b *IndexBuilder) Create(ctx context.Context) error {
-	path := fmt.Sprintf("/%s", b.index)
+	path := fmt.Sprintf("/%s", url.PathEscape(b.index))
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
@@ -485,7 +486,7 @@ func (b *IndexBuilder) Do(ctx context.Context) error {
 
 // UpdateSettings 更新索引设置
 func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
-	path := fmt.Sprintf("/%s/_settings", b.index)
+	path := fmt.Sprintf("/%s/_settings", url.PathEscape(b.index))
 	body := map[string]any{
 		"settings": b.settings,
 	}
@@ -511,7 +512,7 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 
 // PutMapping 更新索引映射（添加新字段或更新已有字段映射）
 func (b *IndexBuilder) PutMapping(ctx context.Context) error {
-	path := fmt.Sprintf("/%s/_mapping", b.index)
+	path := fmt.Sprintf("/%s/_mapping", url.PathEscape(b.index))
 
 	// 如果启用调试模式，打印请求信息
 	if b.IsDebug() {
@@ -534,7 +535,7 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 
 // Delete 删除索引
 func (b *IndexBuilder) Delete(ctx context.Context) error {
-	path := fmt.Sprintf("/%s", b.index)
+	path := fmt.Sprintf("/%s", url.PathEscape(b.index))
 
 	// 如果启用调试模式，打印请求信息
 	if b.IsDebug() {
@@ -557,7 +558,7 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 
 // Exists 检查索引是否存在
 func (b *IndexBuilder) Exists(ctx context.Context) (bool, error) {
-	path := fmt.Sprintf("/%s", b.index)
+	path := fmt.Sprintf("/%s", url.PathEscape(b.index))
 	_, err := b.client.Do(ctx, http.MethodHead, path, nil)
 	if err != nil {
 		var esErr *errors.ESError
@@ -578,7 +579,7 @@ type IndexInfo struct {
 
 // Get 获取索引信息
 func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
-	path := fmt.Sprintf("/%s", b.index)
+	path := fmt.Sprintf("/%s", url.PathEscape(b.index))
 
 	// 如果启用调试模式，打印请求信息
 	if b.IsDebug() {

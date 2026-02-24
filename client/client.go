@@ -75,6 +75,9 @@ func (c *Client) GetLogger() logger.Logger {
 
 // Close 关闭客户端
 func (c *Client) Close() error {
+	if transport, ok := c.httpClient.Transport.(*http.Transport); ok {
+		transport.CloseIdleConnections()
+	}
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // UpdateByQueryBuilder 按查询更新构建器
@@ -110,7 +111,7 @@ func (b *UpdateByQueryBuilder) Do(ctx context.Context) (*UpdateByQueryResponse, 
 		return nil, fmt.Errorf("必须设置更新脚本")
 	}
 
-	path := fmt.Sprintf("/%s/_update_by_query", b.index)
+	path := fmt.Sprintf("/%s/_update_by_query", url.PathEscape(b.index))
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
