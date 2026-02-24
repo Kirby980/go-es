@@ -26,11 +26,12 @@ type SearchAfterBuilder struct {
 // NewSearchAfterBuilder 创建SearchAfter构建器
 func NewSearchAfterBuilder(c ESClient, index string) *SearchAfterBuilder {
 	b := &SearchAfterBuilder{
-		client:    c,
-		index:     index,
-		size:      10,
-		sort:      make([]map[string]any, 0),
-		highlight: make(map[string]any),
+		client:      c,
+		index:       index,
+		size:        10,
+		sort:        make([]map[string]any, 0),
+		highlight:   make(map[string]any),
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b

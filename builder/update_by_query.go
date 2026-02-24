@@ -19,8 +19,9 @@ type UpdateByQueryBuilder struct {
 // NewUpdateByQueryBuilder 创建按查询更新构建器
 func NewUpdateByQueryBuilder(c ESClient, index string) *UpdateByQueryBuilder {
 	b := &UpdateByQueryBuilder{
-		client: c,
-		index:  index,
+		client:      c,
+		index:       index,
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b

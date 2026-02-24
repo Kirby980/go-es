@@ -27,10 +27,11 @@ type SearchBuilder struct {
 // NewSearchBuilder 创建搜索构建器
 func NewSearchBuilder(c ESClient, index string) *SearchBuilder {
 	b := &SearchBuilder{
-		client: c,
-		index:  index,
-		size:   10,
-		aggs:   make(map[string]any),
+		client:      c,
+		index:       index,
+		size:        10,
+		aggs:        make(map[string]any),
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b

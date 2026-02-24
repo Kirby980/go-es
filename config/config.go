@@ -2,6 +2,8 @@ package config
 
 import (
 	"time"
+
+	"github.com/Kirby980/go-es/logger"
 )
 
 // Config Elasticsearch 配置
@@ -26,6 +28,9 @@ type Config struct {
 	// 其他配置
 	EnableMetrics bool
 	EnableDebug   bool
+
+	// Logger 自定义日志实现，nil 时 client.New() 使用默认 zap 生产日志
+	Logger logger.Logger
 	// 连接池配置
 	MaxIdleConns        int           // 最大空闲连接
 	MaxIdleConnsPerHost int           // 每个主机的最大空闲连接数
@@ -121,5 +126,17 @@ func WithMaxConnsPerHost(maxConnsPerHost int) Option {
 func WithIdleConnTimeout(idleConnTimeout time.Duration) Option {
 	return func(c *Config) {
 		c.IdleConnTimeout = idleConnTimeout
+	}
+}
+
+// WithLogger 设置自定义日志实现
+// 传入 logger.NopLogger{} 可完全禁用日志输出
+// 示例：
+//
+//	zapDev, _ := logger.NewDevelopmentLogger()
+//	client.New(config.WithLogger(zapDev))
+func WithLogger(l logger.Logger) Option {
+	return func(c *Config) {
+		c.Logger = l
 	}
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/Kirby980/go-es/config"
 	"github.com/Kirby980/go-es/errors"
+	"github.com/Kirby980/go-es/logger"
 )
 
 // Client Elasticsearch 客户端
@@ -21,6 +22,7 @@ type Client struct {
 	httpClient   *http.Client
 	addresses    []string
 	addressIndex atomic.Uint32
+	logger       logger.Logger
 }
 
 // New 创建新的 ES 客户端
@@ -28,6 +30,18 @@ func New(opts ...config.Option) (*Client, error) {
 	cfg := config.DefaultConfig()
 	for _, opt := range opts {
 		opt(cfg)
+	}
+
+	// 初始化日志：优先使用用户传入的 Logger，否则使用默认 zap 生产日志
+	var log logger.Logger
+	if cfg.Logger != nil {
+		log = cfg.Logger
+	} else {
+		zapLog, err := logger.NewDefaultLogger()
+		if err != nil {
+			return nil, fmt.Errorf("初始化默认日志失败: %w", err)
+		}
+		log = zapLog
 	}
 
 	// 配置 HTTP Transport
@@ -48,9 +62,15 @@ func New(opts ...config.Option) (*Client, error) {
 			Timeout:   cfg.Timeout,
 			Transport: transport,
 		},
+		logger: log,
 	}
 
 	return client, nil
+}
+
+// GetLogger 返回当前客户端的日志实例（供 builder 包使用）
+func (c *Client) GetLogger() logger.Logger {
+	return c.logger
 }
 
 // Close 关闭客户端
@@ -88,7 +108,7 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 		}
 
 		if c.config.EnableDebug {
-			fmt.Printf("请求失败，重试 %d/%d: %v\n", i+1, c.config.MaxRetries, err)
+			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
 		}
 	}
 
@@ -172,7 +192,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte,
 		}
 
 		if c.config.EnableDebug {
-			fmt.Printf("请求失败，重试 %d/%d: %v\n", i+1, c.config.MaxRetries, err)
+			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
 		}
 	}
 

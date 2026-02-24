@@ -30,8 +30,9 @@ type bulkOperation struct {
 // NewBulkBuilder 创建批量操作构建器
 func NewBulkBuilder(c ESClient) *BulkBuilder {
 	return &BulkBuilder{
-		client:     c,
-		operations: make([]bulkOperation, 0),
+		client:      c,
+		operations:  make([]bulkOperation, 0),
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 }
 

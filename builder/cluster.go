@@ -16,7 +16,8 @@ type ClusterBuilder struct {
 // NewClusterBuilder 创建集群构建器
 func NewClusterBuilder(c ESClient) *ClusterBuilder {
 	return &ClusterBuilder{
-		client: c,
+		client:      c,
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 }
 

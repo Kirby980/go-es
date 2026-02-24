@@ -20,10 +20,11 @@ type AggregationBuilder struct {
 // NewAggregationBuilder 创建聚合构建器
 func NewAggregationBuilder(c ESClient, index string) *AggregationBuilder {
 	return &AggregationBuilder{
-		client: c,
-		index:  index,
-		aggs:   make(map[string]any),
-		size:   0, // 聚合时默认不返回文档
+		client:      c,
+		index:       index,
+		aggs:        make(map[string]any),
+		size:        0, // 聚合时默认不返回文档
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 }
 

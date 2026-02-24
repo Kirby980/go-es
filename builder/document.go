@@ -26,9 +26,10 @@ type DocumentBuilder struct {
 // NewDocumentBuilder 创建文档构建器
 func NewDocumentBuilder(c ESClient, index string) *DocumentBuilder {
 	return &DocumentBuilder{
-		client: c,
-		index:  index,
-		doc:    make(map[string]any),
+		client:      c,
+		index:       index,
+		doc:         make(map[string]any),
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 }
 

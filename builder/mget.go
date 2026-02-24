@@ -18,9 +18,10 @@ type MGetBuilder struct {
 // NewMGetBuilder 创建批量获取构建器
 func NewMGetBuilder(c ESClient, index string) *MGetBuilder {
 	return &MGetBuilder{
-		client: c,
-		index:  index,
-		ids:    make([]string, 0),
+		client:      c,
+		index:       index,
+		ids:         make([]string, 0),
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 }
 

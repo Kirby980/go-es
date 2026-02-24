@@ -26,11 +26,12 @@ type IndexBuilder struct {
 // NewIndexBuilder 创建索引构建器
 func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
 	return &IndexBuilder{
-		client:   c,
-		index:    index,
-		settings: make(map[string]any),
-		mappings: make(map[string]any),
-		aliases:  make(map[string]any),
+		client:      c,
+		index:       index,
+		settings:    make(map[string]any),
+		mappings:    make(map[string]any),
+		aliases:     make(map[string]any),
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 }
 

@@ -18,8 +18,9 @@ type DeleteByQueryBuilder struct {
 // NewDeleteByQueryBuilder 创建按查询删除构建器
 func NewDeleteByQueryBuilder(c ESClient, index string) *DeleteByQueryBuilder {
 	b := &DeleteByQueryBuilder{
-		client: c,
-		index:  index,
+		client:      c,
+		index:       index,
+		DebugHelper: DebugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b
