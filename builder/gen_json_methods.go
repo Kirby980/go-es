@@ -46,13 +46,19 @@ type JSONSerializer interface {
 
 // ToJSON 返回任意结构体的紧凑 JSON 字符串
 func ToJSON(v any) string {
-	data, _ := json.Marshal(v)
+	data, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
 	return string(data)
 }
 
 // ToPrettyJSON 返回任意结构体的格式化 JSON 字符串
 func ToPrettyJSON(v any) string {
-	data, _ := json.MarshalIndent(v, "", "  ")
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return ""
+	}
 	return string(data)
 }
 {{range .}}

@@ -18,8 +18,8 @@ type Article struct {
 	Created string  `es:"type:date;format:yyyy-MM-dd"`
 	Content string  `es:"type:text;analyzer:standard"`
 	Tags    string  `es:"type:keyword"`
-	Score   float64 `es:"type:float"` // 跳过
-	Test    *Test   `es:"type:object"`
+	Score   float64 `es:"type:float"`
+	Test    *Test   `es:"type:nested"`
 }
 
 type Test struct {

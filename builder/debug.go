@@ -29,15 +29,23 @@ func (d *DebugHelper) SetDebug(enabled bool) {
 func (d *DebugHelper) PrintDebug(method, path string, body any) {
 	fmt.Printf("\n[ES Debug] %s %s\n", method, path)
 	if body != nil {
-		data, _ := json.MarshalIndent(body, "", "  ")
-		fmt.Printf("Request Body:\n%s\n", string(data))
+		data, err := json.MarshalIndent(body, "", "  ")
+		if err != nil {
+			fmt.Printf("Failed to marshal body: %v\n", err)
+		} else {
+			fmt.Printf("Request Body:\n%s\n", string(data))
+		}
 	}
 }
 
 func (d *DebugHelper) PrintResponse(respBody []byte) {
 	var pretty any
 	if err := json.Unmarshal(respBody, &pretty); err == nil {
-		data, _ := json.MarshalIndent(pretty, "", "  ")
-		fmt.Printf("Response:\n%s\n\n", string(data))
+		data, err := json.MarshalIndent(pretty, "", "  ")
+		if err != nil {
+			fmt.Printf("Failed to marshal response: %v\n", err)
+		} else {
+			fmt.Printf("Response:\n%s\n\n", string(data))
+		}
 	}
 }

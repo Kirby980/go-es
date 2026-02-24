@@ -3,9 +3,12 @@ package builder
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"reflect"
+
+	"github.com/Kirby980/go-es/errors"
 )
 
 // DocumentBuilder 文档构建器
@@ -405,7 +408,11 @@ func (b *DocumentBuilder) Exists(ctx context.Context) (bool, error) {
 	path := fmt.Sprintf("/%s/_doc/%s", b.index, b.id)
 	_, err := b.client.Do(ctx, http.MethodHead, path, nil)
 	if err != nil {
-		return false, nil
+		var esErr *errors.ESError
+		if stderrors.As(err, &esErr) && esErr.IsNotFound() {
+			return false, nil
+		}
+		return false, err
 	}
 	return true, nil
 }

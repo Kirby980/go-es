@@ -3,11 +3,14 @@ package builder
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 	"unicode"
+
+	"github.com/Kirby980/go-es/errors"
 )
 
 // IndexBuilder 索引构建器
@@ -281,6 +284,12 @@ func parseStructFields(t reflect.Type) map[string]any {
 			if nestedType.Kind() == reflect.Ptr {
 				nestedType = nestedType.Elem()
 			}
+			if nestedType.Kind() == reflect.Slice {
+				nestedType = nestedType.Elem()
+			}
+			if nestedType.Kind() == reflect.Ptr {
+				nestedType = nestedType.Elem()
+			}
 			if nestedType.Kind() == reflect.Struct {
 				nestedProps := parseStructFields(nestedType)
 				if len(nestedProps) > 0 {
@@ -311,9 +320,13 @@ func parseTag(tag string) map[string]string {
 // toSnakeCase 转换为 snake_case
 func toSnakeCase(s string) string {
 	var buf strings.Builder
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			buf.WriteByte('_')
+	runes := []rune(s)
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) {
+			// 前一个字符是小写，或者下一个字符是小写（处理缩写词尾部）
+			if unicode.IsLower(runes[i-1]) || (i+1 < len(runes) && unicode.IsLower(runes[i+1])) {
+				buf.WriteByte('_')
+			}
 		}
 		buf.WriteRune(unicode.ToLower(r))
 	}
@@ -546,7 +559,11 @@ func (b *IndexBuilder) Exists(ctx context.Context) (bool, error) {
 	path := fmt.Sprintf("/%s", b.index)
 	_, err := b.client.Do(ctx, http.MethodHead, path, nil)
 	if err != nil {
-		return false, nil
+		var esErr *errors.ESError
+		if stderrors.As(err, &esErr) && esErr.IsNotFound() {
+			return false, nil
+		}
+		return false, err
 	}
 	return true, nil
 }
