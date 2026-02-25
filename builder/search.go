@@ -283,41 +283,20 @@ func (r *SearchResponse) Scan(dest any) error {
 	if sliceVal.Kind() != reflect.Slice {
 		return fmt.Errorf("dest must be a pointer to slice")
 	}
-
-	elemType := sliceVal.Type().Elem()
+	sources := make([]map[string]any, 0, len(r.Hits.Hits))
 
 	// 遍历搜索结果
 	for _, hit := range r.Hits.Hits {
 		if hit.Source == nil {
 			continue
 		}
-		// 将 Source 转为 JSON 再解析到结构体
-		jsonData, err := json.Marshal(hit.Source)
-		if err != nil {
-			return err
-		}
-
-		// 创建新元素
-		var elem reflect.Value
-		if elemType.Kind() == reflect.Ptr {
-			elem = reflect.New(elemType.Elem())
-		} else {
-			elem = reflect.New(elemType)
-		}
-
-		if err := json.Unmarshal(jsonData, elem.Interface()); err != nil {
-			return err
-		}
-
-		// 添加到切片
-		if elemType.Kind() == reflect.Ptr {
-			sliceVal.Set(reflect.Append(sliceVal, elem))
-		} else {
-			sliceVal.Set(reflect.Append(sliceVal, elem.Elem()))
-		}
+		sources = append(sources, hit.Source)
 	}
-
-	return nil
+	jsonData, err := json.Marshal(sources)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonData, dest)
 }
 
 // Build 构建查询 DSL
