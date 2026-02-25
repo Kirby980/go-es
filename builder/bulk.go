@@ -14,7 +14,7 @@ type BulkBuilder struct {
 	index      string
 	operations []bulkOperation
 	currentOp  *bulkOperation // 当前正在构建的操作（用于链式调用）
-	DebugHelper
+	debugHelper
 	autoFlushSize int                 // 自动刷新大小
 	onFlush       func(*BulkResponse) // 分批回调
 	err           error
@@ -32,7 +32,7 @@ func NewBulkBuilder(c ESClient) *BulkBuilder {
 	return &BulkBuilder{
 		client:      c,
 		operations:  make([]bulkOperation, 0),
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 }
 
@@ -492,7 +492,7 @@ func (b *BulkBuilder) Build() []byte {
 
 // Debug 启用调试模式（链式调用）
 func (b *BulkBuilder) Debug() *BulkBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -511,9 +511,9 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	// 创建请求
@@ -533,8 +533,8 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp BulkResponse

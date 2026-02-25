@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Kirby980/go-es/builder"
+	"github.com/Kirby980/go-es/sugar"
 )
 
 // Product 测试用结构体
@@ -21,22 +22,23 @@ func (p *Product) IndexName() string {
 	return "test_products"
 }
 
-// TestGormStyleCreate 测试 GORM 风格创建文档
+// TestGormStyleCreate 测试 Sugar 风格创建文档
 func TestGormStyleCreate(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
+	s := sugar.New(client)
 
 	// 先删除并创建索引
 	_ = builder.NewIndexBuilder(client, "test_products").Delete(ctx)
-	err := client.AutoMigrate(&Product{})
+	err := s.AutoMigrate(&Product{})
 	if err != nil {
 		t.Fatalf("AutoMigrate failed: %v", err)
 	}
 
 	time.Sleep(500 * time.Millisecond)
 
-	// 使用 GORM 风格创建文档
+	// 使用 Sugar 风格创建文档
 	product := &Product{
 		Name:     "iPhone 15",
 		Price:    999.99,
@@ -44,7 +46,7 @@ func TestGormStyleCreate(t *testing.T) {
 		Stock:    100,
 	}
 
-	resp, err := client.Create(ctx, product)
+	resp, err := s.Create(ctx, product)
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -57,18 +59,19 @@ func TestGormStyleCreate(t *testing.T) {
 		Category: "computers",
 		Stock:    50,
 	}
-	resp2, err := client.CreateWithID(ctx, "macbook-1", product2)
+	resp2, err := s.CreateWithID(ctx, "macbook-1", product2)
 	if err != nil {
 		t.Fatalf("CreateWithID failed: %v", err)
 	}
 	t.Logf("✓ CreateWithID success: ID=%s", resp2.ID)
 }
 
-// TestGormStyleUpdate 测试 GORM 风格更新文档
+// TestGormStyleUpdate 测试 Sugar 风格更新文档
 func TestGormStyleUpdate(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
+	s := sugar.New(client)
 
 	// 先创建文档
 	product := &Product{
@@ -77,7 +80,7 @@ func TestGormStyleUpdate(t *testing.T) {
 		Category: "test",
 		Stock:    10,
 	}
-	resp, err := client.CreateWithID(ctx, "update-test-1", product)
+	resp, err := s.CreateWithID(ctx, "update-test-1", product)
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -88,18 +91,19 @@ func TestGormStyleUpdate(t *testing.T) {
 	// 更新文档
 	product.Price = 150.00
 	product.Stock = 20
-	_, err = client.Update(ctx, "update-test-1", product)
+	_, err = s.Update(ctx, "update-test-1", product)
 	if err != nil {
 		t.Fatalf("Update failed: %v", err)
 	}
 	t.Logf("✓ Update success")
 }
 
-// TestGormStyleUpsert 测试 GORM 风格 Upsert
+// TestGormStyleUpsert 测试 Sugar 风格 Upsert
 func TestGormStyleUpsert(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
+	s := sugar.New(client)
 
 	product := &Product{
 		Name:     "Upsert Product",
@@ -109,21 +113,23 @@ func TestGormStyleUpsert(t *testing.T) {
 	}
 
 	// Upsert（不存在则创建）
-	resp, err := client.Upsert(ctx, "upsert-test-1", product)
+	resp, err := s.Upsert(ctx, "upsert-test-1", product)
 	if err != nil {
 		t.Fatalf("Upsert failed: %v", err)
 	}
 	t.Logf("✓ Upsert success: result=%s", resp.Result)
 }
 
-// TestGormStyleFindAndScan 测试 GORM 风格查询并扫描到结构体
+// TestGormStyleFindAndScan 测试 Sugar 风格查询并扫描到结构体
 func TestGormStyleFindAndScan(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
+	s := sugar.New(client)
+
 	// 准备测试数据
 	_ = builder.NewIndexBuilder(client, "test_products").Delete(ctx)
-	_ = client.AutoMigrate(&Product{})
+	_ = s.AutoMigrate(&Product{})
 	time.Sleep(500 * time.Millisecond)
 
 	products := []*Product{
@@ -133,7 +139,7 @@ func TestGormStyleFindAndScan(t *testing.T) {
 	}
 
 	for i, p := range products {
-		_, err := client.CreateWithID(ctx, string(rune('1'+i)), p)
+		_, err := s.CreateWithID(ctx, string(rune('1'+i)), p)
 		if err != nil {
 			t.Fatalf("Create failed: %v", err)
 		}
@@ -143,7 +149,7 @@ func TestGormStyleFindAndScan(t *testing.T) {
 
 	// 查询并扫描到结构体
 	var results []Product
-	resp, err := client.Find("test_products").
+	resp, err := s.Find("test_products").
 		Term("category", "electronics").
 		Size(10).
 		Do(ctx)
@@ -168,10 +174,11 @@ func TestDocumentBuilderModel(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
+	s := sugar.New(client)
 
 	// 准备索引
 	_ = builder.NewIndexBuilder(client, "test_products").Delete(ctx)
-	_ = client.AutoMigrate(&Product{})
+	_ = s.AutoMigrate(&Product{})
 	time.Sleep(500 * time.Millisecond)
 
 	// 使用 Model 方法
@@ -203,10 +210,11 @@ func TestSearchResponseScan(t *testing.T) {
 	client := createTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
+	s := sugar.New(client)
 
 	// 准备测试数据
 	_ = builder.NewIndexBuilder(client, "test_products").Delete(ctx)
-	_ = client.AutoMigrate(&Product{})
+	_ = s.AutoMigrate(&Product{})
 	time.Sleep(500 * time.Millisecond)
 
 	// 创建一些测试数据
@@ -217,7 +225,7 @@ func TestSearchResponseScan(t *testing.T) {
 			Category: "scan-test",
 			Stock:    i * 10,
 		}
-		_, _ = client.CreateWithID(ctx, "scan-"+string(rune('1'+i)), product)
+		_, _ = s.CreateWithID(ctx, "scan-"+string(rune('1'+i)), product)
 	}
 
 	time.Sleep(1 * time.Second)

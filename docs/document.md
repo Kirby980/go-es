@@ -4,7 +4,7 @@ DocumentBuilder 提供了完整的 Elasticsearch 文档 CRUD 操作。支持两�
 
 ## 简洁风格（推荐）
 
-通过 Client 的方法直接操作结构体，自动推断索引名。
+通过 `sugar.New(esClient)` 直接操作结构体，自动推断索引名。
 
 ### 定义结构体
 
@@ -25,6 +25,10 @@ func (p *Product) IndexName() string {
 ### 创建文档
 
 ```go
+import "github.com/Kirby980/go-es/sugar"
+
+s := sugar.New(esClient)
+
 product := &Product{
     Name:     "iPhone 15 Pro",
     Price:    999.99,
@@ -33,29 +37,29 @@ product := &Product{
 }
 
 // 自动生成 ID
-resp, err := esClient.Create(ctx, product)
+resp, err := s.Create(ctx, product)
 
 // 指定 ID
-resp, err := esClient.CreateWithID(ctx, "product-1", product)
+resp, err := s.CreateWithID(ctx, "product-1", product)
 ```
 
 ### 更新文档
 
 ```go
 product.Price = 899.99
-resp, err := esClient.Update(ctx, "product-1", product)
+resp, err := s.Update(ctx, "product-1", product)
 ```
 
 ### Upsert（存在则更新，不存在则创建）
 
 ```go
-resp, err := esClient.Upsert(ctx, "product-1", product)
+resp, err := s.Upsert(ctx, "product-1", product)
 ```
 
 ### 获取文档
 
 ```go
-getResp, err := esClient.Get(ctx, "products", "product-1")
+getResp, err := s.Get(ctx, "products", "product-1")
 if getResp.Found {
     fmt.Println(getResp.Source)
 }
@@ -64,7 +68,7 @@ if getResp.Found {
 ### 删除文档
 
 ```go
-delResp, err := esClient.Delete(ctx, "products", "product-1")
+delResp, err := s.Delete(ctx, "products", "product-1")
 ```
 
 ## Builder 风格（更灵活）

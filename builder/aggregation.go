@@ -15,7 +15,7 @@ type AggregationBuilder struct {
 	query  map[string]any
 	aggs   map[string]any
 	size   int
-	DebugHelper
+	debugHelper
 }
 
 // NewAggregationBuilder 创建聚合构建器
@@ -25,7 +25,7 @@ func NewAggregationBuilder(c ESClient, index string) *AggregationBuilder {
 		index:       index,
 		aggs:        make(map[string]any),
 		size:        0, // 聚合时默认不返回文档
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 }
 
@@ -399,7 +399,7 @@ func (b *AggregationBuilder) Build() map[string]any {
 
 // Debug 启用调试模式（链式调用）
 func (b *AggregationBuilder) Debug() *AggregationBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -409,9 +409,9 @@ func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, erro
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -420,8 +420,8 @@ func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, erro
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp AggregationResponse

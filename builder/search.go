@@ -22,7 +22,7 @@ type SearchBuilder struct {
 	highlight map[string]any
 	minScore  *float64 // 最小评分
 	BoolQuery[SearchBuilder]
-	DebugHelper
+	debugHelper
 }
 
 // NewSearchBuilder 创建搜索构建器
@@ -32,7 +32,7 @@ func NewSearchBuilder(c ESClient, index string) *SearchBuilder {
 		index:       index,
 		size:        10,
 		aggs:        make(map[string]any),
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b
@@ -304,7 +304,7 @@ func (b *SearchBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建 bool 查询
-	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
 	}
 
@@ -342,7 +342,7 @@ func (b *SearchBuilder) Build() map[string]any {
 
 // Debug 启用调试模式（链式调用）
 func (b *SearchBuilder) Debug() *SearchBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -352,9 +352,9 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -363,8 +363,8 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp SearchResponse
@@ -392,14 +392,14 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 
 	// 构建查询条件（不需要分页、排序等）
 	body := make(map[string]any)
-	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -408,8 +408,8 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp CountResponse

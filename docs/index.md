@@ -23,7 +23,9 @@ type Article struct {
 }
 
 // 自动迁移（创建或更新索引）
-err := esClient.AutoMigrate(&Article{})
+import "github.com/Kirby980/go-es/sugar"
+
+err := sugar.New(esClient).AutoMigrate(&Article{})
 ```
 
 ### 自定义索引名
@@ -43,7 +45,9 @@ func (a *Article) IndexName() string {
 }
 
 // 迁移时会使用 "my_articles" 作为索引名
-err := esClient.AutoMigrate(&Article{})
+import "github.com/Kirby980/go-es/sugar"
+
+err := sugar.New(esClient).AutoMigrate(&Article{})
 ```
 
 ### es 标签语法
@@ -72,7 +76,9 @@ type Product struct {
 ### 迁移多个模型
 
 ```go
-err := esClient.AutoMigrate(
+import "github.com/Kirby980/go-es/sugar"
+
+err := sugar.New(esClient).AutoMigrate(
     &Article{},
     &Product{},
     &User{},
@@ -146,11 +152,13 @@ err := builder.NewIndexBuilder(esClient, "products").Delete(ctx)
 ### 方式1：简化版（基于 tokenizer 快速创建）
 
 ```go
+import esconst "github.com/Kirby980/go-es/const"
+
 err := builder.NewIndexBuilder(esClient, "articles").
     Shards(1).
     Replicas(1).
     // 基于 tokenizer 快速创建（不忽略大小写的 ik_smart）
-    AddCustomAnalyzer("ik_case_sensitive", builder.TokenizerIKSmart).
+    AddCustomAnalyzer("ik_case_sensitive", esconst.TokenizerIKSmart).
     AddProperty("title", "text", builder.WithAnalyzer("ik_case_sensitive")).
     Create(ctx)
 ```
@@ -158,12 +166,14 @@ err := builder.NewIndexBuilder(esClient, "articles").
 ### 方式2：完整版（使用 Option 模式自定义配置）
 
 ```go
+import esconst "github.com/Kirby980/go-es/const"
+
 err := builder.NewIndexBuilder(esClient, "articles").
     AddAnalyzer("html_ik_analyzer",
-        builder.WithAnalyzerType(builder.AnalyzerTypeCustom),
-        builder.WithCharFilters(builder.CharFilterHTMLStrip),  // 去除HTML标签
-        builder.WithTokenizer(builder.TokenizerIKSmart),       // IK分词
-        builder.WithTokenFilters(builder.TokenFilterLowercase), // 转小写
+        builder.WithAnalyzerType(esconst.AnalyzerTypeCustom),
+        builder.WithCharFilters(esconst.CharFilterHTMLStrip),  // 去除HTML标签
+        builder.WithTokenizer(esconst.TokenizerIKSmart),       // IK分词
+        builder.WithTokenFilters(esconst.TokenFilterLowercase), // 转小写
     ).
     AddProperty("content", "text", builder.WithAnalyzer("html_ik_analyzer")).
     Create(ctx)
@@ -172,22 +182,24 @@ err := builder.NewIndexBuilder(esClient, "articles").
 ### 常用分析器示例
 
 ```go
+import esconst "github.com/Kirby980/go-es/const"
+
 err := builder.NewIndexBuilder(esClient, "posts").
     // IK 智能分词（保持大小写）
-    AddCustomAnalyzer("ik_case_sensitive", builder.TokenizerIKSmart).
+    AddCustomAnalyzer("ik_case_sensitive", esconst.TokenizerIKSmart).
 
     // IK 最大词数分词（转小写）
-    AddCustomAnalyzer("ik_lowercase", builder.TokenizerIKMaxWord,
-        builder.TokenFilterLowercase).
+    AddCustomAnalyzer("ik_lowercase", esconst.TokenizerIKMaxWord,
+        esconst.TokenFilterLowercase).
 
     // 标准分词器 + 词干提取 + 停用词过滤
     AddAnalyzer("english_stemmed",
-        builder.WithAnalyzerType(builder.AnalyzerTypeCustom),
-        builder.WithTokenizer(builder.TokenizerStandard),
+        builder.WithAnalyzerType(esconst.AnalyzerTypeCustom),
+        builder.WithTokenizer(esconst.TokenizerStandard),
         builder.WithTokenFilters(
-            builder.TokenFilterLowercase,
-            builder.TokenFilterStop,
-            builder.TokenFilterPorterStem,
+            esconst.TokenFilterLowercase,
+            esconst.TokenFilterStop,
+            esconst.TokenFilterPorterStem,
         ),
     ).
     Create(ctx)
@@ -195,113 +207,115 @@ err := builder.NewIndexBuilder(esClient, "posts").
 
 ## 分析器常量说明
 
-所有可用的常量定义在 `builder/analyzer_constants.go` 中：
+所有可用的常量定义在 `const` 包中：
 
 ### 分词器常量 (Tokenizers)
 
 ```go
-builder.TokenizerIKSmart      // IK智能分词（粗粒度）
-builder.TokenizerIKMaxWord    // IK最大词数分词（细粒度）
-builder.TokenizerStandard     // 标准分词器
-builder.TokenizerWhitespace   // 空格分词器
-builder.TokenizerKeyword      // 关键词分词器（不分词）
-// 更多见 analyzer_constants.go
+esconst.TokenizerIKSmart      // IK智能分词（粗粒度）
+esconst.TokenizerIKMaxWord    // IK最大词数分词（细粒度）
+esconst.TokenizerStandard     // 标准分词器
+esconst.TokenizerWhitespace   // 空格分词器
+esconst.TokenizerKeyword      // 关键词分词器（不分词）
+// 更多见 const 包
 ```
 
 ### 字符过滤器常量 (Char Filters)
 
 ```go
-builder.CharFilterHTMLStrip   // 去除HTML标签
-builder.CharFilterMapping     // 字符映射替换
-builder.CharFilterPattern     // 正则替换
+esconst.CharFilterHTMLStrip   // 去除HTML标签
+esconst.CharFilterMapping     // 字符映射替换
+esconst.CharFilterPattern     // 正则替换
 ```
 
 ### Token过滤器常量 (Token Filters)
 
 ```go
-builder.TokenFilterLowercase  // 转小写
-builder.TokenFilterUppercase  // 转大写
-builder.TokenFilterStop       // 去除停用词
-builder.TokenFilterStemmer    // 词干提取
-builder.TokenFilterSynonym    // 同义词替换
-builder.TokenFilterUnique     // 去重
-// 更多见 analyzer_constants.go
+esconst.TokenFilterLowercase  // 转小写
+esconst.TokenFilterUppercase  // 转大写
+esconst.TokenFilterStop       // 去除停用词
+esconst.TokenFilterStemmer    // 词干提取
+esconst.TokenFilterSynonym    // 同义词替换
+esconst.TokenFilterUnique     // 去重
+// 更多见 const 包
 ```
 
 ### 分析器类型常量 (Analyzer Types)
 
 ```go
-builder.AnalyzerTypeCustom    // 自定义分析器
-builder.AnalyzerTypeStandard  // 标准分析器
-builder.AnalyzerIKSmart       // IK智能分词器（内置）
-builder.AnalyzerIKMaxWord     // IK最大词数分词器（内置）
+esconst.AnalyzerTypeCustom    // 自定义分析器
+esconst.AnalyzerTypeStandard  // 标准分析器
+esconst.AnalyzerIKSmart       // IK智能分词器（内置）
+esconst.AnalyzerIKMaxWord     // IK最大词数分词器（内置）
 ```
 
 ## 字段类型常量说明
 
-所有可用的字段类型常量定义在 `builder/field_types.go` 中：
+所有可用的字段类型常量定义在 `const` 包中：
 
 ### 字符串类型
 
 ```go
-builder.FieldTypeText      // 全文搜索字段（会分词）
-builder.FieldTypeKeyword   // 精确匹配字段（不分词）
+esconst.FieldTypeText      // 全文搜索字段（会分词）
+esconst.FieldTypeKeyword   // 精确匹配字段（不分词）
 ```
 
 ### 数值类型
 
 ```go
-builder.FieldTypeInt       // 32位整数
-builder.FieldTypeLong      // 64位整数
-builder.FieldTypeFloat     // 32位浮点数
-builder.FieldTypeDouble    // 64位双精度浮点数
-builder.FieldTypeByte      // 8位整数
-builder.FieldTypeShort     // 16位整数
+esconst.FieldTypeInt       // 32位整数
+esconst.FieldTypeLong      // 64位整数
+esconst.FieldTypeFloat     // 32位浮点数
+esconst.FieldTypeDouble    // 64位双精度浮点数
+esconst.FieldTypeByte      // 8位整数
+esconst.FieldTypeShort     // 16位整数
 ```
 
 ### 日期/布尔类型
 
 ```go
-builder.FieldTypeDate      // 日期类型
-builder.FieldTypeBoolean   // 布尔类型
+esconst.FieldTypeDate      // 日期类型
+esconst.FieldTypeBoolean   // 布尔类型
 ```
 
 ### 地理位置类型
 
 ```go
-builder.FieldTypeGeoPoint  // 地理位置点
-builder.FieldTypeGeoShape  // 地理形状
+esconst.FieldTypeGeoPoint  // 地理位置点
+esconst.FieldTypeGeoShape  // 地理形状
 ```
 
 ### 复杂类型
 
 ```go
-builder.FieldTypeObject    // 对象类型
-builder.FieldTypeNested    // 嵌套类型
+esconst.FieldTypeObject    // 对象类型
+esconst.FieldTypeNested    // 嵌套类型
 ```
 
 ### 其他类型
 
 ```go
-builder.FieldTypeIP              // IP地址
-builder.FieldTypeBinary          // 二进制
-builder.FieldTypeCompletion      // 自动补全
-builder.FieldTypeDenseVector     // 密集向量（向量搜索）
-// 更多见 field_types.go
+esconst.FieldTypeIP              // IP地址
+esconst.FieldTypeBinary          // 二进制
+esconst.FieldTypeCompletion      // 自动补全
+esconst.FieldTypeDenseVector     // 密集向量（向量搜索）
+// 更多见 const 包
 ```
 
 ### 使用示例（使用常量避免拼写错误）
 
 ```go
+import esconst "github.com/Kirby980/go-es/const"
+
 err := builder.NewIndexBuilder(esClient, "products").
     // 使用字段类型常量，IDE 会自动提示，避免拼写错误
-    AddProperty("name", builder.FieldTypeText, builder.WithAnalyzer(builder.AnalyzerIKSmart)).
-    AddProperty("sku", builder.FieldTypeKeyword).
-    AddProperty("price", builder.FieldTypeFloat).
-    AddProperty("quantity", builder.FieldTypeInt).
-    AddProperty("available", builder.FieldTypeBoolean).
-    AddProperty("created_at", builder.FieldTypeDate, builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
-    AddProperty("location", builder.FieldTypeGeoPoint).
+    AddProperty("name", esconst.FieldTypeText, builder.WithAnalyzer(esconst.AnalyzerIKSmart)).
+    AddProperty("sku", esconst.FieldTypeKeyword).
+    AddProperty("price", esconst.FieldTypeFloat).
+    AddProperty("quantity", esconst.FieldTypeInt).
+    AddProperty("available", esconst.FieldTypeBoolean).
+    AddProperty("created_at", esconst.FieldTypeDate, builder.WithFormat("yyyy-MM-dd HH:mm:ss")).
+    AddProperty("location", esconst.FieldTypeGeoPoint).
     Create(ctx)
 ```
 

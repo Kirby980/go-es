@@ -13,7 +13,7 @@ type MGetBuilder struct {
 	client ESClient
 	index  string
 	ids    []string
-	DebugHelper
+	debugHelper
 }
 
 // NewMGetBuilder 创建批量获取构建器
@@ -22,7 +22,7 @@ func NewMGetBuilder(c ESClient, index string) *MGetBuilder {
 		client:      c,
 		index:       index,
 		ids:         make([]string, 0),
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 }
 
@@ -43,16 +43,16 @@ func (b *MGetBuilder) Do(ctx context.Context) (*MGetResponse, error) {
 	body := map[string]any{
 		"ids": b.ids,
 	}
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
 	if err != nil {
 		return nil, err
 	}
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 	var resp MGetResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {

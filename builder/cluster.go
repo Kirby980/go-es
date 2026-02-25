@@ -11,20 +11,20 @@ import (
 // ClusterBuilder 集群管理构建器
 type ClusterBuilder struct {
 	client ESClient
-	DebugHelper
+	debugHelper
 }
 
 // NewClusterBuilder 创建集群构建器
 func NewClusterBuilder(c ESClient) *ClusterBuilder {
 	return &ClusterBuilder{
 		client:      c,
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 }
 
 // Debug 启用调试模式（链式调用）
 func (b *ClusterBuilder) Debug() *ClusterBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -54,9 +54,9 @@ func (b *ClusterBuilder) Health(ctx context.Context) (*ClusterHealthResponse, er
 	path := "/_cluster/health"
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("GET", path, nil)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("GET", path, nil)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -65,8 +65,8 @@ func (b *ClusterBuilder) Health(ctx context.Context) (*ClusterHealthResponse, er
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp ClusterHealthResponse
@@ -152,8 +152,8 @@ func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, erro
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.PrintDebug("GET", path, nil)
-		defer b.SetDebug(false)
+		b.printDebug("GET", path, nil)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -163,7 +163,7 @@ func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, erro
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.PrintResponse(respBody)
+		b.printResponse(respBody)
 	}
 
 	var resp ClusterStatsResponse
@@ -283,8 +283,8 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.PrintDebug("PUT", path, body)
-		defer b.SetDebug(false)
+		b.printDebug("PUT", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
@@ -294,7 +294,7 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.PrintResponse(respBody)
+		b.printResponse(respBody)
 	}
 
 	return nil

@@ -186,9 +186,9 @@ func (q *BoolQuery[T]) MinimumShouldMatch(value any) *T {
 
 // ========== 构建 ==========
 
-// BuildBoolQuery 构建 bool 查询部分，返回可直接赋值给 body["query"] 的 map
+// buildBoolQuery 构建 bool 查询部分，返回可直接赋值给 body["query"] 的 map
 // 无查询条件时返回 nil
-func (q *BoolQuery[T]) BuildBoolQuery() map[string]any {
+func (q *BoolQuery[T]) buildBoolQuery() map[string]any {
 	if len(q.must) == 0 && len(q.filters) == 0 && len(q.should) == 0 && len(q.mustNot) == 0 {
 		return nil
 	}

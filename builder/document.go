@@ -21,7 +21,7 @@ type DocumentBuilder struct {
 	script  map[string]any
 	refresh string // refresh 参数: true, false, wait_for
 	err     error
-	DebugHelper
+	debugHelper
 }
 
 // NewDocumentBuilder 创建文档构建器
@@ -30,7 +30,7 @@ func NewDocumentBuilder(c ESClient, index string) *DocumentBuilder {
 		client:      c,
 		index:       index,
 		doc:         make(map[string]any),
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 }
 
@@ -152,7 +152,7 @@ func (b *DocumentBuilder) buildPath(basePath string) string {
 
 // Debug 启用调试模式（链式调用）
 func (b *DocumentBuilder) Debug() *DocumentBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -202,9 +202,9 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	path = b.buildPath(path)
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug(method, path, b.doc)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug(method, path, b.doc)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, method, path, b.doc)
@@ -213,8 +213,8 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -235,9 +235,9 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	path = b.buildPath(path)
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("PUT", path, b.doc)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("PUT", path, b.doc)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.doc)
@@ -246,8 +246,8 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -275,9 +275,9 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, updateBody)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, updateBody)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
@@ -286,8 +286,8 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -313,9 +313,9 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, updateBody)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, updateBody)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
@@ -324,8 +324,8 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse
@@ -345,9 +345,9 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 	path := fmt.Sprintf("/%s/_doc/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("GET", path, nil)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("GET", path, nil)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -356,8 +356,8 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp GetResponse
@@ -378,9 +378,9 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 	path = b.buildPath(path)
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("DELETE", path, nil)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("DELETE", path, nil)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
@@ -389,8 +389,8 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp DocumentResponse

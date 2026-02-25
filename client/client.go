@@ -167,7 +167,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte,
 		reqBody = bytes.NewReader(data)
 	}
 
-	url := c.addresses[0] + path
+	url := c.GetAddress() + path
 	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %w", err)

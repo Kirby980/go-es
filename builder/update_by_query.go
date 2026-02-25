@@ -14,7 +14,7 @@ type UpdateByQueryBuilder struct {
 	index  string
 	script map[string]any
 	BoolQuery[UpdateByQueryBuilder]
-	DebugHelper
+	debugHelper
 }
 
 // NewUpdateByQueryBuilder 创建按查询更新构建器
@@ -22,7 +22,7 @@ func NewUpdateByQueryBuilder(c ESClient, index string) *UpdateByQueryBuilder {
 	b := &UpdateByQueryBuilder{
 		client:      c,
 		index:       index,
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b
@@ -64,7 +64,7 @@ func (b *UpdateByQueryBuilder) Set(field string, value any) *UpdateByQueryBuilde
 
 // Debug 启用调试模式
 func (b *UpdateByQueryBuilder) Debug() *UpdateByQueryBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -73,7 +73,7 @@ func (b *UpdateByQueryBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建查询条件
-	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
 	}
 
@@ -115,9 +115,9 @@ func (b *UpdateByQueryBuilder) Do(ctx context.Context) (*UpdateByQueryResponse, 
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -126,8 +126,8 @@ func (b *UpdateByQueryBuilder) Do(ctx context.Context) (*UpdateByQueryResponse, 
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp UpdateByQueryResponse

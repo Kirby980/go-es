@@ -58,8 +58,10 @@ resp.Scan(&productPtrs)
 ### 使用 Find 方法（简洁风格）
 
 ```go
-// 使用 Client.Find 方法
-resp, _ := esClient.Find("products").
+import "github.com/Kirby980/go-es/sugar"
+
+// 使用 sugar.New(esClient).Find 方法
+resp, _ := sugar.New(esClient).Find("products").
     Match("name", "iPhone").
     Term("category", "electronics").
     Size(10).

@@ -21,7 +21,7 @@ type SearchAfterBuilder struct {
 	minScore     *float64
 	lastResponse *SearchAfterResponse // 保存上次响应用于自动获取下一页
 	BoolQuery[SearchAfterBuilder]
-	DebugHelper
+	debugHelper
 }
 
 // NewSearchAfterBuilder 创建SearchAfter构建器
@@ -32,7 +32,7 @@ func NewSearchAfterBuilder(c ESClient, index string) *SearchAfterBuilder {
 		size:        10,
 		sort:        make([]map[string]any, 0),
 		highlight:   make(map[string]any),
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b
@@ -93,7 +93,7 @@ func (b *SearchAfterBuilder) MinScore(score float64) *SearchAfterBuilder {
 
 // Debug 启用调试模式
 func (b *SearchAfterBuilder) Debug() *SearchAfterBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -102,7 +102,7 @@ func (b *SearchAfterBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建查询条件
-	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
 	}
 
@@ -175,9 +175,9 @@ func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, erro
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -186,8 +186,8 @@ func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, erro
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var resp SearchAfterResponse

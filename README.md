@@ -50,13 +50,15 @@ ctx := context.Background()
 ### 1. 索引管理
 
 ```go
+import esconst "github.com/Kirby980/go-es/const"
+
 // 创建索引
 err := builder.NewIndexBuilder(esClient, "products").
     Shards(1).
     Replicas(0).
-    AddProperty("name", builder.FieldTypeText, builder.WithAnalyzer(builder.AnalyzerIKSmart)).
-    AddProperty("price", builder.FieldTypeFloat).
-    AddProperty("category", builder.FieldTypeKeyword).
+    AddProperty("name", esconst.FieldTypeText, builder.WithAnalyzer(esconst.AnalyzerIKSmart)).
+    AddProperty("price", esconst.FieldTypeFloat).
+    AddProperty("category", esconst.FieldTypeKeyword).
     Create(ctx)
 
 // 检查索引是否存在
@@ -83,7 +85,10 @@ func (p *Product) IndexName() string {
 }
 
 // 自动迁移（创建或更新索引）
-err := esClient.AutoMigrate(&Product{})
+import "github.com/Kirby980/go-es/sugar"
+
+s := sugar.New(esClient)
+err := s.AutoMigrate(&Product{})
 ```
 
 [查看完整索引管理文档](docs/index.md)
@@ -95,6 +100,8 @@ err := esClient.AutoMigrate(&Product{})
 #### 简洁风格（推荐）
 
 ```go
+import "github.com/Kirby980/go-es/sugar"
+
 // 定义结构体
 type Product struct {
     Name     string  `json:"name" es:"type:text"`
@@ -106,23 +113,27 @@ func (p *Product) IndexName() string { return "products" }
 
 // 创建文档
 product := &Product{Name: "iPhone 15", Price: 999.99, Category: "electronics"}
-resp, err := esClient.Create(ctx, product)
+
+s := sugar.New(esClient)
+
+// 创建文档（自动生成 ID）
+resp, err := s.Create(ctx, product)
 
 // 创建文档（指定 ID）
-resp, err := esClient.CreateWithID(ctx, "product-1", product)
+resp, err := s.CreateWithID(ctx, "product-1", product)
 
 // 更新文档
 product.Price = 899.99
-resp, err := esClient.Update(ctx, "product-1", product)
+resp, err := s.Update(ctx, "product-1", product)
 
 // Upsert（存在则更新，不存在则创建）
-resp, err := esClient.Upsert(ctx, "product-1", product)
+resp, err := s.Upsert(ctx, "product-1", product)
 
 // 获取文档
-getResp, err := esClient.Get(ctx, "products", "product-1")
+getResp, err := s.Get(ctx, "products", "product-1")
 
 // 删除文档
-delResp, err := esClient.Delete(ctx, "products", "product-1")
+delResp, err := s.Delete(ctx, "products", "product-1")
 ```
 
 #### Builder 风格（更灵活）
@@ -200,7 +211,7 @@ count, _ := builder.NewSearchBuilder(esClient, "products").
     Count(ctx)
 
 // 使用 Find 方法（简洁风格）
-resp, _ := esClient.Find("products").
+resp, _ := sugar.New(esClient).Find("products").
     Match("name", "iPhone").
     Size(10).
     Do(ctx)

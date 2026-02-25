@@ -10,6 +10,7 @@ import (
 	"github.com/Kirby980/go-es/client"
 	"github.com/Kirby980/go-es/config"
 	constant "github.com/Kirby980/go-es/const"
+	"github.com/Kirby980/go-es/sugar"
 )
 
 type Article struct {
@@ -36,7 +37,7 @@ func TestAutoMigrate(t *testing.T) {
 	_ = builder.NewIndexBuilder(client, "articles").Delete(ctx)
 	_ = builder.NewIndexBuilder(client, "tests").Delete(ctx)
 
-	err := client.AutoMigrate(&Article{}, &Test{})
+	err := sugar.New(client).AutoMigrate(&Article{}, &Test{})
 	if err != nil {
 		t.Fatalf("AutoMigrate failed: %v", err)
 	}

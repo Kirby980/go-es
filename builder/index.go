@@ -21,7 +21,7 @@ type IndexBuilder struct {
 	settings    map[string]any
 	mappings    map[string]any
 	aliases     map[string]any
-	DebugHelper // debug模式
+	debugHelper // debug模式
 }
 
 // NewIndexBuilder 创建索引构建器
@@ -32,7 +32,7 @@ func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
 		settings:    make(map[string]any),
 		mappings:    make(map[string]any),
 		aliases:     make(map[string]any),
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 }
 
@@ -451,7 +451,7 @@ func (b *IndexBuilder) Build() map[string]any {
 
 // Debug 启用调试模式（链式调用）
 func (b *IndexBuilder) Debug() *IndexBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -461,9 +461,9 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("PUT", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("PUT", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
@@ -472,8 +472,8 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	return nil
@@ -492,9 +492,9 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("PUT", path, body)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("PUT", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
@@ -503,8 +503,8 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	return nil
@@ -515,9 +515,9 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 	path := fmt.Sprintf("/%s/_mapping", url.PathEscape(b.index))
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("PUT", path, b.mappings)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("PUT", path, b.mappings)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.mappings)
@@ -526,8 +526,8 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	return nil
@@ -538,9 +538,9 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	path := fmt.Sprintf("/%s", url.PathEscape(b.index))
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("DELETE", path, nil)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("DELETE", path, nil)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
@@ -549,8 +549,8 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	return nil
@@ -582,9 +582,9 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	path := fmt.Sprintf("/%s", url.PathEscape(b.index))
 
 	// 如果启用调试模式，打印请求信息
-	if b.IsDebug() {
-		b.PrintDebug("GET", path, nil)
-		defer b.SetDebug(false)
+	if b.isDebug() {
+		b.printDebug("GET", path, nil)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -593,8 +593,8 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.IsDebug() {
-		b.PrintResponse(respBody)
+	if b.isDebug() {
+		b.printResponse(respBody)
 	}
 
 	var result map[string]*IndexInfo

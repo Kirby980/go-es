@@ -16,7 +16,7 @@ type ScrollBuilder struct {
 	keepAlive string
 	scrollID  string
 	BoolQuery[ScrollBuilder]
-	DebugHelper
+	debugHelper
 }
 
 // NewScrollBuilder 创建Scroll构建器
@@ -26,7 +26,7 @@ func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
 		index:       index,
 		size:        1000,
 		keepAlive:   "5m",
-		DebugHelper: DebugHelper{logger: c.GetLogger()},
+		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
 	return b
@@ -46,7 +46,7 @@ func (b *ScrollBuilder) KeepAlive(keepAlive string) *ScrollBuilder {
 
 // Debug 启用调试模式
 func (b *ScrollBuilder) Debug() *ScrollBuilder {
-	b.SetDebug(true)
+	b.setDebug(true)
 	return b
 }
 
@@ -55,7 +55,7 @@ func (b *ScrollBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
 	// 构建查询条件
-	if boolQ := b.BuildBoolQuery(); boolQ != nil {
+	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
 	}
 
@@ -98,8 +98,8 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -109,7 +109,7 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.PrintResponse(respBody)
+		b.printResponse(respBody)
 	}
 
 	var resp ScrollResponse
@@ -137,8 +137,8 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.PrintDebug("POST", path, body)
-		defer b.SetDebug(false)
+		b.printDebug("POST", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
@@ -148,7 +148,7 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.PrintResponse(respBody)
+		b.printResponse(respBody)
 	}
 
 	var resp ScrollResponse
@@ -175,8 +175,8 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 
 	// 如果启用调试模式，打印请求信息
 	if b.debug {
-		b.PrintDebug("DELETE", path, body)
-		defer b.SetDebug(false)
+		b.printDebug("DELETE", path, body)
+		defer b.setDebug(false)
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodDelete, path, body)
@@ -186,7 +186,7 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 
 	// 如果启用调试模式，打印响应信息
 	if b.debug {
-		b.PrintResponse(respBody)
+		b.printResponse(respBody)
 	}
 
 	b.scrollID = ""
