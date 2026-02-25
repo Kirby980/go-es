@@ -394,14 +394,14 @@ func WithSubField(name string, fieldType string, options ...PropertyOption) Prop
 }
 
 // WithSubProperties 添加子属性（嵌套属性）
-func WithSubProperties(name string, fileType string, options ...PropertyOption) PropertyOption {
+func WithSubProperties(name string, fieldType string, options ...PropertyOption) PropertyOption {
 	return func(m map[string]any) {
 		if m["properties"] == nil {
 			m["properties"] = make(map[string]any)
 		}
 
 		subField := map[string]any{
-			"type": fileType,
+			"type": fieldType,
 		}
 
 		// 应用子字段选项

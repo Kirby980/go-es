@@ -18,7 +18,7 @@ func TestBuilder(t *testing.T) {
 		config.WithAddresses("https://localhost:9200"),
 		config.WithTimeout(10*time.Second),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 	)
 	if err != nil {
 		t.Fatalf("创建客户端失败: %v", err)

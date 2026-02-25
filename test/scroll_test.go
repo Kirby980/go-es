@@ -15,7 +15,7 @@ func createScrollTestClient(t *testing.T) *client.Client {
 	esClient, err := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithTimeout(10*time.Second),
 	)
 	if err != nil {

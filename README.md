@@ -33,10 +33,10 @@ import (
 esClient, err := client.New(
     config.WithAddresses("https://localhost:9200"),
     config.WithAuth("elastic", "password"),
-    config.WithTransport(true), // 跳过 SSL 验证
+    config.WithInsecureSkipVerify(true), // 跳过 SSL 验证
     config.WithTimeout(10*time.Second),
     config.WithMaxConnsPerHost(100),
-    config.WithMaxIdConns(200),
+    config.WithMaxIdleConns(200),
     config.WithMaxIdleConnsPerHost(50),
     config.WithIdleConnTimeout(90*time.Second),
 )
@@ -451,12 +451,12 @@ func SearchProducts(ctx context.Context, keyword string) {
 esClient, err := client.New(
     config.WithAddresses("https://localhost:9200"),      // ES 地址
     config.WithAuth("username", "password"),             // 认证
-    config.WithTransport(true),                          // 跳过 SSL 验证
+    config.WithInsecureSkipVerify(true),                          // 跳过 SSL 验证
     config.WithTimeout(30*time.Second),                  // 超时时间
     config.WithRetry(3, time.Second),                    // 重试配置
     config.WithDebug(true),                              // 调试模式
     config.WithMaxConnsPerHost(100),                     // 每个 host 的最大连接数
-    config.WithMaxIdConns(200),                          // 最大空闲连接数
+    config.WithMaxIdleConns(200),                          // 最大空闲连接数
     config.WithMaxIdleConnsPerHost(50),                  // 每个 host 的最大空闲连接数
     config.WithIdleConnTimeout(90*time.Second),          // 空闲连接超时时间
 )

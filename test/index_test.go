@@ -48,10 +48,10 @@ func createTestClient(t *testing.T) *client.Client {
 	esClient, err := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithTimeout(10*time.Second),
 		config.WithMaxConnsPerHost(100),
-		config.WithMaxIdConns(200),
+		config.WithMaxIdleConns(200),
 		config.WithMaxIdleConnsPerHost(50),
 		config.WithIdleConnTimeout(90*time.Second),
 	)

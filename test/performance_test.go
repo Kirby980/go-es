@@ -18,7 +18,7 @@ func BenchmarkSearch_SmallPool(b *testing.B) {
 	esClient, _ := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithTimeout(10*time.Second),
 		// 默认配置：MaxIdleConns=100, MaxIdleConnsPerHost=10
 	)
@@ -41,10 +41,10 @@ func BenchmarkSearch_MediumPool(b *testing.B) {
 	esClient, _ := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithTimeout(10*time.Second),
 		config.WithMaxIdleConnsPerHost(50),
-		config.WithMaxIdConns(200),
+		config.WithMaxIdleConns(200),
 		config.WithMaxConnsPerHost(0), // 高并发需要大连接池
 	)
 	defer esClient.Close()
@@ -66,10 +66,10 @@ func BenchmarkSearch_LargePool(b *testing.B) {
 	esClient, _ := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithTimeout(10*time.Second),
 		config.WithMaxIdleConnsPerHost(100),
-		config.WithMaxIdConns(500),
+		config.WithMaxIdleConns(500),
 		config.WithMaxConnsPerHost(0), // 高并发需要大连接池
 	)
 	defer esClient.Close()
@@ -91,9 +91,9 @@ func BenchmarkSearch_Concurrency10(b *testing.B) {
 	esClient, _ := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithMaxIdleConnsPerHost(50),
-		config.WithMaxIdConns(200),
+		config.WithMaxIdleConns(200),
 		config.WithMaxConnsPerHost(0), // 高并发需要大连接池
 	)
 	defer esClient.Close()
@@ -115,9 +115,9 @@ func BenchmarkSearch_Concurrency100(b *testing.B) {
 	esClient, _ := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithMaxIdleConnsPerHost(50),
-		config.WithMaxIdConns(200),
+		config.WithMaxIdleConns(200),
 		config.WithMaxConnsPerHost(0), // 高并发需要大连接池
 	)
 	defer esClient.Close()
@@ -139,9 +139,9 @@ func BenchmarkSearch_Concurrency1000(b *testing.B) {
 	esClient, _ := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "123456"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithMaxIdleConnsPerHost(50),
-		config.WithMaxIdConns(200),
+		config.WithMaxIdleConns(200),
 		config.WithMaxConnsPerHost(0), // 高并发需要大连接池
 	)
 	defer esClient.Close()

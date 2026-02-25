@@ -159,7 +159,7 @@ func TestGormStyleFindAndScan(t *testing.T) {
 
 	t.Logf("✓ Find and Scan success: found %d products", len(results))
 	for _, p := range results {
-		t.Logf("  - %s: $%.2f", p.Name, p.Price)
+		t.Logf("  - %s: $%.2f, stock=%v", p.Name, p.Price, p)
 	}
 }
 

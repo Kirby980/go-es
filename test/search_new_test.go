@@ -21,7 +21,7 @@ func getTestClient() *client.Client {
 	esClient, err := client.New(
 		config.WithAddresses(esURL),
 		config.WithAuth("elastic", "elastic"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 	)
 	if err != nil {
 		panic(err)

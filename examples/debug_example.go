@@ -16,7 +16,7 @@ func DebugExample() {
 	esClient, err := client.New(
 		config.WithAddresses("https://localhost:9200"),
 		config.WithAuth("elastic", "password"),
-		config.WithTransport(true),
+		config.WithInsecureSkipVerify(true),
 		config.WithTimeout(10*time.Second),
 	)
 	if err != nil {

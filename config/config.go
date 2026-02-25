@@ -57,8 +57,8 @@ func DefaultConfig() *Config {
 // Option 配置选项函数
 type Option func(*Config)
 
-// WithTransport 设置传输层
-func WithTransport(skip bool) Option {
+// WithInsecureSkipVerify 设置传输层
+func WithInsecureSkipVerify(skip bool) Option {
 	return func(c *Config) {
 		c.InsecureSkipVerify = skip
 	}
@@ -101,8 +101,8 @@ func WithDebug(enable bool) Option {
 	}
 }
 
-// WithMaxIdConns 设置最大空闲连接数
-func WithMaxIdConns(maxIdleConns int) Option {
+// WithMaxIdleConns 设置最大空闲连接数
+func WithMaxIdleConns(maxIdleConns int) Option {
 	return func(c *Config) {
 		c.MaxIdleConns = maxIdleConns
 	}

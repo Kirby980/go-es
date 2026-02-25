@@ -36,7 +36,7 @@ func NewBulkBuilder(c ESClient) *BulkBuilder {
 	}
 }
 
-// AuthFlush 设置自动刷新大小
+// AutoFlushSize 设置自动刷新大小
 func (b *BulkBuilder) AutoFlushSize(size int) *BulkBuilder {
 	b.autoFlushSize = size
 	return b
@@ -460,6 +460,7 @@ func (b *BulkBuilder) Build() []byte {
 	b.commitCurrent() // 提交链式构建的操作（如果有）
 
 	var buf bytes.Buffer
+	buf.Grow(len(b.operations) * 200)
 
 	for _, op := range b.operations {
 		// 写入操作行
