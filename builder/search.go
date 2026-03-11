@@ -183,11 +183,10 @@ func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilde
 		temp := &SearchBuilder{}
 		temp.initBoolQuery(temp)
 		condition(temp)
-		if len(temp.must) > 0 {
-			b.should = append(b.should, temp.must...)
-		}
-		if len(temp.filters) > 0 {
-			b.should = append(b.should, temp.filters...)
+
+		// 构建子条件的 bool 查询
+		if subBool := temp.buildBoolQuery(); subBool != nil {
+			b.should = append(b.should, subBool)
 		}
 	}
 	return b

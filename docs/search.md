@@ -203,6 +203,23 @@ resp, err := builder.NewSearchBuilder(esClient, "products").
     Do(ctx)
 ```
 
+### 嵌套的 Should 查询 (复杂逻辑组合)
+
+通过 `Should` 方法可以实现更复杂的嵌套逻辑，例如：`(分类=手机 AND 品牌=苹果) OR (分类=平板 AND 品牌=三星)`。
+
+```go
+resp, err := builder.NewSearchBuilder(esClient, "products").
+    Should(
+        func(b *builder.SearchBuilder) {
+            b.Term("category", "phone").Term("brand", "Apple")
+        },
+        func(b *builder.SearchBuilder) {
+            b.Term("category", "tablet").Term("brand", "Samsung")
+        },
+    ).
+    Do(ctx)
+```
+
 ## 地理位置查询
 
 ```go
