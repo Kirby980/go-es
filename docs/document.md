@@ -126,6 +126,8 @@ resp, err := builder.NewDocumentBuilder(esClient, "products").
 ```go
 getResp, err := builder.NewDocumentBuilder(esClient, "products").
     ID("1").
+    SourceInclude("name", "price"). // 仅返回 name 和 price 字段
+    SourceExclude("content").       // 排除 content 字段
     Get(ctx)
 
 if getResp.Found {
@@ -153,7 +155,19 @@ scriptResp, err := builder.NewDocumentBuilder(esClient, "products").
     Update(ctx)
 ```
 
-### Upsert (更新或插入)
+### 脚本 Upsert (更新或插入)
+
+当使用脚本更新时，可以通过 `ScriptUpsert` 指定当文档不存在时插入的默认内容。
+
+```go
+upsertResp, err := builder.NewDocumentBuilder(esClient, "products").
+    ID("2").
+    Script("ctx._source.views += params.count", map[string]any{"count": 1}).
+    ScriptUpsert(map[string]any{"name": "New Product", "views": 1}).
+    Update(ctx)
+```
+
+### Upsert (简单更新或插入)
 
 ```go
 upsertResp, err := builder.NewDocumentBuilder(esClient, "products").

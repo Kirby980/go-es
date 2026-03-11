@@ -195,12 +195,18 @@ func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilde
 // ========== 分页和排序 ==========
 
 func (b *SearchBuilder) From(from int) *SearchBuilder {
+	if from < 0 {
+		b.debugHelper.logger.Error("SearchBuilder.From: value must be >= 0")
+	}
 	b.from = from
 	return b
 }
 
 // Size 设置返回结果数量
 func (b *SearchBuilder) Size(size int) *SearchBuilder {
+	if size < 0 {
+		b.debugHelper.logger.Error("SearchBuilder.Size: value must be >= 0")
+	}
 	b.size = size
 	return b
 }
@@ -268,6 +274,16 @@ type SearchResponse struct {
 		} `json:"hits"`
 	} `json:"hits"`
 	Aggregations map[string]any `json:"aggregations,omitempty"`
+}
+
+// Total 返回总命中数
+func (r *SearchResponse) Total() int {
+	return r.Hits.Total.Value
+}
+
+// TotalIsExact 返回总命中数是否为准确值（而非估值）
+func (r *SearchResponse) TotalIsExact() bool {
+	return r.Hits.Total.Relation == "eq"
 }
 
 // Scan 将搜索结果扫描到结构体切片中
