@@ -53,17 +53,13 @@ func (b *DocumentBuilder) Model(model any) *DocumentBuilder {
 			b.index = toSnakeCase(t.Name() + "s")
 		}
 	}
-	// 设置文档数据
-	jsonData, err := json.Marshal(model)
+	// 直接转换为 map
+	m, err := structToMap(model)
 	if err != nil {
-		b.err = fmt.Errorf("Error marshalling model: %w", err)
+		b.err = fmt.Errorf("Error converting model to map: %w", err)
 		return b
 	}
-	err = json.Unmarshal(jsonData, &b.doc)
-	if err != nil {
-		b.err = fmt.Errorf("Error unmarshalling model: %w", err)
-		return b
-	}
+	b.doc = m
 	return b
 }
 
@@ -89,16 +85,12 @@ func (b *DocumentBuilder) SetMap(data map[string]any) *DocumentBuilder {
 
 // SetStruct 从结构体设置
 func (b *DocumentBuilder) SetStruct(data any) *DocumentBuilder {
-	jsonData, err := json.Marshal(data)
+	m, err := structToMap(data)
 	if err != nil {
-		b.err = fmt.Errorf("Error marshalling model: %w", err)
+		b.err = fmt.Errorf("Error converting struct to map: %w", err)
 		return b
 	}
-	err = json.Unmarshal(jsonData, &b.doc)
-	if err != nil {
-		b.err = fmt.Errorf("Error unmarshalling model: %w", err)
-		return b
-	}
+	b.doc = m
 	return b
 }
 
