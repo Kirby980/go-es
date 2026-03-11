@@ -38,12 +38,18 @@ func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
 
 // Shards 设置分片数
 func (b *IndexBuilder) Shards(shards int) *IndexBuilder {
+	if shards < 1 {
+		b.debugHelper.logger.Error("IndexBuilder.Shards: value must be >= 1")
+	}
 	b.settings["number_of_shards"] = shards
 	return b
 }
 
 // Replicas 设置副本数
 func (b *IndexBuilder) Replicas(replicas int) *IndexBuilder {
+	if replicas < 0 {
+		b.debugHelper.logger.Error("IndexBuilder.Replicas: value must be >= 0")
+	}
 	b.settings["number_of_replicas"] = replicas
 	return b
 }
@@ -54,18 +60,23 @@ func (b *IndexBuilder) RefreshInterval(interval string) *IndexBuilder {
 	return b
 }
 
-// AddCustomAnalyzer 添加自定义分析器（简化版，用于快速创建基于某个 tokenizer 的分析器）
-// 例如：AddCustomAnalyzer("ik_case_sensitive", "ik_smart")
-func (b *IndexBuilder) AddCustomAnalyzer(name string, tokenizer string, filters ...string) *IndexBuilder {
+// getAnalysisChild 获取 analysis 下的子 map
+func (b *IndexBuilder) getAnalysisChild(childName string) map[string]any {
 	if b.settings["analysis"] == nil {
 		b.settings["analysis"] = make(map[string]any)
 	}
 	analysis := b.settings["analysis"].(map[string]any)
 
-	if analysis["analyzer"] == nil {
-		analysis["analyzer"] = make(map[string]any)
+	if analysis[childName] == nil {
+		analysis[childName] = make(map[string]any)
 	}
-	analyzers := analysis["analyzer"].(map[string]any)
+	return analysis[childName].(map[string]any)
+}
+
+// AddCustomAnalyzer 添加自定义分析器（简化版，用于快速创建基于某个 tokenizer 的分析器）
+// 例如：AddCustomAnalyzer("ik_case_sensitive", "ik_smart")
+func (b *IndexBuilder) AddCustomAnalyzer(name string, tokenizer string, filters ...string) *IndexBuilder {
+	analyzers := b.getAnalysisChild("analyzer")
 
 	analyzer := map[string]any{
 		"type":      "custom",
@@ -87,15 +98,7 @@ type AnalyzerOption func(map[string]any)
 
 // AddAnalyzer 添加分析器（完整版，支持所有选项）
 func (b *IndexBuilder) AddAnalyzer(name string, options ...AnalyzerOption) *IndexBuilder {
-	if b.settings["analysis"] == nil {
-		b.settings["analysis"] = make(map[string]any)
-	}
-	analysis := b.settings["analysis"].(map[string]any)
-
-	if analysis["analyzer"] == nil {
-		analysis["analyzer"] = make(map[string]any)
-	}
-	analyzers := analysis["analyzer"].(map[string]any)
+	analyzers := b.getAnalysisChild("analyzer")
 
 	analyzer := make(map[string]any)
 
@@ -142,15 +145,7 @@ type TokenizerOption func(map[string]any)
 // AddTokenizer 添加自定义分词器（用于需要配置 tokenizer 本身的场景）
 // 例如：AddTokenizer("ik_smart_case_sensitive", WithTokenizerType("ik_smart"), WithEnableLowercase(false))
 func (b *IndexBuilder) AddTokenizer(name string, options ...TokenizerOption) *IndexBuilder {
-	if b.settings["analysis"] == nil {
-		b.settings["analysis"] = make(map[string]any)
-	}
-	analysis := b.settings["analysis"].(map[string]any)
-
-	if analysis["tokenizer"] == nil {
-		analysis["tokenizer"] = make(map[string]any)
-	}
-	tokenizers := analysis["tokenizer"].(map[string]any)
+	tokenizers := b.getAnalysisChild("tokenizer")
 
 	tokenizer := make(map[string]any)
 
