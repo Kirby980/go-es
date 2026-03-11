@@ -8,19 +8,22 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/Kirby980/go-es/errors"
 )
 
 // DocumentBuilder 文档构建器
 type DocumentBuilder struct {
-	client  ESClient
-	index   string
-	id      string
-	doc     map[string]any
-	script  map[string]any
-	refresh string // refresh 参数: true, false, wait_for
-	err     error
+	client        ESClient
+	index         string
+	id            string
+	doc           map[string]any
+	script        map[string]any
+	refresh       string // refresh 参数: true, false, wait_for
+	sourceInclude []string
+	sourceExclude []string
+	err           error
 	debugHelper
 }
 
@@ -144,10 +147,23 @@ func (b *DocumentBuilder) Refresh(refresh string) *DocumentBuilder {
 
 // buildPath 构建带查询参数的路径
 func (b *DocumentBuilder) buildPath(basePath string) string {
+	u, _ := url.Parse(basePath)
+	q := u.Query()
+
 	if b.refresh != "" {
-		return fmt.Sprintf("%s?refresh=%s", basePath, b.refresh)
+		q.Set("refresh", b.refresh)
 	}
-	return basePath
+
+	if len(b.sourceInclude) > 0 {
+		q.Set("_source_includes", strings.Join(b.sourceInclude, ","))
+	}
+
+	if len(b.sourceExclude) > 0 {
+		q.Set("_source_excludes", strings.Join(b.sourceExclude, ","))
+	}
+
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 // Debug 启用调试模式（链式调用）
@@ -168,6 +184,16 @@ func (b *DocumentBuilder) Script(source string, params map[string]any) *Document
 	return b
 }
 
+// ScriptUpsert 脚本更新时如果不存在则插入
+func (b *DocumentBuilder) ScriptUpsert(upsertDoc any) *DocumentBuilder {
+	if b.script == nil {
+		b.err = fmt.Errorf("ScriptUpsert requires a script to be set first")
+		return b
+	}
+	b.script["upsert"] = upsertDoc
+	return b
+}
+
 // DocumentResponse 文档操作响应
 type DocumentResponse struct {
 	Index   string `json:"_index"`
@@ -183,12 +209,11 @@ type DocumentResponse struct {
 
 // Do 索引文档（创建或更新）
 func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
-	var path string
-	var method string
-
 	if b.err != nil {
 		return nil, b.err
 	}
+	var path string
+	var method string
 
 	if b.id != "" {
 		path = fmt.Sprintf("/%s/_doc/%s", url.PathEscape(b.index), url.PathEscape(b.id))
@@ -227,9 +252,13 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 
 // Create 创建文档（如果已存在则失败）
 func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
 	if b.id == "" {
 		return nil, fmt.Errorf("创建文档需要指定 ID")
 	}
+// ... (rest remains same but effectively prepended b.err check)
 
 	path := fmt.Sprintf("/%s/_create/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	path = b.buildPath(path)
@@ -260,6 +289,9 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 
 // Update 更新文档（部分更新）
 func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
 	if b.id == "" {
 		return nil, fmt.Errorf("更新文档需要指定 ID")
 	}
@@ -300,6 +332,9 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 
 // Upsert 更新或插入
 func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
 	if b.id == "" {
 		return nil, fmt.Errorf("upsert 需要指定 ID")
 	}
@@ -338,6 +373,9 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 
 // Get 获取文档
 func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
 	if b.id == "" {
 		return nil, fmt.Errorf("获取文档需要指定 ID")
 	}
@@ -370,6 +408,9 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 
 // Delete 删除文档
 func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
 	if b.id == "" {
 		return nil, fmt.Errorf("删除文档需要指定 ID")
 	}
@@ -403,6 +444,9 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 
 // Exists 检查文档是否存在
 func (b *DocumentBuilder) Exists(ctx context.Context) (bool, error) {
+	if b.err != nil {
+		return false, b.err
+	}
 	if b.id == "" {
 		return false, fmt.Errorf("检查文档需要指定 ID")
 	}
@@ -417,6 +461,18 @@ func (b *DocumentBuilder) Exists(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// SourceInclude 设置返回字段（包含）
+func (b *DocumentBuilder) SourceInclude(fields ...string) *DocumentBuilder {
+	b.sourceInclude = fields
+	return b
+}
+
+// SourceExclude 设置返回字段（排除）
+func (b *DocumentBuilder) SourceExclude(fields ...string) *DocumentBuilder {
+	b.sourceExclude = fields
+	return b
 }
 
 // GetResponse 获取文档响应
