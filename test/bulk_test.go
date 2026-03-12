@@ -365,7 +365,7 @@ func TestBulkBuilder_ErrorHandling(t *testing.T) {
 		t.Logf("批量操作完成但有错误: %v", err)
 	}
 
-	if resp.HasErrors() {
+	if resp != nil && resp.HasErrors() {
 		t.Logf("✓ 检测到错误:")
 		for _, item := range resp.FailedItems() {
 			t.Logf("  - ID=%s, Status=%d, Error=%s",
@@ -373,8 +373,10 @@ func TestBulkBuilder_ErrorHandling(t *testing.T) {
 		}
 	}
 
-	t.Logf("批量操作结果: 成功=%d, 失败=%d",
-		resp.SuccessCount(), len(resp.FailedItems()))
+	if resp != nil {
+		t.Logf("批量操作结果: 成功=%d, 失败=%d",
+			resp.SuccessCount(), len(resp.FailedItems()))
+	}
 }
 
 // TestBulkBuilder_ChainedAPI 测试链式调用 API
