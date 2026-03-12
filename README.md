@@ -34,7 +34,7 @@ esClient, err := client.New(
     config.WithAddresses("https://localhost:9200"),
     config.WithAuth("elastic", "password"),
     config.WithInsecureSkipVerify(true), // 跳过 SSL 验证
-    config.WithTimeout(10*time.Second),
+    config.WithTimeout(10*time.Second),  // 默认请求超时时间
     config.WithMaxConnsPerHost(100),
     config.WithMaxIdleConns(200),
     config.WithMaxIdleConnsPerHost(50),
