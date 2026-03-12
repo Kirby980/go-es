@@ -201,6 +201,9 @@ resp, err := builder.NewSearchBuilder(esClient, "products").
     From(0).
     Size(20).
     Do(ctx)
+
+// 获取搜索命中统计
+fmt.Printf("总命中数: %d, 是否为准确值: %v\n", resp.Total(), resp.TotalIsExact())
 ```
 
 ### 嵌套的 Should 查询 (复杂逻辑组合)
