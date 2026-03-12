@@ -158,6 +158,11 @@ func (c *Client) Ping(ctx context.Context) error {
 
 // Do 执行 HTTP 请求
 func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte, error) {
+	return c.DoWithHeader(ctx, method, path, body, nil)
+}
+
+// DoWithHeader 执行 HTTP 请求并带上自定义 Header
+func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any, header http.Header) ([]byte, error) {
 	// 如果 context 没有设置截止时间，应用默认超时
 	if _, ok := ctx.Deadline(); !ok && c.httpClient.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -181,6 +186,12 @@ func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte,
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	for k, v := range header {
+		for _, vv := range v {
+			req.Header.Add(k, vv)
+		}
+	}
+
 	if c.config.Username != "" {
 		req.SetBasicAuth(c.config.Username, c.config.Password)
 	}
