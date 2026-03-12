@@ -481,7 +481,3 @@ esClient, err := client.New(
 # 运行完整示例
 go test -v ./examples -run TestCompleteAPI
 ```
-
-## License
-
-MIT License
