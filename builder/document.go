@@ -25,16 +25,25 @@ type DocumentBuilder struct {
 	sourceExclude []string
 	err           error
 	debugHelper
+	baseBuilder
 }
 
 // NewDocumentBuilder 创建文档构建器
 func NewDocumentBuilder(c ESClient, index string) *DocumentBuilder {
-	return &DocumentBuilder{
+	b := &DocumentBuilder{
 		client:      c,
 		index:       index,
 		doc:         make(map[string]any),
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *DocumentBuilder) Header(key, value string) *DocumentBuilder {
+	b.baseBuilder.Header(key, value)
+	return b
 }
 
 // Model 从结构体设置文档数据，并自动推断索引名
@@ -224,7 +233,7 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, method, path, b.doc)
+	respBody, err := b.client.DoWithHeader(ctx, method, path, b.doc, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}

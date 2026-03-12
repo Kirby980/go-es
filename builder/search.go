@@ -23,6 +23,7 @@ type SearchBuilder struct {
 	minScore  *float64 // 最小评分
 	BoolQuery[SearchBuilder]
 	debugHelper
+	baseBuilder
 }
 
 // NewSearchBuilder 创建搜索构建器
@@ -35,6 +36,13 @@ func NewSearchBuilder(c ESClient, index string) *SearchBuilder {
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *SearchBuilder) Header(key, value string) *SearchBuilder {
+	b.baseBuilder.Header(key, value)
 	return b
 }
 
@@ -372,7 +380,7 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}
