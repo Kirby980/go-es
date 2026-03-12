@@ -2,7 +2,10 @@ package builder
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/Kirby980/go-es/logger"
 )
@@ -23,4 +26,27 @@ type ESClient interface {
 // IndexName 用于自定义索引名（类似 GORM 的 Tabler 接口）
 type IndexName interface {
 	IndexName() string
+}
+
+// structToMap 内部辅助方法，高效地将结构体转为 map[string]any
+// 目前采用 json marshal -> unmarshal，后续可优化为反射以提升性能
+func structToMap(v any) (map[string]any, error) {
+	if v == nil {
+		return nil, nil
+	}
+	t := reflect.TypeOf(v)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct && t.Kind() != reflect.Map {
+		return nil, fmt.Errorf("expected struct or map, got %v", t.Kind())
+	}
+
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]any
+	err = json.Unmarshal(data, &m)
+	return m, err
 }

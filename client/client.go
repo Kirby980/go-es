@@ -158,6 +158,13 @@ func (c *Client) Ping(ctx context.Context) error {
 
 // Do 执行 HTTP 请求
 func (c *Client) Do(ctx context.Context, method, path string, body any) ([]byte, error) {
+	// 如果 context 没有设置截止时间，应用默认超时
+	if _, ok := ctx.Deadline(); !ok && c.httpClient.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.httpClient.Timeout)
+		defer cancel()
+	}
+
 	var reqBody io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)

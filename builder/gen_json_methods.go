@@ -72,14 +72,14 @@ func main() {
 
 	f, err := os.Create("response_ext_gen.go")
 	if err != nil {
-		panic(err)
+		return
 	}
 	defer f.Close()
 
 	// 移除多余空行
 	var sb strings.Builder
 	if err := t.Execute(&sb, types); err != nil {
-		panic(err)
+		return
 	}
 
 	// 写入文件
