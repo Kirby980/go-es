@@ -14,16 +14,25 @@ type MGetBuilder struct {
 	index  string
 	ids    []string
 	debugHelper
+	baseBuilder
 }
 
 // NewMGetBuilder 创建批量获取构建器
 func NewMGetBuilder(c ESClient, index string) *MGetBuilder {
-	return &MGetBuilder{
+	b := &MGetBuilder{
 		client:      c,
 		index:       index,
 		ids:         make([]string, 0),
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *MGetBuilder) Header(key, value string) *MGetBuilder {
+	b.baseBuilder.Header(key, value)
+	return b
 }
 
 // IDs 设置要获取的文档 ID 列表
@@ -47,7 +56,7 @@ func (b *MGetBuilder) Do(ctx context.Context) (*MGetResponse, error) {
 		b.printDebug("POST", path, body)
 		defer b.setDebug(false)
 	}
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}

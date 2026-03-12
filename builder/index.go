@@ -22,11 +22,12 @@ type IndexBuilder struct {
 	mappings    map[string]any
 	aliases     map[string]any
 	debugHelper // debug模式
+	baseBuilder
 }
 
 // NewIndexBuilder 创建索引构建器
 func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
-	return &IndexBuilder{
+	b := &IndexBuilder{
 		client:      c,
 		index:       index,
 		settings:    make(map[string]any),
@@ -34,6 +35,14 @@ func NewIndexBuilder(c ESClient, index string) *IndexBuilder {
 		aliases:     make(map[string]any),
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *IndexBuilder) Header(key, value string) *IndexBuilder {
+	b.baseBuilder.Header(key, value)
+	return b
 }
 
 // Shards 设置分片数
@@ -461,7 +470,7 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
 	if err != nil {
 		return err
 	}
@@ -492,7 +501,7 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPut, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
 	if err != nil {
 		return err
 	}
@@ -515,7 +524,7 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.mappings)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, b.mappings, b.getHeaders())
 	if err != nil {
 		return err
 	}
@@ -538,7 +547,7 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, nil, b.getHeaders())
 	if err != nil {
 		return err
 	}
@@ -582,7 +591,7 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}

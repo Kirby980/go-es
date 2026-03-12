@@ -22,6 +22,7 @@ type SearchAfterBuilder struct {
 	lastResponse *SearchAfterResponse // 保存上次响应用于自动获取下一页
 	BoolQuery[SearchAfterBuilder]
 	debugHelper
+	baseBuilder
 }
 
 // NewSearchAfterBuilder 创建SearchAfter构建器
@@ -35,6 +36,13 @@ func NewSearchAfterBuilder(c ESClient, index string) *SearchAfterBuilder {
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *SearchAfterBuilder) Header(key, value string) *SearchAfterBuilder {
+	b.baseBuilder.Header(key, value)
 	return b
 }
 
@@ -180,7 +188,7 @@ func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, erro
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,7 @@ type DeleteByQueryBuilder struct {
 	index  string
 	BoolQuery[DeleteByQueryBuilder]
 	debugHelper
+	baseBuilder
 }
 
 // NewDeleteByQueryBuilder 创建按查询删除构建器
@@ -24,6 +25,13 @@ func NewDeleteByQueryBuilder(c ESClient, index string) *DeleteByQueryBuilder {
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *DeleteByQueryBuilder) Header(key, value string) *DeleteByQueryBuilder {
+	b.baseBuilder.Header(key, value)
 	return b
 }
 
@@ -80,7 +88,7 @@ func (b *DeleteByQueryBuilder) Do(ctx context.Context) (*DeleteByQueryResponse, 
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}

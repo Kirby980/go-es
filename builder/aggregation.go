@@ -16,17 +16,26 @@ type AggregationBuilder struct {
 	aggs   map[string]any
 	size   int
 	debugHelper
+	baseBuilder
 }
 
 // NewAggregationBuilder 创建聚合构建器
 func NewAggregationBuilder(c ESClient, index string) *AggregationBuilder {
-	return &AggregationBuilder{
+	b := &AggregationBuilder{
 		client:      c,
 		index:       index,
 		aggs:        make(map[string]any),
 		size:        0, // 聚合时默认不返回文档
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *AggregationBuilder) Header(key, value string) *AggregationBuilder {
+	b.baseBuilder.Header(key, value)
+	return b
 }
 
 // Query 设置查询条件
@@ -414,7 +423,7 @@ func (b *AggregationBuilder) Do(ctx context.Context) (*AggregationResponse, erro
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}
