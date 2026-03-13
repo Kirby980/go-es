@@ -15,6 +15,7 @@ type BulkBuilder struct {
 	operations []bulkOperation
 	currentOp  *bulkOperation // 当前正在构建的操作（用于链式调用）
 	debugHelper
+	baseBuilder
 	autoFlushSize int                 // 自动刷新大小
 	onFlush       func(*BulkResponse) // 分批回调
 	err           error
@@ -29,11 +30,19 @@ type bulkOperation struct {
 
 // NewBulkBuilder 创建批量操作构建器
 func NewBulkBuilder(c ESClient) *BulkBuilder {
-	return &BulkBuilder{
+	b := &BulkBuilder{
 		client:      c,
 		operations:  make([]bulkOperation, 0),
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *BulkBuilder) Header(key, value string) *BulkBuilder {
+	b.baseBuilder.Header(key, value)
+	return b
 }
 
 // AutoFlushSize 设置自动刷新大小
@@ -317,12 +326,14 @@ func (b *BulkBuilder) SetFromStruct(data any) *BulkBuilder {
 		b.err = fmt.Errorf("SetFromStruct() must be called after AddDoc/CreateDoc/UpdateDoc")
 		return b
 	}
-	jsonData, err := json.Marshal(data)
+	m, err := structToMap(data)
 	if err != nil {
 		b.err = fmt.Errorf("SetFromStruct() error: %v", err)
 		return b
 	}
-	json.Unmarshal(jsonData, &b.currentOp.doc)
+	for k, v := range m {
+		b.currentOp.doc[k] = v
+	}
 	return b
 }
 
@@ -374,15 +385,9 @@ func (b *BulkBuilder) SetObjectArray(key string, builders ...func(*NestedObject)
 
 // AddFromStruct 从结构体添加索引操作
 func (b *BulkBuilder) AddFromStruct(index, id string, data any) *BulkBuilder {
-	doc := make(map[string]any)
-	jsonData, err := json.Marshal(data)
+	doc, err := structToMap(data)
 	if err != nil {
-		b.err = fmt.Errorf("AddFromStruct Marshal  error: %v", err)
-		return b
-	}
-	err = json.Unmarshal(jsonData, &doc)
-	if err != nil {
-		b.err = fmt.Errorf("AddFromStruct Unmarshal error: %v", err)
+		b.err = fmt.Errorf("AddFromStruct error: %v", err)
 		return b
 	}
 	return b.Add(index, id, doc)
@@ -390,15 +395,9 @@ func (b *BulkBuilder) AddFromStruct(index, id string, data any) *BulkBuilder {
 
 // UpdateFromStruct 从结构体添加更新操作
 func (b *BulkBuilder) UpdateFromStruct(index, id string, data any) *BulkBuilder {
-	doc := make(map[string]any)
-	jsonData, err := json.Marshal(data)
+	doc, err := structToMap(data)
 	if err != nil {
-		b.err = fmt.Errorf("UpdateFromStruct Marshal error: %v", err)
-		return b
-	}
-	err = json.Unmarshal(jsonData, &doc)
-	if err != nil {
-		b.err = fmt.Errorf("UpdateFromStruct Unmarshal error: %v", err)
+		b.err = fmt.Errorf("UpdateFromStruct error: %v", err)
 		return b
 	}
 	return b.Update(index, id, doc)
@@ -523,8 +522,13 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 		return nil, fmt.Errorf("创建请求失败: %w", err)
 	}
 
-	// 设置正确的 Content-Type
+	// 设置正确的 Content-Type 和自定义 Header
 	req.Header.Set("Content-Type", "application/x-ndjson")
+	for k, v := range b.getHeaders() {
+		for _, vv := range v {
+			req.Header.Add(k, vv)
+		}
+	}
 
 	// 执行请求
 	respBody, err := b.client.DoRequest(ctx, req)

@@ -15,6 +15,7 @@ type UpdateByQueryBuilder struct {
 	script map[string]any
 	BoolQuery[UpdateByQueryBuilder]
 	debugHelper
+	baseBuilder
 }
 
 // NewUpdateByQueryBuilder 创建按查询更新构建器
@@ -25,6 +26,13 @@ func NewUpdateByQueryBuilder(c ESClient, index string) *UpdateByQueryBuilder {
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *UpdateByQueryBuilder) Header(key, value string) *UpdateByQueryBuilder {
+	b.baseBuilder.Header(key, value)
 	return b
 }
 
@@ -120,7 +128,7 @@ func (b *UpdateByQueryBuilder) Do(ctx context.Context) (*UpdateByQueryResponse, 
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}

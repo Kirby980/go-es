@@ -17,18 +17,26 @@ type ScrollBuilder struct {
 	scrollID  string
 	BoolQuery[ScrollBuilder]
 	debugHelper
+	baseBuilder
 }
 
 // NewScrollBuilder 创建Scroll构建器
 func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
 	b := &ScrollBuilder{
-		client:      c,
-		index:       index,
-		size:        1000,
-		keepAlive:   "5m",
+		client:    c,
+		index:     index,
+		size:      1000,
+		keepAlive: "5m",
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
+	b.initBaseBuilder()
+	return b
+}
+
+// Header 设置自定义 Header (链式调用)
+func (b *ScrollBuilder) Header(key, value string) *ScrollBuilder {
+	b.baseBuilder.Header(key, value)
 	return b
 }
 
@@ -102,7 +110,7 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +149,7 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +187,7 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 		defer b.setDebug(false)
 	}
 
-	respBody, err := b.client.Do(ctx, http.MethodDelete, path, body)
+	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, body, b.getHeaders())
 	if err != nil {
 		return err
 	}
