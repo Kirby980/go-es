@@ -221,6 +221,19 @@ resp, err := builder.NewDocumentBuilder(esClient, "products").
     Do(ctx)
 ```
 
+## 自定义 Header
+
+可以通过 `.Header(key, value)` 方法为单次请求添加自定义 HTTP Header：
+
+```go
+resp, err := builder.NewDocumentBuilder(esClient, "products").
+    ID("1").
+    Set("name", "Product").
+    Header("X-Custom-Source", "my-app").
+    Header("X-Request-ID", "req-12345").
+    Do(ctx)
+```
+
 ## 支持的功能
 
 - ✅ 简洁风格 CRUD (Create, Update, Upsert, Get, Delete)

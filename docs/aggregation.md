@@ -171,6 +171,18 @@ geoDistResp, err := builder.NewAggregationBuilder(esClient, "stores").
     Do(ctx)
 ```
 
+## 自定义 Header
+
+可以通过 `.Header(key, value)` 方法为单次请求添加自定义 HTTP Header：
+
+```go
+aggResp, err := builder.NewAggregationBuilder(esClient, "products").
+    Avg("avg_price", "price").
+    Header("X-Custom-Source", "my-app").
+    Header("X-Request-ID", "req-12345").
+    Do(ctx)
+```
+
 ## 支持的功能
 
 - ✅ 指标聚合 (Avg, Sum, Min, Max, Count, Stats, Cardinality, Percentiles)

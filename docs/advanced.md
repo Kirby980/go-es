@@ -284,3 +284,4 @@ err := clusterBuilder.UpdateSettings(ctx,
 - ✅ 任务管理 (Tasks)
 - ✅ 集群设置 (GetSettings, UpdateSettings)
 - ✅ 分配解释 (AllocationExplain)
+- ✅ 自定义 Header 支持 (通过 `.Header(k, v)` 方法)
