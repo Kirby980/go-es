@@ -19,6 +19,7 @@ type BulkBuilder struct {
 	autoFlushSize int                 // 自动刷新大小
 	onFlush       func(*BulkResponse) // 分批回调
 	err           error
+	ctx           context.Context // 用户提供的自动刷新上下文
 }
 
 // bulkOperation 批量操作项
@@ -54,6 +55,13 @@ func (b *BulkBuilder) AutoFlushSize(size int) *BulkBuilder {
 // OnFlush 设置分批回调(每批完成后回调)
 func (b *BulkBuilder) OnFlush(callback func(*BulkResponse)) *BulkBuilder {
 	b.onFlush = callback
+	return b
+}
+
+// AutoFlushContext 设置自动刷新使用的上下文（链式调用）
+// 若不调用此方法，自动刷新默认使用 context.Background()
+func (b *BulkBuilder) AutoFlushContext(ctx context.Context) *BulkBuilder {
+	b.ctx = ctx
 	return b
 }
 
@@ -102,8 +110,17 @@ func (b *BulkBuilder) Add(index, id string, doc map[string]any) *BulkBuilder {
 
 func (b *BulkBuilder) isFlush() {
 	if b.autoFlushSize > 0 && len(b.operations) >= b.autoFlushSize {
-		resp, err := b.flush(context.TODO())
-		if err == nil && b.onFlush != nil {
+		// 使用用户提供的上下文，若未设置则使用 context.Background()
+		ctx := b.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		resp, err := b.flush(ctx)
+		if err != nil {
+			b.err = fmt.Errorf("auto-flush failed: %w", err)
+			return
+		}
+		if b.onFlush != nil {
 			b.onFlush(resp)
 		}
 	}

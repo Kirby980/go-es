@@ -103,6 +103,14 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
 			time.Sleep(c.config.RetryBackoff)
+			// 重置 body 读取位置，防止重试时发送空 body
+			if req.GetBody != nil {
+				req.Body, _ = req.GetBody()
+			} else if req.Body != nil {
+				if seeker, ok := req.Body.(io.Seeker); ok {
+					seeker.Seek(0, io.SeekStart)
+				}
+			}
 		}
 
 		resp, err = c.httpClient.Do(req)
@@ -132,28 +140,46 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	return respBody, nil
 }
 
-// Ping 测试连接
+// Ping 测试连接（遍历所有地址，任一可达即返回 nil）
 func (c *Client) Ping(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", c.addresses[0], nil)
-	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
+	if len(c.addresses) == 0 {
+		return fmt.Errorf("no addresses configured")
 	}
 
-	if c.config.Username != "" {
-		req.SetBasicAuth(c.config.Username, c.config.Password)
+	var lastErr error
+	for _, addr := range c.addresses {
+		// 每次循环检查 context 是否已取消，以便及时退出
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("连接失败: %w", err)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "GET", addr, nil)
+		if err != nil {
+			lastErr = fmt.Errorf("创建请求失败: %w", err)
+			continue
+		}
+
+		if c.config.Username != "" {
+			req.SetBasicAuth(c.config.Username, c.config.Password)
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("连接失败: %w", err)
+			continue
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("连接失败，状态码: %d", resp.StatusCode)
+			continue
+		}
+
+		// At least one address responded successfully.
+		return nil
 	}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("连接失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("连接失败，状态码: %d", resp.StatusCode)
-	}
-
-	return nil
+	return lastErr
 }
 
 // Do 执行 HTTP 请求
@@ -202,7 +228,9 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 		if i > 0 {
 			time.Sleep(c.config.RetryBackoff)
 			// 重置 body 读取位置
-			if seeker, ok := req.Body.(io.Seeker); ok {
+			if req.GetBody != nil {
+				req.Body, _ = req.GetBody()
+			} else if seeker, ok := req.Body.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
 		}
