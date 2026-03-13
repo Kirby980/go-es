@@ -147,6 +147,16 @@ fmt.Println(info.PrettyJSON())
 err := builder.NewIndexBuilder(esClient, "products").Delete(ctx)
 ```
 
+## 自定义 Header
+
+可以通过 `.Header(key, value)` 方法为单次请求添加自定义 HTTP Header：
+
+```go
+err := builder.NewIndexBuilder(esClient, "products").
+    Header("X-Custom-Source", "my-app").
+    Exists(ctx)
+```
+
 ## 自定义分析器
 
 ### 方式1：简化版（基于 tokenizer 快速创建）

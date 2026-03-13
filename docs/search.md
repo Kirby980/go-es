@@ -295,6 +295,18 @@ count, err := builder.NewSearchBuilder(esClient, "products").
 fmt.Printf("活跃商品数量: %d\n", count)
 ```
 
+## 自定义 Header
+
+可以通过 `.Header(key, value)` 方法为单次请求添加自定义 HTTP Header：
+
+```go
+resp, err := builder.NewSearchBuilder(esClient, "products").
+    Match("name", "iPhone").
+    Header("X-Custom-Source", "my-app").
+    Header("X-Request-ID", "req-12345").
+    Do(ctx)
+```
+
 ## 支持的功能
 
 - ✅ 结果扫描到结构体 (Scan)
