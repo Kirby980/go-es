@@ -160,7 +160,7 @@ func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, erro
 	path := "/_cluster/stats"
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
+	if b.isDebug() {
 		b.printDebug("GET", path, nil)
 		defer b.setDebug(false)
 	}
@@ -171,7 +171,7 @@ func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, erro
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
+	if b.isDebug() {
 		b.printResponse(respBody)
 	}
 
@@ -291,7 +291,7 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
+	if b.isDebug() {
 		b.printDebug("PUT", path, body)
 		defer b.setDebug(false)
 	}
@@ -302,7 +302,7 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
+	if b.isDebug() {
 		b.printResponse(respBody)
 	}
 

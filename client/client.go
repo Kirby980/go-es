@@ -86,7 +86,7 @@ func (c *Client) GetAddress() string {
 	if len(c.addresses) == 0 {
 		return ""
 	}
-	idx := c.addressIndex.Add(1)
+	idx := c.addressIndex.Add(1) - 1
 	return c.addresses[idx%uint32(len(c.addresses))]
 }
 
