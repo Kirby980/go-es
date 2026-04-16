@@ -465,6 +465,10 @@ func SearchProducts(ctx context.Context, keyword string) {
 - ✅ PointInTime / PIT (现代 ES 推荐的分页方式, 替代 Scroll)
 - ✅ KNN 向量搜索 (支持 ES 8.x / 9.x 的 AI 向量检索)
 - ✅ Reindex (跨索引重建数据)
+- ✅ Aliases (/_aliases 原子切换别名，零停机切流量)
+- ✅ Index Template / Component Template (模板与组件模板管理，适配 ES 7/8/9)
+- ✅ Data Stream (数据流管理，适配 ES 7/8/9)
+- ✅ Ingest Pipeline (写入预处理管道管理与 simulate，适配 ES 7/8/9)
 - ✅ EQL (Event Query Language, 支持安全日志事件查询)
 - ✅ Multi Search (msearch 批量并发搜索)
 - ✅ Explain API (单文档搜索评分详情解释)
@@ -472,6 +476,37 @@ func SearchProducts(ctx context.Context, keyword string) {
 - ✅ Suggest (搜索建议/自动补全)
 - ✅ ClusterBuilder (集群管理)
 - ✅ Debug模式 (类似GORM)
+
+### Alias 原子切换示例
+
+```go
+resp, err := builder.NewAliasesBuilder(esClient).
+    Replace("products_write", "products_v1", "products_v2", builder.WithIsWriteIndex(true)).
+    Do(ctx)
+_ = resp
+_ = err
+```
+
+### Template / Data Stream / Pipeline 示例
+
+```go
+_, _ = builder.NewComponentTemplateBuilder(esClient, "ct_common").
+    TemplateSettings(map[string]any{"index.number_of_shards": 1}).
+    Put(ctx)
+
+_, _ = builder.NewIndexTemplateBuilder(esClient, "it_logs").
+    IndexPatterns("logs-*").
+    ComposedOf("ct_common").
+    DataStream(true).
+    Put(ctx)
+
+_, _ = builder.NewDataStreamBuilder(esClient, "logs-app").Create(ctx)
+
+_, _ = builder.NewIngestPipelineBuilder(esClient, "p1").
+    Description("add field").
+    AddProcessor("set", map[string]any{"field": "env", "value": "prod"}).
+    Put(ctx)
+```
 
 ## 配置选项
 
