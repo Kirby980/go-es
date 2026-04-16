@@ -17,8 +17,6 @@ type ESClient interface {
 	Do(ctx context.Context, method, path string, body any) ([]byte, error)
 	// DoWithHeader 执行 HTTP 请求并带上自定义 Header
 	DoWithHeader(ctx context.Context, method, path string, body any, header http.Header) ([]byte, error)
-	// DoWithHeaderAndDecode 执行 HTTP 请求并使用流式解析直接反序列化到 target，避免一次性读入全量 []byte 造成高内存占用
-	DoWithHeaderAndDecode(ctx context.Context, method, path string, body any, header http.Header, target any) error
 	// GetAddress 获取 ES 地址（用于 bulk 等需要自定义 Content-Type 的场景）
 	GetAddress() string
 	// DoRequest 执行自定义 HTTP 请求（用于 bulk 等需要 ndjson 格式的场景）
