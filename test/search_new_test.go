@@ -2,37 +2,22 @@ package builder_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
-	"github.com/Kirby980/go-es/config"
 )
 
 // getTestClient 获取测试客户端
-func getTestClient() *client.Client {
-	esURL := os.Getenv("ES_URL")
-	if esURL == "" {
-		esURL = "https://localhost:9200"
-	}
-
-	esClient, err := client.New(
-		config.WithAddresses(esURL),
-		config.WithAuth("elastic", "elastic"),
-		config.WithInsecureSkipVerify(true),
-	)
-	if err != nil {
-		panic(err)
-	}
-	return esClient
+func getTestClient(t *testing.T) *client.Client {
+	return createTestClient(t)
 }
 
 // ========== 测试新增的 Should 系列方法 ==========
 
 func TestSearchBuilder_MatchShould(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_match_should"
@@ -86,7 +71,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
 }
 
 func TestSearchBuilder_TermShould(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_term_should"
@@ -131,7 +116,7 @@ func TestSearchBuilder_TermShould(t *testing.T) {
 }
 
 func TestSearchBuilder_RangeShould(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_range_should"
@@ -176,7 +161,7 @@ func TestSearchBuilder_RangeShould(t *testing.T) {
 }
 
 func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_minimum_should_match"
@@ -244,7 +229,7 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
 // ========== 测试新增的 MustNot 系列方法 ==========
 
 func TestSearchBuilder_MatchMustNot(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_match_must_not"
@@ -289,7 +274,7 @@ func TestSearchBuilder_MatchMustNot(t *testing.T) {
 }
 
 func TestSearchBuilder_TermMustNot(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_term_must_not"
@@ -334,7 +319,7 @@ func TestSearchBuilder_TermMustNot(t *testing.T) {
 }
 
 func TestSearchBuilder_RangeMustNot(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_range_must_not"
@@ -381,7 +366,7 @@ func TestSearchBuilder_RangeMustNot(t *testing.T) {
 // ========== 综合测试 ==========
 
 func TestSearchBuilder_ComplexLogic(t *testing.T) {
-	esClient := getTestClient()
+	esClient := getTestClient(t)
 	defer esClient.Close()
 	ctx := context.Background()
 	index := "test_search_complex_logic"

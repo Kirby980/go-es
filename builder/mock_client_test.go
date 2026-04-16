@@ -2,6 +2,7 @@ package builder_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/Kirby980/go-es/logger"
@@ -37,6 +38,17 @@ func (m *mockESClient) DoWithHeader(ctx context.Context, method, path string, bo
 		return m.doFunc(ctx, method, path, body)
 	}
 	return []byte(`{}`), nil
+}
+
+func (m *mockESClient) DoWithHeaderAndDecode(ctx context.Context, method, path string, body any, header http.Header, target any) error {
+	resp, err := m.DoWithHeader(ctx, method, path, body, header)
+	if err != nil {
+		return err
+	}
+	if target == nil {
+		return nil
+	}
+	return json.Unmarshal(resp, target)
 }
 
 func (m *mockESClient) GetAddress() string {

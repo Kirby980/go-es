@@ -1,31 +1,43 @@
 package builder_test
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
-	"time"
 
 	"github.com/Kirby980/go-es/builder"
-	"github.com/Kirby980/go-es/client"
-	"github.com/Kirby980/go-es/config"
+	"github.com/Kirby980/go-es/logger"
 )
 
-func createTestClientLocal(t *testing.T) *client.Client {
-	esClient, err := client.New(
-		config.WithAddresses("https://localhost:9200"),
-		config.WithAuth("elastic", "123456"),
-		config.WithInsecureSkipVerify(true),
-		config.WithTimeout(10*time.Second),
-	)
-	if err != nil {
-		t.Fatalf("创建客户端失败: %v", err)
-	}
-	return esClient
+type dslOnlyClient struct{}
+
+func (c *dslOnlyClient) Do(ctx context.Context, method, path string, body any) ([]byte, error) {
+	return []byte(`{}`), nil
+}
+
+func (c *dslOnlyClient) DoWithHeader(ctx context.Context, method, path string, body any, header http.Header) ([]byte, error) {
+	return []byte(`{}`), nil
+}
+
+func (c *dslOnlyClient) DoWithHeaderAndDecode(ctx context.Context, method, path string, body any, header http.Header, target any) error {
+	return nil
+}
+
+func (c *dslOnlyClient) GetAddress() string {
+	return "http://localhost:9200"
+}
+
+func (c *dslOnlyClient) DoRequest(ctx context.Context, req *http.Request) ([]byte, error) {
+	return []byte(`{}`), nil
+}
+
+func (c *dslOnlyClient) GetLogger() logger.Logger {
+	return logger.NopLogger{}
 }
 
 func TestSearchBuilder_Should_Nesting(t *testing.T) {
-	client := createTestClientLocal(t)
-	defer client.Close()
+	client := &dslOnlyClient{}
 
 	// 模拟一个复杂的 Should 查询
 	b := builder.NewSearchBuilder(client, "test_index").
@@ -39,22 +51,22 @@ func TestSearchBuilder_Should_Nesting(t *testing.T) {
 		)
 
 	dsl := b.Build()
-	
+
 	query, ok := dsl["query"].(map[string]any)
 	if !ok {
 		t.Fatal("DSL should have 'query' field")
 	}
-	
+
 	boolQuery, ok := query["bool"].(map[string]any)
 	if !ok {
 		t.Fatal("query should have 'bool' field")
 	}
-	
+
 	should, ok := boolQuery["should"].([]map[string]any)
 	if !ok {
 		t.Fatal("bool should have 'should' field as slice")
 	}
-	
+
 	if len(should) != 2 {
 		t.Errorf("expected 2 should conditions, got %d", len(should))
 	}

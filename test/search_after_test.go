@@ -7,21 +7,11 @@ import (
 
 	"github.com/Kirby980/go-es/builder"
 	"github.com/Kirby980/go-es/client"
-	"github.com/Kirby980/go-es/config"
 )
 
 // 创建测试客户端
 func createSearchAfterTestClient(t *testing.T) *client.Client {
-	esClient, err := client.New(
-		config.WithAddresses("https://localhost:9200"),
-		config.WithAuth("elastic", "123456"),
-		config.WithInsecureSkipVerify(true),
-		config.WithTimeout(10*time.Second),
-	)
-	if err != nil {
-		t.Fatalf("创建客户端失败: %v", err)
-	}
-	return esClient
+	return createTestClient(t)
 }
 
 // 准备测试数据

@@ -3,6 +3,8 @@ package builder_test
 import (
 	"context"
 	"log"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,18 +48,42 @@ func TestAutoMigrate(t *testing.T) {
 
 // 创建测试客户端
 func createTestClient(t *testing.T) *client.Client {
-	esClient, err := client.New(
-		config.WithAddresses("https://localhost:9200"),
-		config.WithAuth("elastic", "123456"),
-		config.WithInsecureSkipVerify(true),
-		config.WithTimeout(10*time.Second),
+	addr := os.Getenv("ES_URL")
+	if addr == "" {
+		addr = "http://localhost:9200"
+	}
+	user := os.Getenv("ES_USER")
+	pass := os.Getenv("ES_PASS")
+	insecure := os.Getenv("ES_INSECURE")
+
+	opts := []config.Option{
+		config.WithAddresses(addr),
+		config.WithTimeout(10 * time.Second),
 		config.WithMaxConnsPerHost(100),
 		config.WithMaxIdleConns(200),
 		config.WithMaxIdleConnsPerHost(50),
-		config.WithIdleConnTimeout(90*time.Second),
-	)
+		config.WithIdleConnTimeout(90 * time.Second),
+	}
+	if user != "" || pass != "" {
+		opts = append(opts, config.WithAuth(user, pass))
+	}
+	if strings.HasPrefix(addr, "https://") {
+		skipVerify := true
+		if insecure != "" {
+			skipVerify = insecure == "1" || strings.EqualFold(insecure, "true")
+		}
+		opts = append(opts, config.WithInsecureSkipVerify(skipVerify))
+	}
+
+	esClient, err := client.New(opts...)
 	if err != nil {
 		t.Fatalf("创建客户端失败: %v", err)
+	}
+	pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := esClient.Ping(pingCtx); err != nil {
+		esClient.Close()
+		t.Skipf("Elasticsearch 不可用，跳过集成测试: %v", err)
 	}
 	return esClient
 }

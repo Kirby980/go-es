@@ -55,7 +55,7 @@ func TestDocumentBuilder_ErrorPropagation(t *testing.T) {
 
 	// 故意构造一个会导致错误的 Model 调用 (非 struct)
 	b := builder.NewDocumentBuilder(client, "test").Model(123)
-	
+
 	_, err := b.Do(ctx)
 	if err == nil {
 		t.Error("Should return error for invalid model")
