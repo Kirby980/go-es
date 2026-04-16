@@ -15,6 +15,10 @@
 
 ## 快速开始
 
+### 版本兼容性
+
+本库设计上兼容 **Elasticsearch 7.x** 和 **Elasticsearch 8.x** 版本。由于底层的 JSON API 和查询 DSL 具有很强的相似性，大部分操作可以无缝兼容。不过，Elasticsearch 8 引入了一些新特性（例如默认的安全机制），在创建客户端时请确保提供正确的认证和证书配置（或使用 `config.WithInsecureSkipVerify(true)` 跳过验证）。
+
 ### 安装
 
 ```bash

@@ -478,28 +478,24 @@ func (b *BulkBuilder) Build() []byte {
 	var buf bytes.Buffer
 	buf.Grow(len(b.operations) * 200)
 
+	encoder := json.NewEncoder(&buf)
+
 	for _, op := range b.operations {
 		// 写入操作行
 		action := map[string]any{
 			op.action: op.meta,
 		}
-		actionLine, err := json.Marshal(action)
-		if err != nil {
+		if err := encoder.Encode(action); err != nil {
 			b.err = fmt.Errorf("序列化操作行失败: %w", err)
 			return nil
 		}
-		buf.Write(actionLine)
-		buf.WriteByte('\n')
 
 		// 写入文档行（delete 操作不需要）
 		if op.action != "delete" && op.doc != nil {
-			docLine, err := json.Marshal(op.doc)
-			if err != nil {
+			if err := encoder.Encode(op.doc); err != nil {
 				b.err = fmt.Errorf("序列化文档失败: %w", err)
 				return nil
 			}
-			buf.Write(docLine)
-			buf.WriteByte('\n')
 		}
 	}
 

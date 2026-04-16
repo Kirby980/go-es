@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync/atomic"
 	"time"
 
@@ -102,13 +103,28 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	var err error
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
-			time.Sleep(c.config.RetryBackoff)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(c.config.RetryBackoff):
+			}
+
 			// 重置 body 读取位置，防止重试时发送空 body
 			if req.GetBody != nil {
 				req.Body, _ = req.GetBody()
 			} else if req.Body != nil {
 				if seeker, ok := req.Body.(io.Seeker); ok {
 					seeker.Seek(0, io.SeekStart)
+				}
+			}
+
+			// 故障转移：切换到新地址
+			newAddr := c.GetAddress()
+			if newAddr != "" {
+				if parsedURL, parseErr := url.Parse(newAddr); parseErr == nil {
+					req.URL.Scheme = parsedURL.Scheme
+					req.URL.Host = parsedURL.Host
+					req.Host = parsedURL.Host
 				}
 			}
 		}
@@ -196,43 +212,48 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 		defer cancel()
 	}
 
-	var reqBody io.Reader
+	var reqBodyData []byte
 	if body != nil {
-		data, err := json.Marshal(body)
+		var err error
+		reqBodyData, err = json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("序列化请求体失败: %w", err)
 		}
-		reqBody = bytes.NewReader(data)
-	}
-
-	url := c.GetAddress() + path
-	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	for k, v := range header {
-		for _, vv := range v {
-			req.Header.Add(k, vv)
-		}
-	}
-
-	if c.config.Username != "" {
-		req.SetBasicAuth(c.config.Username, c.config.Password)
 	}
 
 	// 重试逻辑
 	var resp *http.Response
+	var err error
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
-			time.Sleep(c.config.RetryBackoff)
-			// 重置 body 读取位置
-			if req.GetBody != nil {
-				req.Body, _ = req.GetBody()
-			} else if seeker, ok := req.Body.(io.Seeker); ok {
-				seeker.Seek(0, io.SeekStart)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(c.config.RetryBackoff):
 			}
+		}
+
+		var reqBody io.Reader
+		if reqBodyData != nil {
+			reqBody = bytes.NewReader(reqBodyData)
+		}
+
+		// 故障转移：每次重试获取新地址
+		url := c.GetAddress() + path
+		req, reqErr := http.NewRequestWithContext(ctx, method, url, reqBody)
+		if reqErr != nil {
+			return nil, fmt.Errorf("创建请求失败: %w", reqErr)
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		for k, v := range header {
+			for _, vv := range v {
+				req.Header.Add(k, vv)
+			}
+		}
+
+		if c.config.Username != "" {
+			req.SetBasicAuth(c.config.Username, c.config.Password)
 		}
 
 		resp, err = c.httpClient.Do(req)

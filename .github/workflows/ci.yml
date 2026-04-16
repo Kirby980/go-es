@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: true
+          ELASTIC_PASSWORD: "123456"
+          xpack.security.http.ssl.enabled: true
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd="curl -s -k -u elastic:123456 https://localhost:9200/_cluster/health"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Wait for Elasticsearch
+      run: |
+        echo "Waiting for Elasticsearch to be ready..."
+        for i in {1..30}; do
+          if curl -s -k -u elastic:123456 https://localhost:9200 >/dev/null; then
+            echo "Elasticsearch is ready!"
+            break
+          fi
+          echo "Waiting..."
+          sleep 2
+        done
+
+    - name: Run Tests
+      run: go test -v ./...
