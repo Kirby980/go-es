@@ -28,6 +28,15 @@ type Config struct {
 	// 其他配置
 	EnableMetrics bool
 	EnableDebug   bool
+	EnableGzip    bool
+
+	EnableExponentialBackoff bool
+	MaxRetryBackoff          time.Duration
+
+	EnableCircuitBreaker      bool
+	CircuitBreakerFailures    int
+	CircuitBreakerCooldown    time.Duration
+	CircuitBreakerHealthCheck time.Duration
 
 	// Logger 自定义日志实现，nil 时 client.New() 使用默认 zap 生产日志
 	Logger logger.Logger
@@ -41,16 +50,23 @@ type Config struct {
 // DefaultConfig 返回默认配置
 func DefaultConfig() *Config {
 	return &Config{
-		Addresses:           []string{"http://localhost:9200"},
-		MaxRetries:          3,
-		RetryBackoff:        time.Second,
-		Timeout:             30 * time.Second,
-		EnableMetrics:       false,
-		EnableDebug:         false,
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		MaxConnsPerHost:     0,
-		IdleConnTimeout:     90 * time.Second,
+		Addresses:                 []string{"http://localhost:9200"},
+		MaxRetries:                3,
+		RetryBackoff:              time.Second,
+		Timeout:                   30 * time.Second,
+		EnableMetrics:             false,
+		EnableDebug:               false,
+		EnableGzip:                false,
+		EnableExponentialBackoff:  false,
+		MaxRetryBackoff:           30 * time.Second,
+		EnableCircuitBreaker:      false,
+		CircuitBreakerFailures:    3,
+		CircuitBreakerCooldown:    10 * time.Second,
+		CircuitBreakerHealthCheck: 5 * time.Second,
+		MaxIdleConns:              100,
+		MaxIdleConnsPerHost:       10,
+		MaxConnsPerHost:           0,
+		IdleConnTimeout:           90 * time.Second,
 	}
 }
 
@@ -98,6 +114,36 @@ func WithRetry(maxRetries int, backoff time.Duration) Option {
 func WithDebug(enable bool) Option {
 	return func(c *Config) {
 		c.EnableDebug = enable
+	}
+}
+
+func WithGzip(enable bool) Option {
+	return func(c *Config) {
+		c.EnableGzip = enable
+	}
+}
+
+func WithExponentialBackoff(enable bool, maxBackoff time.Duration) Option {
+	return func(c *Config) {
+		c.EnableExponentialBackoff = enable
+		if maxBackoff > 0 {
+			c.MaxRetryBackoff = maxBackoff
+		}
+	}
+}
+
+func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healthCheck time.Duration) Option {
+	return func(c *Config) {
+		c.EnableCircuitBreaker = enable
+		if failures > 0 {
+			c.CircuitBreakerFailures = failures
+		}
+		if cooldown > 0 {
+			c.CircuitBreakerCooldown = cooldown
+		}
+		if healthCheck > 0 {
+			c.CircuitBreakerHealthCheck = healthCheck
+		}
 	}
 }
 

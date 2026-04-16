@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -24,6 +26,14 @@ type Client struct {
 	addresses    []string
 	addressIndex atomic.Uint32
 	logger       logger.Logger
+	breakerMu    sync.Mutex
+	breakerState map[string]*nodeState
+	breakerStop  chan struct{}
+}
+
+type nodeState struct {
+	failures       int
+	unhealthyUntil time.Time
 }
 
 // New 创建新的 ES 客户端
@@ -63,7 +73,16 @@ func New(opts ...config.Option) (*Client, error) {
 			Timeout:   cfg.Timeout,
 			Transport: transport,
 		},
-		logger: log,
+		logger:       log,
+		breakerState: make(map[string]*nodeState),
+	}
+
+	if cfg.EnableCircuitBreaker {
+		client.breakerStop = make(chan struct{})
+		for _, addr := range cfg.Addresses {
+			client.breakerState[addr] = &nodeState{}
+		}
+		go client.runHealthCheck()
 	}
 
 	return client, nil
@@ -76,6 +95,9 @@ func (c *Client) GetLogger() logger.Logger {
 
 // Close 关闭客户端
 func (c *Client) Close() error {
+	if c.breakerStop != nil {
+		close(c.breakerStop)
+	}
 	if transport, ok := c.httpClient.Transport.(*http.Transport); ok {
 		transport.CloseIdleConnections()
 	}
@@ -91,6 +113,150 @@ func (c *Client) GetAddress() string {
 	return c.addresses[idx%uint32(len(c.addresses))]
 }
 
+func (c *Client) getHealthyAddress() string {
+	if len(c.addresses) == 0 {
+		return ""
+	}
+	if !c.config.EnableCircuitBreaker {
+		return c.GetAddress()
+	}
+	start := int(c.addressIndex.Add(1)-1) % len(c.addresses)
+	now := time.Now()
+
+	c.breakerMu.Lock()
+	defer c.breakerMu.Unlock()
+
+	for i := 0; i < len(c.addresses); i++ {
+		addr := c.addresses[(start+i)%len(c.addresses)]
+		st := c.breakerState[addr]
+		if st == nil {
+			st = &nodeState{}
+			c.breakerState[addr] = st
+		}
+		if st.unhealthyUntil.IsZero() || st.unhealthyUntil.Before(now) {
+			return addr
+		}
+	}
+	return c.addresses[start]
+}
+
+func (c *Client) markFailure(addr string) {
+	if !c.config.EnableCircuitBreaker || addr == "" {
+		return
+	}
+	c.breakerMu.Lock()
+	defer c.breakerMu.Unlock()
+	st := c.breakerState[addr]
+	if st == nil {
+		st = &nodeState{}
+		c.breakerState[addr] = st
+	}
+	st.failures++
+	if st.failures >= c.config.CircuitBreakerFailures {
+		st.unhealthyUntil = time.Now().Add(c.config.CircuitBreakerCooldown)
+		st.failures = 0
+	}
+}
+
+func (c *Client) markSuccess(addr string) {
+	if !c.config.EnableCircuitBreaker || addr == "" {
+		return
+	}
+	c.breakerMu.Lock()
+	defer c.breakerMu.Unlock()
+	st := c.breakerState[addr]
+	if st == nil {
+		st = &nodeState{}
+		c.breakerState[addr] = st
+	}
+	st.failures = 0
+	st.unhealthyUntil = time.Time{}
+}
+
+func (c *Client) shouldRetryStatus(code int) bool {
+	switch code {
+	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout, http.StatusRequestTimeout:
+		return true
+	default:
+		return code >= 500
+	}
+}
+
+func (c *Client) backoffForAttempt(attempt int) time.Duration {
+	if attempt <= 0 {
+		return 0
+	}
+	base := c.config.RetryBackoff
+	if !c.config.EnableExponentialBackoff {
+		return base
+	}
+	maxB := c.config.MaxRetryBackoff
+	if maxB <= 0 {
+		maxB = 30 * time.Second
+	}
+	d := base * time.Duration(1<<uint(attempt-1))
+	if d > maxB {
+		return maxB
+	}
+	return d
+}
+
+func (c *Client) runHealthCheck() {
+	ticker := time.NewTicker(c.config.CircuitBreakerHealthCheck)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.breakerStop:
+			return
+		case <-ticker.C:
+		}
+
+		addrs := c.addresses
+		for _, addr := range addrs {
+			c.breakerMu.Lock()
+			st := c.breakerState[addr]
+			unhealthy := st != nil && !st.unhealthyUntil.IsZero() && st.unhealthyUntil.After(time.Now())
+			c.breakerMu.Unlock()
+			if !unhealthy {
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
+			if err != nil {
+				cancel()
+				continue
+			}
+			if c.config.Username != "" {
+				req.SetBasicAuth(c.config.Username, c.config.Password)
+			}
+			resp, err := c.httpClient.Do(req)
+			cancel()
+			if err != nil {
+				continue
+			}
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				c.markSuccess(addr)
+			}
+		}
+	}
+}
+
+func (c *Client) gzipBytes(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		w.Close()
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // DoRequest 执行自定义 HTTP 请求
 func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, error) {
 	// 设置认证
@@ -101,12 +267,33 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	// 重试逻辑
 	var resp *http.Response
 	var err error
+	var gzBody []byte
+
+	if c.config.EnableGzip && req.Body != nil && req.Header.Get("Content-Encoding") == "" {
+		raw, readErr := io.ReadAll(req.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("读取请求体失败: %w", readErr)
+		}
+		req.Body.Close()
+
+		gzBody, err = c.gzipBytes(raw)
+		if err != nil {
+			return nil, fmt.Errorf("压缩请求体失败: %w", err)
+		}
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(gzBody)), nil
+		}
+		req.Body, _ = req.GetBody()
+	}
+
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.After(c.config.RetryBackoff):
+			case <-time.After(c.backoffForAttempt(i)):
 			}
 
 			// 重置 body 读取位置，防止重试时发送空 body
@@ -119,7 +306,7 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 			}
 
 			// 故障转移：切换到新地址
-			newAddr := c.GetAddress()
+			newAddr := c.getHealthyAddress()
 			if newAddr != "" {
 				if parsedURL, parseErr := url.Parse(newAddr); parseErr == nil {
 					req.URL.Scheme = parsedURL.Scheme
@@ -129,11 +316,14 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 			}
 		}
 
+		addrKey := req.URL.Scheme + "://" + req.URL.Host
 		resp, err = c.httpClient.Do(req)
-		if err == nil {
+		if err == nil && (resp == nil || !c.shouldRetryStatus(resp.StatusCode)) {
+			c.markSuccess(addrKey)
 			break
 		}
 
+		c.markFailure(addrKey)
 		if c.config.EnableDebug {
 			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
 		}
@@ -144,7 +334,17 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respReader := io.Reader(resp.Body)
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		gr, gzErr := gzip.NewReader(resp.Body)
+		if gzErr != nil {
+			return nil, fmt.Errorf("解压响应失败: %w", gzErr)
+		}
+		defer gr.Close()
+		respReader = gr
+	}
+
+	respBody, err := io.ReadAll(respReader)
 	if err != nil {
 		return nil, fmt.Errorf("读取响应失败: %w", err)
 	}
@@ -229,23 +429,39 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.After(c.config.RetryBackoff):
+			case <-time.After(c.backoffForAttempt(i)):
 			}
 		}
 
+		// 故障转移：每次重试获取新地址
+		addr := c.getHealthyAddress()
+		url := addr + path
+
 		var reqBody io.Reader
 		if reqBodyData != nil {
-			reqBody = bytes.NewReader(reqBodyData)
+			if c.config.EnableGzip {
+				gzData, gzErr := c.gzipBytes(reqBodyData)
+				if gzErr != nil {
+					return nil, fmt.Errorf("压缩请求体失败: %w", gzErr)
+				}
+				reqBody = bytes.NewReader(gzData)
+			} else {
+				reqBody = bytes.NewReader(reqBodyData)
+			}
 		}
 
-		// 故障转移：每次重试获取新地址
-		url := c.GetAddress() + path
 		req, reqErr := http.NewRequestWithContext(ctx, method, url, reqBody)
 		if reqErr != nil {
 			return nil, fmt.Errorf("创建请求失败: %w", reqErr)
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		if c.config.EnableGzip && reqBodyData != nil {
+			req.Header.Set("Content-Encoding", "gzip")
+			req.Header.Set("Accept-Encoding", "gzip")
+		} else if c.config.EnableGzip {
+			req.Header.Set("Accept-Encoding", "gzip")
+		}
 		for k, v := range header {
 			for _, vv := range v {
 				req.Header.Add(k, vv)
@@ -257,10 +473,12 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 		}
 
 		resp, err = c.httpClient.Do(req)
-		if err == nil {
+		if err == nil && (resp == nil || !c.shouldRetryStatus(resp.StatusCode)) {
+			c.markSuccess(addr)
 			break
 		}
 
+		c.markFailure(addr)
 		if c.config.EnableDebug {
 			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
 		}
@@ -271,7 +489,17 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respReader := io.Reader(resp.Body)
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		gr, gzErr := gzip.NewReader(resp.Body)
+		if gzErr != nil {
+			return nil, fmt.Errorf("解压响应失败: %w", gzErr)
+		}
+		defer gr.Close()
+		respReader = gr
+	}
+
+	respBody, err := io.ReadAll(respReader)
 	if err != nil {
 		return nil, fmt.Errorf("读取响应失败: %w", err)
 	}
