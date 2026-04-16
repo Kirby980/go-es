@@ -10,19 +10,21 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        es_version: [ "7.17.18", "8.12.2", "8.17.0" ]
 
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.es_version }}
         env:
           discovery.type: single-node
-          xpack.security.enabled: true
-          ELASTIC_PASSWORD: "123456"
-          xpack.security.http.ssl.enabled: true
+          xpack.security.enabled: false
+          xpack.security.http.ssl.enabled: false
         ports:
           - 9200:9200
         options: >-
-          --health-cmd="curl -s -k -u elastic:123456 https://localhost:9200/_cluster/health"
+          --health-cmd="curl -s http://localhost:9200/_cluster/health"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -51,7 +53,7 @@ jobs:
       run: |
         echo "Waiting for Elasticsearch to be ready..."
         for i in {1..30}; do
-          if curl -s -k -u elastic:123456 https://localhost:9200 >/dev/null; then
+          if curl -s http://localhost:9200 >/dev/null; then
             echo "Elasticsearch is ready!"
             break
           fi
@@ -60,4 +62,6 @@ jobs:
         done
 
     - name: Run Tests
+      env:
+        ES_URL: "http://localhost:9200"
       run: go test -v ./...
