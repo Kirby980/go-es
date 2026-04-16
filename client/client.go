@@ -31,6 +31,9 @@ func New(opts ...config.Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	if len(cfg.Addresses) == 0 {
+		return nil, fmt.Errorf("至少需要提供一个 ES 地址")
+	}
 
 	// 初始化日志：优先使用用户传入的 Logger，否则使用默认 zap 生产日志
 	var log logger.Logger
@@ -92,6 +95,13 @@ func (c *Client) GetAddress() string {
 
 // DoRequest 执行自定义 HTTP 请求
 func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, error) {
+	if _, ok := ctx.Deadline(); !ok && c.httpClient.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.httpClient.Timeout)
+		defer cancel()
+	}
+	req = req.Clone(ctx)
+
 	// 设置认证
 	if c.config.Username != "" {
 		req.SetBasicAuth(c.config.Username, c.config.Password)
@@ -102,11 +112,23 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 	var err error
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
-			time.Sleep(c.config.RetryBackoff)
+			if err := sleepWithContext(ctx, c.config.RetryBackoff); err != nil {
+				return nil, fmt.Errorf("请求失败: %w", err)
+			}
+			if req.GetBody != nil {
+				body, gerr := req.GetBody()
+				if gerr != nil {
+					return nil, fmt.Errorf("重置请求体失败: %w", gerr)
+				}
+				req.Body = body
+			}
 		}
 
 		resp, err = c.httpClient.Do(req)
 		if err == nil {
+			break
+		}
+		if ctx.Err() != nil {
 			break
 		}
 
@@ -134,6 +156,9 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 
 // Ping 测试连接
 func (c *Client) Ping(ctx context.Context) error {
+	if len(c.addresses) == 0 {
+		return fmt.Errorf("ES 地址为空")
+	}
 	req, err := http.NewRequestWithContext(ctx, "GET", c.addresses[0], nil)
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %w", err)
@@ -171,18 +196,25 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 	}
 
 	var reqBody io.Reader
+	var reqBytes []byte
 	if body != nil {
 		data, err := json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("序列化请求体失败: %w", err)
 		}
-		reqBody = bytes.NewReader(data)
+		reqBytes = data
+		reqBody = bytes.NewReader(reqBytes)
 	}
 
 	url := c.GetAddress() + path
 	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+	if len(reqBytes) > 0 {
+		req.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(reqBytes)), nil
+		}
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -200,15 +232,23 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 	var resp *http.Response
 	for i := 0; i <= c.config.MaxRetries; i++ {
 		if i > 0 {
-			time.Sleep(c.config.RetryBackoff)
-			// 重置 body 读取位置
-			if seeker, ok := req.Body.(io.Seeker); ok {
-				seeker.Seek(0, io.SeekStart)
+			if err := sleepWithContext(ctx, c.config.RetryBackoff); err != nil {
+				return nil, fmt.Errorf("请求失败: %w", err)
+			}
+			if req.GetBody != nil {
+				body, gerr := req.GetBody()
+				if gerr != nil {
+					return nil, fmt.Errorf("重置请求体失败: %w", gerr)
+				}
+				req.Body = body
 			}
 		}
 
 		resp, err = c.httpClient.Do(req)
 		if err == nil {
+			break
+		}
+		if ctx.Err() != nil {
 			break
 		}
 
@@ -232,4 +272,18 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 	}
 
 	return respBody, nil
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

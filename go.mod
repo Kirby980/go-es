@@ -1,6 +1,6 @@
 module github.com/Kirby980/go-es
 
-go 1.24.0
+go 1.22.0
 
 require (
 	go.uber.org/multierr v1.10.0 // indirect
