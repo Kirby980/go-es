@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 )
 
 // SearchBuilder 搜索构建器
@@ -202,6 +201,7 @@ func (b *SearchBuilder) Should(conditions ...func(*SearchBuilder)) *SearchBuilde
 
 // ========== 分页和排序 ==========
 
+// From 设置返回结果的起始偏移量
 func (b *SearchBuilder) From(from int) *SearchBuilder {
 	if from < 0 {
 		b.debugHelper.logger.Error("SearchBuilder.From: value must be >= 0")
@@ -259,27 +259,13 @@ func (b *SearchBuilder) Highlight(fields ...string) *SearchBuilder {
 
 // SearchResponse 搜索响应
 type SearchResponse struct {
-	Took     int  `json:"took"`
-	TimedOut bool `json:"timed_out"`
-	Shards   struct {
-		Total      int `json:"total"`
-		Successful int `json:"successful"`
-		Skipped    int `json:"skipped"`
-		Failed     int `json:"failed"`
-	} `json:"_shards"`
-	Hits struct {
-		Total struct {
-			Value    int    `json:"value"`
-			Relation string `json:"relation"`
-		} `json:"total"`
-		MaxScore float64 `json:"max_score"`
-		Hits     []struct {
-			Index     string              `json:"_index"`
-			ID        string              `json:"_id"`
-			Score     float64             `json:"_score"`
-			Source    map[string]any      `json:"_source"`
-			Highlight map[string][]string `json:"highlight,omitempty"`
-		} `json:"hits"`
+	Took     int        `json:"took"`
+	TimedOut bool       `json:"timed_out"`
+	Shards   ShardsInfo `json:"_shards"`
+	Hits     struct {
+		Total    HitsTotal `json:"total"`
+		MaxScore float64   `json:"max_score"`
+		Hits     []HitItem `json:"hits"`
 	} `json:"hits"`
 	Aggregations map[string]any `json:"aggregations,omitempty"`
 }
@@ -297,38 +283,18 @@ func (r *SearchResponse) TotalIsExact() bool {
 // Scan 将搜索结果扫描到结构体切片中
 // dest 必须是指向切片的指针，如 *[]Article
 func (r *SearchResponse) Scan(dest any) error {
-	// 获取目标类型
-	destVal := reflect.ValueOf(dest)
-	if destVal.Kind() != reflect.Ptr {
-		return fmt.Errorf("dest must be a pointer to slice")
-	}
-	sliceVal := destVal.Elem()
-	if sliceVal.Kind() != reflect.Slice {
-		return fmt.Errorf("dest must be a pointer to slice")
-	}
-	sources := make([]map[string]any, 0, len(r.Hits.Hits))
-
-	// 遍历搜索结果
-	for _, hit := range r.Hits.Hits {
-		if hit.Source == nil {
-			continue
-		}
-		sources = append(sources, hit.Source)
-	}
-	jsonData, err := json.Marshal(sources)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(jsonData, dest)
+	return scanHits(r.Hits.Hits, dest)
 }
 
 // Build 构建查询 DSL
 func (b *SearchBuilder) Build() map[string]any {
 	body := make(map[string]any)
 
-	// 构建 bool 查询
+	// 构建查询：优先使用 bool 查询，否则使用直接设置的 query（如 match_all）
 	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
+	} else if b.query != nil {
+		body["query"] = b.query
 	}
 
 	// 最小评分
@@ -400,13 +366,8 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 
 // CountResponse 计数响应
 type CountResponse struct {
-	Count  int `json:"count"`
-	Shards struct {
-		Total      int `json:"total"`
-		Successful int `json:"successful"`
-		Skipped    int `json:"skipped"`
-		Failed     int `json:"failed"`
-	} `json:"_shards"`
+	Count  int        `json:"count"`
+	Shards ShardsInfo `json:"_shards"`
 }
 
 // Count 执行计数查询（只返回匹配文档数量，不返回文档内容）

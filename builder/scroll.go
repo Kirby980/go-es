@@ -74,28 +74,14 @@ func (b *ScrollBuilder) Build() map[string]any {
 
 // ScrollResponse Scroll响应
 type ScrollResponse struct {
-	ScrollID string `json:"_scroll_id"`
-	Took     int    `json:"took"`
-	TimedOut bool   `json:"timed_out"`
-	Shards   struct {
-		Total      int `json:"total"`
-		Successful int `json:"successful"`
-		Skipped    int `json:"skipped"`
-		Failed     int `json:"failed"`
-	} `json:"_shards"`
-	Hits struct {
-		Total struct {
-			Value    int    `json:"value"`
-			Relation string `json:"relation"`
-		} `json:"total"`
-		MaxScore float64 `json:"max_score"`
-		Hits     []struct {
-			Index     string              `json:"_index"`
-			ID        string              `json:"_id"`
-			Score     float64             `json:"_score"`
-			Source    map[string]any      `json:"_source"`
-			Highlight map[string][]string `json:"highlight,omitempty"`
-		} `json:"hits"`
+	ScrollID string     `json:"_scroll_id"`
+	Took     int        `json:"took"`
+	TimedOut bool       `json:"timed_out"`
+	Shards   ShardsInfo `json:"_shards"`
+	Hits     struct {
+		Total    HitsTotal `json:"total"`
+		MaxScore float64   `json:"max_score"`
+		Hits     []HitItem `json:"hits"`
 	} `json:"hits"`
 }
 
@@ -105,7 +91,7 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
+	if b.isDebug() {
 		b.printDebug("POST", path, body)
 		defer b.setDebug(false)
 	}
@@ -116,7 +102,7 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
+	if b.isDebug() {
 		b.printResponse(respBody)
 	}
 
@@ -144,7 +130,7 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
+	if b.isDebug() {
 		b.printDebug("POST", path, body)
 		defer b.setDebug(false)
 	}
@@ -155,7 +141,7 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
+	if b.isDebug() {
 		b.printResponse(respBody)
 	}
 
@@ -182,7 +168,7 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印请求信息
-	if b.debug {
+	if b.isDebug() {
 		b.printDebug("DELETE", path, body)
 		defer b.setDebug(false)
 	}
@@ -193,7 +179,7 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 	}
 
 	// 如果启用调试模式，打印响应信息
-	if b.debug {
+	if b.isDebug() {
 		b.printResponse(respBody)
 	}
 
@@ -204,4 +190,15 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 // HasMore 判断是否还有更多数据
 func (b *ScrollBuilder) HasMore(resp *ScrollResponse) bool {
 	return len(resp.Hits.Hits) > 0
+}
+
+// Total 返回总命中数
+func (r *ScrollResponse) Total() int {
+	return r.Hits.Total.Value
+}
+
+// Scan 将搜索结果扫描到结构体切片中
+// dest 必须是指向切片的指针，如 *[]Article
+func (r *ScrollResponse) Scan(dest any) error {
+	return scanHits(r.Hits.Hits, dest)
 }

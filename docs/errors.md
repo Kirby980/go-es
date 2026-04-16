@@ -2,6 +2,8 @@
 
 go-es 提供了完善的错误处理机制，可以方便地判断和处理各种 Elasticsearch 错误。
 
+> **推荐使用 `errors.As()` 而非直接类型断言。** `errors.As` 会遍历整个错误链，正确处理通过 `fmt.Errorf` 的 `%w` 包装的错误。直接类型断言只能匹配最外层的错误类型。
+
 ## 错误类型
 
 所有 Elasticsearch 请求错误都会被解析为 `errors.ESError` 类型，包含以下信息：
@@ -22,7 +24,9 @@ type ESError struct {
 
 ```go
 import (
-    "github.com/Kirby980/go-es/errors"
+    "errors"
+
+    eserrors "github.com/Kirby980/go-es/errors"
     "github.com/Kirby980/go-es/builder"
 )
 
@@ -31,8 +35,9 @@ resp, err := builder.NewDocumentBuilder(esClient, "products").
     Get(ctx)
 
 if err != nil {
-    // 类型断言为 ESError
-    if esErr, ok := err.(*errors.ESError); ok {
+    // 使用 errors.As 遍历错误链匹配 ESError
+    var esErr *eserrors.ESError
+    if errors.As(err, &esErr) {
         // 判断是否为 404 错误
         if esErr.IsNotFound() {
             fmt.Println("文档不存在")
@@ -66,12 +71,14 @@ if err != nil {
 ### 示例1：处理文档不存在的情况
 
 ```go
+// import "errors" 和 eserrors "github.com/Kirby980/go-es/errors"
 resp, err := builder.NewDocumentBuilder(esClient, "products").
     ID("123").
     Get(ctx)
 
 if err != nil {
-    if esErr, ok := err.(*errors.ESError); ok && esErr.IsNotFound() {
+    var esErr *eserrors.ESError
+    if errors.As(err, &esErr) && esErr.IsNotFound() {
         // 文档不存在，创建新文档
         _, err = builder.NewDocumentBuilder(esClient, "products").
             ID("123").
@@ -88,13 +95,15 @@ if err != nil {
 ### 示例2：处理索引已存在的冲突
 
 ```go
+// import "errors" 和 eserrors "github.com/Kirby980/go-es/errors"
 err := builder.NewIndexBuilder(esClient, "products").
     Shards(1).
     Replicas(1).
     Create(ctx)
 
 if err != nil {
-    if esErr, ok := err.(*errors.ESError); ok && esErr.IsBadRequest() {
+    var esErr *eserrors.ESError
+    if errors.As(err, &esErr) && esErr.IsBadRequest() {
         if esErr.Type == "resource_already_exists_exception" {
             fmt.Println("索引已存在，跳过创建")
         }
@@ -107,12 +116,14 @@ if err != nil {
 ### 示例3：处理搜索请求错误
 
 ```go
+// import "errors" 和 eserrors "github.com/Kirby980/go-es/errors"
 resp, err := builder.NewSearchBuilder(esClient, "products").
     Match("name", "iPhone").
     Do(ctx)
 
 if err != nil {
-    if esErr, ok := err.(*errors.ESError); ok {
+    var esErr *eserrors.ESError
+    if errors.As(err, &esErr) {
         switch {
         case esErr.IsBadRequest():
             fmt.Printf("搜索语法错误: %s\n", esErr.Reason)
@@ -130,6 +141,7 @@ if err != nil {
 ### 示例4：处理批量操作错误
 
 ```go
+// import "errors" 和 eserrors "github.com/Kirby980/go-es/errors"
 bulkResp, err := builder.NewBulkBuilder(esClient).
     Index("products").
     Add("", "1", map[string]any{"name": "商品1"}).
@@ -137,7 +149,8 @@ bulkResp, err := builder.NewBulkBuilder(esClient).
     Do(ctx)
 
 if err != nil {
-    if esErr, ok := err.(*errors.ESError); ok {
+    var esErr *eserrors.ESError
+    if errors.As(err, &esErr) {
         fmt.Printf("批量操作失败: %s\n", esErr.Reason)
     }
 }
@@ -164,7 +177,7 @@ if bulkResp != nil && bulkResp.HasErrors() {
 ## 最佳实践
 
 1. **总是进行错误检查**：所有 Elasticsearch 操作都应该检查错误
-2. **使用类型断言**：通过类型断言为 `*errors.ESError` 获取详细错误信息
+2. **使用 errors.As()**：通过 `errors.As(err, &esErr)` 获取详细错误信息，它能正确处理被包装的错误
 3. **区分错误类型**：根据不同的错误类型采取不同的处理策略
 4. **记录详细信息**：在日志中记录 `Type` 和 `Reason` 以便排查问题
 5. **优雅降级**：对于非致命错误（如文档不存在），提供合理的默认行为

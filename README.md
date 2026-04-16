@@ -310,11 +310,16 @@ builder.NewBulkBuilder(esClient).Debug().Add(...).Do(ctx)
 ### 8. 错误处理
 
 ```go
-import "github.com/Kirby980/go-es/errors"
+import (
+    "errors"
+
+    eserrors "github.com/Kirby980/go-es/errors"
+)
 
 resp, err := builder.NewDocumentBuilder(esClient, "products").ID("123").Get(ctx)
 if err != nil {
-    if esErr, ok := err.(*errors.ESError); ok {
+    var esErr *eserrors.ESError
+    if errors.As(err, &esErr) {
         if esErr.IsNotFound() {
             // 文档不存在 (404)
         } else if esErr.IsConflict() {

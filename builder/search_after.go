@@ -32,7 +32,6 @@ func NewSearchAfterBuilder(c ESClient, index string) *SearchAfterBuilder {
 		index:       index,
 		size:        10,
 		sort:        make([]map[string]any, 0),
-		highlight:   make(map[string]any),
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)
@@ -152,28 +151,13 @@ func (b *SearchAfterBuilder) Build() map[string]any {
 
 // SearchAfterResponse Search After响应
 type SearchAfterResponse struct {
-	Took     int  `json:"took"`
-	TimedOut bool `json:"timed_out"`
-	Shards   struct {
-		Total      int `json:"total"`
-		Successful int `json:"successful"`
-		Skipped    int `json:"skipped"`
-		Failed     int `json:"failed"`
-	} `json:"_shards"`
-	Hits struct {
-		Total struct {
-			Value    int    `json:"value"`
-			Relation string `json:"relation"`
-		} `json:"total"`
-		MaxScore *float64 `json:"max_score"`
-		Hits     []struct {
-			Index     string              `json:"_index"`
-			ID        string              `json:"_id"`
-			Score     float64             `json:"_score"`
-			Source    map[string]any      `json:"_source"`
-			Sort      []any               `json:"sort"` // Search After 的关键：每个文档的排序值
-			Highlight map[string][]string `json:"highlight,omitempty"`
-		} `json:"hits"`
+	Took     int        `json:"took"`
+	TimedOut bool       `json:"timed_out"`
+	Shards   ShardsInfo `json:"_shards"`
+	Hits     struct {
+		Total    HitsTotal `json:"total"`
+		MaxScore *float64  `json:"max_score"`
+		Hits     []HitItem `json:"hits"`
 	} `json:"hits"`
 }
 
@@ -245,4 +229,15 @@ func (b *SearchAfterBuilder) GetLastSortValues(resp *SearchAfterResponse) []any 
 	}
 	lastHit := resp.Hits.Hits[len(resp.Hits.Hits)-1]
 	return lastHit.Sort
+}
+
+// Total 返回总命中数
+func (r *SearchAfterResponse) Total() int {
+	return r.Hits.Total.Value
+}
+
+// Scan 将搜索结果扫描到结构体切片中
+// dest 必须是指向切片的指针，如 *[]Article
+func (r *SearchAfterResponse) Scan(dest any) error {
+	return scanHits(r.Hits.Hits, dest)
 }

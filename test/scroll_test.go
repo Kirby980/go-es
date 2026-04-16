@@ -462,13 +462,7 @@ func TestScrollBuilder_HasMore(t *testing.T) {
 
 	// 测试有数据的情况
 	resp1 := &builder.ScrollResponse{}
-	resp1.Hits.Hits = make([]struct {
-		Index     string              `json:"_index"`
-		ID        string              `json:"_id"`
-		Score     float64             `json:"_score"`
-		Source    map[string]any      `json:"_source"`
-		Highlight map[string][]string `json:"highlight,omitempty"`
-	}, 5)
+	resp1.Hits.Hits = make([]builder.HitItem, 5)
 
 	if !scroll.HasMore(resp1) {
 		t.Error("有数据时HasMore应该返回true")
