@@ -77,15 +77,15 @@ func (b *ReindexBuilder) Debug() *ReindexBuilder {
 
 // ReindexResponse 重建索引响应
 type ReindexResponse struct {
-	Took             int      `json:"took"`
-	TimedOut         bool     `json:"timed_out"`
-	Total            int      `json:"total"`
-	Updated          int      `json:"updated"`
-	Created          int      `json:"created"`
-	Deleted          int      `json:"deleted"`
-	Batches          int      `json:"batches"`
-	VersionConflicts int      `json:"version_conflicts"`
-	Noops            int      `json:"noops"`
+	Took             int  `json:"took"`
+	TimedOut         bool `json:"timed_out"`
+	Total            int  `json:"total"`
+	Updated          int  `json:"updated"`
+	Created          int  `json:"created"`
+	Deleted          int  `json:"deleted"`
+	Batches          int  `json:"batches"`
+	VersionConflicts int  `json:"version_conflicts"`
+	Noops            int  `json:"noops"`
 	Retries          struct {
 		Bulk   int `json:"bulk"`
 		Search int `json:"search"`

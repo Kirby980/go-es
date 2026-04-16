@@ -8,7 +8,7 @@
 - ✅ **完整功能**: 支持索引、文档、搜索、聚合、批量操作、集群管理
 - ✅ **类型安全**: 使用 Go 结构体，避免手写 JSON
 - ✅ **易于使用**: 简洁的 API，降低学习成本
-- ✅ **高性能**: 支持批量操作和连接池
+- ✅ **高性能**: 支持批量操作、连接池，内部重写了流式 JSON 解析与批量 NDJSON 零反射编码，极大地降低了 CPU 和内存分配（避免 OOM）。
 - ✅ **错误处理**: 完善的错误处理和重试机制
 - ✅ **链式Debug**: Debug模式，局部控制日志输出
 - ✅ **AutoMigrate**: 自动迁移，通过结构体标签定义映射
@@ -466,6 +466,8 @@ func SearchProducts(ctx context.Context, keyword string) {
 - ✅ KNN 向量搜索 (支持 ES 8.x / 9.x 的 AI 向量检索)
 - ✅ Reindex (跨索引重建数据)
 - ✅ EQL (Event Query Language, 支持安全日志事件查询)
+- ✅ Multi Search (msearch 批量并发搜索)
+- ✅ Explain API (单文档搜索评分详情解释)
 - ✅ Field Collapsing (字段折叠去重)
 - ✅ Suggest (搜索建议/自动补全)
 - ✅ ClusterBuilder (集群管理)

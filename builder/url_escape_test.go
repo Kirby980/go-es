@@ -10,9 +10,9 @@ import (
 
 func TestDocumentBuilder_URLEscaping(t *testing.T) {
 	tests := []struct {
-		name          string
-		index         string
-		id            string
+		name           string
+		index          string
+		id             string
 		mustNotContain []string // raw chars that must NOT appear unescaped in path
 		mustContain    []string // escaped forms that MUST appear in path
 	}{

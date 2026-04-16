@@ -259,7 +259,7 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	if b.id == "" {
 		return nil, fmt.Errorf("创建文档需要指定 ID")
 	}
-// ... (rest remains same but effectively prepended b.err check)
+	// ... (rest remains same but effectively prepended b.err check)
 
 	path := fmt.Sprintf("/%s/_create/%s", url.PathEscape(b.index), url.PathEscape(b.id))
 	path = b.buildPath(path)

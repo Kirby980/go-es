@@ -23,10 +23,10 @@ type ScrollBuilder struct {
 // NewScrollBuilder 创建Scroll构建器
 func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
 	b := &ScrollBuilder{
-		client:    c,
-		index:     index,
-		size:      1000,
-		keepAlive: "5m",
+		client:      c,
+		index:       index,
+		size:        1000,
+		keepAlive:   "5m",
 		debugHelper: debugHelper{logger: c.GetLogger()},
 	}
 	b.initBoolQuery(b)

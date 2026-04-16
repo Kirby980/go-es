@@ -11,13 +11,13 @@ import (
 // EQLBuilder EQL (Event Query Language) 构建器 (ES 7.9+)
 // 常用于安全日志和时间序列分析
 type EQLBuilder struct {
-	client    ESClient
-	index     string
-	query     string // EQL 语句
-	size      *int
+	client     ESClient
+	index      string
+	query      string // EQL 语句
+	size       *int
 	tiebreaker *int
-	fetchSize *int
-	filter    map[string]any // 额外的前置过滤 DSL
+	fetchSize  *int
+	filter     map[string]any // 额外的前置过滤 DSL
 	debugHelper
 	baseBuilder
 }
@@ -86,7 +86,7 @@ type EQLResponse struct {
 	Took      int  `json:"took"`
 	TimedOut  bool `json:"timed_out"`
 	Hits      struct {
-		Total HitsTotal `json:"total"`
+		Total  HitsTotal `json:"total"`
 		Events []struct {
 			Index  string         `json:"_index"`
 			ID     string         `json:"_id"`

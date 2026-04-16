@@ -19,10 +19,10 @@ type SearchBuilder struct {
 	aggs           map[string]any
 	source         []string
 	highlight      map[string]any
-	minScore       *float64 // 最小评分
+	minScore       *float64       // 最小评分
 	knn            map[string]any // KNN 向量查询 (ES 8+)
 	pit            map[string]any // Point In Time (ES 7.10+)
-	trackTotalHits any // 是否跟踪总命中数 (bool 或 int)
+	trackTotalHits any            // 是否跟踪总命中数 (bool 或 int)
 	collapse       map[string]any // Field Collapsing 字段折叠
 	suggest        map[string]any // Suggest 建议查询
 	BoolQuery[SearchBuilder]
