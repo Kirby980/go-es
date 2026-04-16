@@ -462,6 +462,12 @@ func SearchProducts(ctx context.Context, keyword string) {
 - ✅ DeleteByQuery (按条件批量删除)
 - ✅ Scroll (深度分页遍历)
 - ✅ SearchAfter (高效深度分页)
+- ✅ PointInTime / PIT (现代 ES 推荐的分页方式, 替代 Scroll)
+- ✅ KNN 向量搜索 (支持 ES 8.x / 9.x 的 AI 向量检索)
+- ✅ Reindex (跨索引重建数据)
+- ✅ EQL (Event Query Language, 支持安全日志事件查询)
+- ✅ Field Collapsing (字段折叠去重)
+- ✅ Suggest (搜索建议/自动补全)
 - ✅ ClusterBuilder (集群管理)
 - ✅ Debug模式 (类似GORM)
 

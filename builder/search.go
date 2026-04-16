@@ -10,16 +10,21 @@ import (
 
 // SearchBuilder 搜索构建器
 type SearchBuilder struct {
-	client    ESClient
-	index     string
-	query     map[string]any
-	from      int
-	size      int
-	sort      []map[string]any
-	aggs      map[string]any
-	source    []string
-	highlight map[string]any
-	minScore  *float64 // 最小评分
+	client         ESClient
+	index          string
+	query          map[string]any
+	from           int
+	size           int
+	sort           []map[string]any
+	aggs           map[string]any
+	source         []string
+	highlight      map[string]any
+	minScore       *float64 // 最小评分
+	knn            map[string]any // KNN 向量查询 (ES 8+)
+	pit            map[string]any // Point In Time (ES 7.10+)
+	trackTotalHits any // 是否跟踪总命中数 (bool 或 int)
+	collapse       map[string]any // Field Collapsing 字段折叠
+	suggest        map[string]any // Suggest 建议查询
 	BoolQuery[SearchBuilder]
 	debugHelper
 	baseBuilder
@@ -257,6 +262,58 @@ func (b *SearchBuilder) Highlight(fields ...string) *SearchBuilder {
 	return b
 }
 
+// KNN 添加 K-Nearest Neighbor (向量) 查询 (ES 8.x / 9.x)
+func (b *SearchBuilder) KNN(field string, queryVector []float32, k int, numCandidates int) *SearchBuilder {
+	b.knn = map[string]any{
+		"field":          field,
+		"query_vector":   queryVector,
+		"k":              k,
+		"num_candidates": numCandidates,
+	}
+	return b
+}
+
+// PointInTime 添加 PIT 查询 (ES 7.10+ / 8.x / 9.x)
+func (b *SearchBuilder) PointInTime(id string, keepAlive string) *SearchBuilder {
+	b.pit = map[string]any{
+		"id":         id,
+		"keep_alive": keepAlive,
+	}
+	return b
+}
+
+// TrackTotalHits 设置是否跟踪总命中数 (用于突破默认 10000 条限制，可传 bool 或 int)
+func (b *SearchBuilder) TrackTotalHits(track any) *SearchBuilder {
+	b.trackTotalHits = track
+	return b
+}
+
+// Collapse 添加字段折叠 (Field Collapsing)
+func (b *SearchBuilder) Collapse(field string, innerHits ...map[string]any) *SearchBuilder {
+	collapseParams := map[string]any{
+		"field": field,
+	}
+	if len(innerHits) > 0 {
+		collapseParams["inner_hits"] = innerHits[0]
+	}
+	b.collapse = collapseParams
+	return b
+}
+
+// Suggest 添加搜索建议
+func (b *SearchBuilder) Suggest(name string, text string, suggester map[string]any) *SearchBuilder {
+	if b.suggest == nil {
+		b.suggest = make(map[string]any)
+	}
+	b.suggest[name] = map[string]any{
+		"text": text,
+	}
+	for k, v := range suggester {
+		b.suggest[name].(map[string]any)[k] = v
+	}
+	return b
+}
+
 // SearchResponse 搜索响应
 type SearchResponse struct {
 	Took     int        `json:"took"`
@@ -268,6 +325,8 @@ type SearchResponse struct {
 		Hits     []HitItem `json:"hits"`
 	} `json:"hits"`
 	Aggregations map[string]any `json:"aggregations,omitempty"`
+	Suggest      map[string]any `json:"suggest,omitempty"`
+	PitID        string         `json:"pit_id,omitempty"` // PIT 标识
 }
 
 // Total 返回总命中数
@@ -300,6 +359,31 @@ func (b *SearchBuilder) Build() map[string]any {
 	// 最小评分
 	if b.minScore != nil {
 		body["min_score"] = *b.minScore
+	}
+
+	// 跟踪总命中数
+	if b.trackTotalHits != nil {
+		body["track_total_hits"] = b.trackTotalHits
+	}
+
+	// KNN 搜索 (ES 8.x / 9.x)
+	if b.knn != nil {
+		body["knn"] = b.knn
+	}
+
+	// PIT (ES 7.10+ / 8.x / 9.x)
+	if b.pit != nil {
+		body["pit"] = b.pit
+	}
+
+	// 字段折叠
+	if b.collapse != nil {
+		body["collapse"] = b.collapse
+	}
+
+	// 搜索建议
+	if b.suggest != nil {
+		body["suggest"] = b.suggest
 	}
 
 	// 分页
@@ -337,7 +421,11 @@ func (b *SearchBuilder) Debug() *SearchBuilder {
 
 // Do 执行搜索
 func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
+	// 如果使用了 PIT，路径通常是不带 index 的 `/_search`，或者 ES 会忽略 URL 上的 index
 	path := fmt.Sprintf("/%s/_search", url.PathEscape(b.index))
+	if b.index == "" || b.pit != nil {
+		path = "/_search"
+	}
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
