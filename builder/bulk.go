@@ -475,10 +475,14 @@ func (r *BulkResponse) SuccessCount() int {
 func (b *BulkBuilder) Build() []byte {
 	b.commitCurrent() // 提交链式构建的操作（如果有）
 
-	var buf bytes.Buffer
-	buf.Grow(len(b.operations) * 200)
+	buf := getBuffer()
+	defer putBuffer(buf)
+	
+	if buf.Cap() < len(b.operations)*200 {
+		buf.Grow(len(b.operations) * 200)
+	}
 
-	encoder := json.NewEncoder(&buf)
+	encoder := json.NewEncoder(buf)
 
 	for _, op := range b.operations {
 		// 写入操作行
@@ -493,13 +497,16 @@ func (b *BulkBuilder) Build() []byte {
 		// 写入文档行（delete 操作不需要）
 		if op.action != "delete" && op.doc != nil {
 			if err := encoder.Encode(op.doc); err != nil {
-				b.err = fmt.Errorf("序列化文档失败: %w", err)
+				b.err = fmt.Errorf("序列化文档行失败: %w", err)
 				return nil
 			}
 		}
 	}
 
-	return buf.Bytes()
+	// copy bytes out to return since buffer will be recycled
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
 }
 
 // Debug 启用调试模式（链式调用）
