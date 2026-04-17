@@ -71,6 +71,9 @@ func New(opts ...config.Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	if len(cfg.Addresses) == 0 {
+		return nil, fmt.Errorf("至少需要提供一个 ES 地址")
+	}
 
 	// 初始化日志：优先使用用户传入的 Logger，否则使用默认 zap 生产日志
 	var log logger.Logger
@@ -295,6 +298,13 @@ func (c *Client) gzipBytes(data []byte) ([]byte, error) {
 
 // DoRequest 执行自定义 HTTP 请求
 func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, error) {
+	if _, ok := ctx.Deadline(); !ok && c.httpClient.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.httpClient.Timeout)
+		defer cancel()
+	}
+	req = req.Clone(ctx)
+
 	// 设置认证
 	if c.config.Username != "" {
 		req.SetBasicAuth(c.config.Username, c.config.Password)
@@ -356,6 +366,9 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
 		resp, err = c.httpClient.Do(req)
 		if err == nil && (resp == nil || !c.shouldRetryStatus(resp.StatusCode)) {
 			c.markSuccess(addrKey)
+			break
+		}
+		if ctx.Err() != nil {
 			break
 		}
 
@@ -513,6 +526,9 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 			c.markSuccess(addr)
 			break
 		}
+		if ctx.Err() != nil {
+			break
+		}
 
 		c.markFailure(addr)
 		if c.config.EnableDebug {
@@ -545,4 +561,18 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
 	}
 
 	return respBody, nil
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
