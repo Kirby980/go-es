@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+	"net/http"
 	"time"
 
 	"github.com/Kirby980/go-es/logger"
@@ -45,6 +47,14 @@ type Config struct {
 	MaxIdleConnsPerHost int           // 每个主机的最大空闲连接数
 	MaxConnsPerHost     int           // 每个主机的最大连接数
 	IdleConnTimeout     time.Duration // 空闲连接超时
+	Hooks               []Hook
+}
+
+// Hook 定义了客户端请求的生命周期钩子，用于实现可观测性（Tracing/Metrics）
+type Hook interface {
+	BeforeRequest(ctx context.Context, req *http.Request) context.Context
+	AfterRequest(ctx context.Context, req *http.Request, resp *http.Response, duration time.Duration)
+	OnError(ctx context.Context, req *http.Request, err error, duration time.Duration)
 }
 
 // DefaultConfig 返回默认配置
@@ -184,5 +194,12 @@ func WithIdleConnTimeout(idleConnTimeout time.Duration) Option {
 func WithLogger(l logger.Logger) Option {
 	return func(c *Config) {
 		c.Logger = l
+	}
+}
+
+// WithHooks 设置客户端请求的生命周期钩子（用于实现 Tracing/Metrics 等可观测性）
+func WithHooks(hooks ...Hook) Option {
+	return func(c *Config) {
+		c.Hooks = append(c.Hooks, hooks...)
 	}
 }

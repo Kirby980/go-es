@@ -514,15 +514,70 @@ _, _ = builder.NewIngestPipelineBuilder(esClient, "p1").
 esClient, err := client.New(
     config.WithAddresses("https://localhost:9200"),      // ES 地址
     config.WithAuth("username", "password"),             // 认证
-    config.WithInsecureSkipVerify(true),                          // 跳过 SSL 验证
+    config.WithInsecureSkipVerify(true),                 // 跳过 SSL 验证
     config.WithTimeout(30*time.Second),                  // 超时时间
     config.WithRetry(3, time.Second),                    // 重试配置
     config.WithDebug(true),                              // 调试模式
     config.WithMaxConnsPerHost(100),                     // 每个 host 的最大连接数
-    config.WithMaxIdleConns(200),                          // 最大空闲连接数
+    config.WithMaxIdleConns(200),                        // 最大空闲连接数
     config.WithMaxIdleConnsPerHost(50),                  // 每个 host 的最大空闲连接数
     config.WithIdleConnTimeout(90*time.Second),          // 空闲连接超时时间
+    config.WithHooks(hooks.NewMetricsHook()),            // 注册可观测性 Hook
 )
+```
+
+## 进阶功能示例
+
+### BulkProcessor（高吞吐写入缓冲池）
+
+`BulkBuilder` 原生支持自动分批刷新（Auto Flush），只需设置分批大小即可实现高吞吐写入：
+
+```go
+import "github.com/Kirby980/go-es/builder"
+
+// 1. 初始化 BulkBuilder
+bulk := builder.NewBulkBuilder(esClient).
+    Index("bulk_test_index").
+    AutoFlushSize(1000). // 设置每 1000 条自动刷新一次
+    AutoFlushContext(ctx).
+    OnFlush(func(resp *builder.BulkResponse) {
+        fmt.Printf("已刷新 %d 条数据，成功: %d，失败: %d\n", 
+            len(resp.Items), resp.SuccessCount(), len(resp.Failed()))
+    })
+
+// 2. 持续写入数据
+for i := 0; i < 5500; i++ {
+    bulk.Add("", fmt.Sprintf("doc_%d", i), map[string]any{"value": i})
+}
+
+// 3. 最后手动 Flush 剩余的数据
+resp, err := bulk.Flush(ctx)
+```
+
+### 可观测性 Hook（Client Trace/Metrics）
+
+通过 `config.WithHooks` 可以注入自定义的可观测性插件，拦截并记录每一次 HTTP 请求的生命周期。
+
+```go
+import (
+    "github.com/Kirby980/go-es/client"
+    "github.com/Kirby980/go-es/config"
+    "github.com/Kirby980/go-es/hooks"
+)
+
+// 实例化内置的 Metrics 和 Log Hook
+metricsHook := hooks.NewMetricsHook()
+logHook := hooks.NewLogHook(loggerInstance)
+
+// 注入客户端
+esClient, err := client.New(
+    config.WithAddresses("http://localhost:9200"),
+    config.WithHooks(metricsHook, logHook),
+)
+
+// 发起请求后可以获取指标
+reqs, errs, avgLatency := metricsHook.GetMetrics()
+fmt.Printf("请求数: %d, 错误数: %d, 平均延迟: %v\n", reqs, errs, avgLatency)
 ```
 
 ## 完整示例

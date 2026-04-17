@@ -19,6 +19,35 @@ import (
 	"github.com/Kirby980/go-es/logger"
 )
 
+type hookRoundTripper struct {
+	rt    http.RoundTripper
+	hooks []config.Hook
+}
+
+func (h *hookRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx := req.Context()
+	for _, hook := range h.hooks {
+		ctx = hook.BeforeRequest(ctx, req)
+	}
+	req = req.WithContext(ctx)
+
+	start := time.Now()
+	resp, err := h.rt.RoundTrip(req)
+	duration := time.Since(start)
+
+	if err != nil {
+		for _, hook := range h.hooks {
+			hook.OnError(ctx, req, err, duration)
+		}
+	} else {
+		for _, hook := range h.hooks {
+			hook.AfterRequest(ctx, req, resp, duration)
+		}
+	}
+
+	return resp, err
+}
+
 // Client Elasticsearch 客户端
 type Client struct {
 	config       *config.Config
@@ -56,7 +85,7 @@ func New(opts ...config.Option) (*Client, error) {
 	}
 
 	// 配置 HTTP Transport
-	transport := &http.Transport{
+	var transport http.RoundTripper = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: cfg.InsecureSkipVerify,
 		},
@@ -64,6 +93,13 @@ func New(opts ...config.Option) (*Client, error) {
 		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     cfg.IdleConnTimeout,
+	}
+
+	if len(cfg.Hooks) > 0 {
+		transport = &hookRoundTripper{
+			rt:    transport,
+			hooks: cfg.Hooks,
+		}
 	}
 
 	client := &Client{
