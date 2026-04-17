@@ -37,10 +37,17 @@ import (
 )
 
 esClient, err := client.New(
-    config.WithAddresses("https://localhost:9200"),
+    config.WithAddresses(
+        "https://localhost:9200",
+        "https://localhost:9201",
+    ),
     config.WithAuth("elastic", "password"),
     config.WithInsecureSkipVerify(true), // 跳过 SSL 验证
     config.WithTimeout(10*time.Second),  // 默认请求超时时间
+    config.WithRetry(3, 200*time.Millisecond),
+    config.WithExponentialBackoff(true, 30*time.Second),
+    config.WithCircuitBreaker(true, 3, 10*time.Second, 5*time.Second),
+    config.WithGzip(true),
     config.WithMaxConnsPerHost(100),
     config.WithMaxIdleConns(200),
     config.WithMaxIdleConnsPerHost(50),
@@ -50,6 +57,8 @@ defer esClient.Close()
 
 ctx := context.Background()
 ```
+
+多地址会默认轮询选择节点；当开启熔断器时，会在节点连续失败后短暂标记为不可用，并在后续请求中自动切换到其他地址。
 
 ## 核心功能示例
 
