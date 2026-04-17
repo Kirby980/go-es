@@ -18,6 +18,11 @@ func NewCatBuilder(client ESClient) *CatBuilder {
 	}
 }
 
+func (b *CatBuilder) Debug(enable bool) *CatBuilder {
+	b.setDebug(enable)
+	return b
+}
+
 func (b *CatBuilder) Do(ctx context.Context, api string, params map[string]string) (string, error) {
 	path := "/_cat/" + api
 	if len(params) > 0 {
