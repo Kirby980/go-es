@@ -6,6 +6,11 @@ import (
 	"reflect"
 )
 
+// AcknowledgedResponse 许多 Elasticsearch API 的通用确认响应
+type AcknowledgedResponse struct {
+	Acknowledged bool `json:"acknowledged"`
+}
+
 // ShardsInfo 分片信息（通用）
 type ShardsInfo struct {
 	Total      int `json:"total"`

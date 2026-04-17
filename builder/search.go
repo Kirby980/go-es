@@ -347,7 +347,7 @@ func (r *SearchResponse) Scan(dest any) error {
 
 // Build 构建查询 DSL
 func (b *SearchBuilder) Build() map[string]any {
-	body := make(map[string]any)
+	body := getMap()
 
 	// 构建查询：优先使用 bool 查询，否则使用直接设置的 query（如 match_all）
 	if boolQ := b.buildBoolQuery(); boolQ != nil {
@@ -427,7 +427,7 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 		path = "/_search"
 	}
 	body := b.Build()
-
+	defer putMap(body)
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
@@ -463,7 +463,8 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 	path := fmt.Sprintf("/%s/_count", url.PathEscape(b.index))
 
 	// 构建查询条件（不需要分页、排序等）
-	body := make(map[string]any)
+	body := getMap()
+	defer putMap(body)
 	if boolQ := b.buildBoolQuery(); boolQ != nil {
 		body["query"] = boolQ
 	}
