@@ -17,16 +17,16 @@ func TestSQLBuilder(t *testing.T) {
 			if path != "/_sql?format=json" {
 				t.Errorf("Expected /_sql?format=json, got %s", path)
 			}
-			
+
 			bodyMap, ok := body.(map[string]any)
 			if !ok {
 				t.Errorf("Expected map[string]any body")
 			}
-			
+
 			if bodyMap["query"] != "SELECT * FROM library" {
 				t.Errorf("Expected query 'SELECT * FROM library', got %v", bodyMap["query"])
 			}
-			
+
 			if bodyMap["fetch_size"] != 10 {
 				t.Errorf("Expected fetch_size 10, got %v", bodyMap["fetch_size"])
 			}

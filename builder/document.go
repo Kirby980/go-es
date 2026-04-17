@@ -230,22 +230,16 @@ func (b *DocumentBuilder) Do(ctx context.Context) (*DocumentResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug(method, path, b.doc)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, method, path, b.doc, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp DocumentResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, method, path, b.doc, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -267,22 +261,16 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("PUT", path, b.doc)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.Do(ctx, http.MethodPut, path, b.doc)
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp DocumentResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPut, path, b.doc, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -310,22 +298,16 @@ func (b *DocumentBuilder) Update(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, updateBody)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp DocumentResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, updateBody, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -351,22 +333,16 @@ func (b *DocumentBuilder) Upsert(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, updateBody)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, updateBody)
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp DocumentResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, updateBody, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -386,7 +362,7 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
@@ -429,22 +405,16 @@ func (b *DocumentBuilder) Delete(ctx context.Context) (*DocumentResponse, error)
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("DELETE", path, nil)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.Do(ctx, http.MethodDelete, path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp DocumentResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodDelete, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil

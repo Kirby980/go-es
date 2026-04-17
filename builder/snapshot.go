@@ -7,7 +7,7 @@ import (
 )
 
 type SnapshotBuilder struct {
-	client ESClient
+	client     ESClient
 	repository string
 	snapshot   string
 	indices    []string
@@ -56,7 +56,7 @@ func (b *SnapshotBuilder) CreateRepository(ctx context.Context, repoType string)
 
 	if b.isDebug() {
 		b.printDebug("PUT", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AcknowledgedResponse
@@ -70,7 +70,7 @@ func (b *SnapshotBuilder) CreateRepository(ctx context.Context, repoType string)
 
 func (b *SnapshotBuilder) Create(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_snapshot/" + url.PathEscape(b.repository) + "/" + url.PathEscape(b.snapshot)
-	
+
 	body := map[string]any{}
 	if len(b.indices) > 0 {
 		body["indices"] = b.indices
@@ -78,7 +78,7 @@ func (b *SnapshotBuilder) Create(ctx context.Context) (*AcknowledgedResponse, er
 
 	if b.isDebug() {
 		b.printDebug("PUT", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AcknowledgedResponse
@@ -92,7 +92,7 @@ func (b *SnapshotBuilder) Create(ctx context.Context) (*AcknowledgedResponse, er
 
 func (b *SnapshotBuilder) Restore(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_snapshot/" + url.PathEscape(b.repository) + "/" + url.PathEscape(b.snapshot) + "/_restore"
-	
+
 	body := map[string]any{}
 	if len(b.indices) > 0 {
 		body["indices"] = b.indices
@@ -100,7 +100,7 @@ func (b *SnapshotBuilder) Restore(ctx context.Context) (*AcknowledgedResponse, e
 
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AcknowledgedResponse

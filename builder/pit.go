@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -59,21 +58,15 @@ func (b *PitBuilder) Create(ctx context.Context) (*CreatePitResponse, error) {
 
 	if b.isDebug() {
 		b.printDebug("POST", path, nil)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp CreatePitResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -95,21 +88,15 @@ func (b *PitBuilder) Delete(ctx context.Context, pitID string) (*DeletePitRespon
 
 	if b.isDebug() {
 		b.printDebug("DELETE", path, body)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, body, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp DeletePitResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodDelete, path, body, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil

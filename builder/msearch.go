@@ -104,7 +104,7 @@ func (b *MultiSearchBuilder) Do(ctx context.Context) (*MultiSearchResponse, erro
 
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	// 创建请求

@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -54,18 +53,14 @@ func (b *MGetBuilder) Do(ctx context.Context) (*MGetResponse, error) {
 	}
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
-	if err != nil {
+	var resp MGetResponse
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
 		return nil, err
 	}
 	if b.isDebug() {
-		b.printResponse(respBody)
-	}
-	var resp MGetResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil

@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -93,22 +92,16 @@ func (b *ScrollBuilder) Do(ctx context.Context) (*ScrollResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp ScrollResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	// 保存scroll ID供下次使用
@@ -132,22 +125,16 @@ func (b *ScrollBuilder) Next(ctx context.Context) (*ScrollResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp ScrollResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	// 更新scroll ID
@@ -170,7 +157,7 @@ func (b *ScrollBuilder) Clear(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("DELETE", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, body, b.getHeaders())

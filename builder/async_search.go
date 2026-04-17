@@ -7,11 +7,11 @@ import (
 )
 
 type AsyncSearchBuilder struct {
-	client ESClient
-	index  string
-	query  map[string]any
+	client                   ESClient
+	index                    string
+	query                    map[string]any
 	waitForCompletionTimeout string
-	keepAlive string
+	keepAlive                string
 	debugHelper
 	baseBuilder
 }
@@ -48,12 +48,12 @@ func (b *AsyncSearchBuilder) Debug(enable bool) *AsyncSearchBuilder {
 }
 
 type AsyncSearchResponse struct {
-	ID        string `json:"id"`
-	IsPartial bool   `json:"is_partial"`
-	IsRunning bool   `json:"is_running"`
-	StartTime int64  `json:"start_time_in_millis"`
-	ExpirationTime int64 `json:"expiration_time_in_millis"`
-	Response  SearchResponse `json:"response"`
+	ID             string         `json:"id"`
+	IsPartial      bool           `json:"is_partial"`
+	IsRunning      bool           `json:"is_running"`
+	StartTime      int64          `json:"start_time_in_millis"`
+	ExpirationTime int64          `json:"expiration_time_in_millis"`
+	Response       SearchResponse `json:"response"`
 }
 
 func (b *AsyncSearchBuilder) Do(ctx context.Context) (*AsyncSearchResponse, error) {
@@ -83,7 +83,7 @@ func (b *AsyncSearchBuilder) Do(ctx context.Context) (*AsyncSearchResponse, erro
 
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AsyncSearchResponse
@@ -97,10 +97,10 @@ func (b *AsyncSearchBuilder) Do(ctx context.Context) (*AsyncSearchResponse, erro
 
 func (b *AsyncSearchBuilder) Get(ctx context.Context, id string) (*AsyncSearchResponse, error) {
 	path := "/_async_search/" + url.PathEscape(id)
-	
+
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AsyncSearchResponse

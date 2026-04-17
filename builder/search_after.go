@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,6 +18,7 @@ type SearchAfterBuilder struct {
 	source       []string
 	highlight    map[string]any
 	minScore     *float64
+	pit          map[string]any
 	lastResponse *SearchAfterResponse // 保存上次响应用于自动获取下一页
 	BoolQuery[SearchAfterBuilder]
 	debugHelper
@@ -98,6 +98,21 @@ func (b *SearchAfterBuilder) MinScore(score float64) *SearchAfterBuilder {
 	return b
 }
 
+func (b *SearchAfterBuilder) PIT(id string, keepAlive string) *SearchAfterBuilder {
+	if id == "" {
+		b.pit = nil
+		return b
+	}
+	pit := map[string]any{
+		"id": id,
+	}
+	if keepAlive != "" {
+		pit["keep_alive"] = keepAlive
+	}
+	b.pit = pit
+	return b
+}
+
 // Debug 启用调试模式
 func (b *SearchAfterBuilder) Debug() *SearchAfterBuilder {
 	b.setDebug(true)
@@ -146,6 +161,10 @@ func (b *SearchAfterBuilder) Build() map[string]any {
 		body["min_score"] = *b.minScore
 	}
 
+	if b.pit != nil {
+		body["pit"] = b.pit
+	}
+
 	return body
 }
 
@@ -164,27 +183,24 @@ type SearchAfterResponse struct {
 // Do 执行查询
 func (b *SearchAfterBuilder) Do(ctx context.Context) (*SearchAfterResponse, error) {
 	path := fmt.Sprintf("/%s/_search", url.PathEscape(b.index))
+	if b.pit != nil {
+		path = "/_search"
+	}
 	body := b.Build()
 
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp SearchAfterResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	// 保存响应供 Next() 使用
