@@ -6,8 +6,8 @@ import (
 )
 
 type SQLBuilder struct {
-	client ESClient
-	query  string
+	client    ESClient
+	query     string
 	fetchSize int
 	debugHelper
 	baseBuilder
@@ -39,13 +39,13 @@ type SQLResponse struct {
 		Name string `json:"name"`
 		Type string `json:"type"`
 	} `json:"columns"`
-	Rows [][]any `json:"rows"`
-	Cursor string `json:"cursor,omitempty"`
+	Rows   [][]any `json:"rows"`
+	Cursor string  `json:"cursor,omitempty"`
 }
 
 func (b *SQLBuilder) Do(ctx context.Context) (*SQLResponse, error) {
 	path := "/_sql?format=json"
-	
+
 	body := map[string]any{
 		"query": b.query,
 	}
@@ -55,7 +55,7 @@ func (b *SQLBuilder) Do(ctx context.Context) (*SQLResponse, error) {
 
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp SQLResponse

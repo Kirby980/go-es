@@ -43,7 +43,7 @@ func (b *ILMBuilder) Put(ctx context.Context) (*AcknowledgedResponse, error) {
 
 	if b.isDebug() {
 		b.printDebug("PUT", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AcknowledgedResponse
@@ -63,7 +63,7 @@ func (b *ILMBuilder) Get(ctx context.Context) (map[string]any, error) {
 
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp map[string]any
@@ -80,7 +80,7 @@ func (b *ILMBuilder) Delete(ctx context.Context) (*AcknowledgedResponse, error) 
 
 	if b.isDebug() {
 		b.printDebug("DELETE", path, nil)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	var resp AcknowledgedResponse

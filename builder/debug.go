@@ -8,8 +8,9 @@ import (
 
 // debugHelper 调试辅助结构，嵌入各 Builder 中（包内私有）
 type debugHelper struct {
-	debug  bool
-	logger logger.Logger
+	debug           bool
+	debugPersistent bool
+	logger          logger.Logger
 }
 
 func (d *debugHelper) isDebug() bool {
@@ -17,7 +18,33 @@ func (d *debugHelper) isDebug() bool {
 }
 
 func (d *debugHelper) setDebug(enabled bool) {
-	d.debug = enabled
+	if !enabled {
+		d.debug = false
+		d.debugPersistent = false
+		return
+	}
+	d.debug = true
+	d.debugPersistent = false
+}
+
+func (d *debugHelper) setDebugPersistent(enabled bool) {
+	if !enabled {
+		d.debugPersistent = false
+		d.debug = false
+		return
+	}
+	d.debugPersistent = true
+	d.debug = true
+}
+
+func (d *debugHelper) DebugPersistent(enable bool) {
+	d.setDebugPersistent(enable)
+}
+
+func (d *debugHelper) autoResetDebug() {
+	if !d.debugPersistent {
+		d.debug = false
+	}
 }
 
 // log 返回 logger，若未初始化则返回 NopLogger，避免 nil panic
@@ -44,4 +71,8 @@ func (d *debugHelper) printResponse(respBody []byte) {
 	if err := json.Unmarshal(respBody, &bodyObj); err == nil {
 		d.log().Info("[ES Debug] 响应", "body", bodyObj)
 	}
+}
+
+func (d *debugHelper) printResponseObj(obj any) {
+	d.log().Info("[ES Debug] 响应", "body", obj)
 }

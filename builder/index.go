@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	stderrors "errors"
 	"fmt"
 	"net/http"
@@ -467,7 +466,7 @@ func (b *IndexBuilder) Create(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("PUT", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
@@ -498,7 +497,7 @@ func (b *IndexBuilder) UpdateSettings(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("PUT", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
@@ -521,7 +520,7 @@ func (b *IndexBuilder) PutMapping(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("PUT", path, b.mappings)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, b.mappings, b.getHeaders())
@@ -544,7 +543,7 @@ func (b *IndexBuilder) Delete(ctx context.Context) error {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("DELETE", path, nil)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, nil, b.getHeaders())
@@ -588,22 +587,16 @@ func (b *IndexBuilder) Get(ctx context.Context) (*IndexInfo, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var result map[string]*IndexInfo
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &result); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(result)
 	}
 
 	if info, ok := result[b.index]; ok {

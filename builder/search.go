@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -431,22 +430,16 @@ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp SearchResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -472,22 +465,16 @@ func (b *SearchBuilder) Count(ctx context.Context) (int64, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.Do(ctx, http.MethodPost, path, body)
-	if err != nil {
-		return 0, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp CountResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return 0, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
+		return 0, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return int64(resp.Count), nil

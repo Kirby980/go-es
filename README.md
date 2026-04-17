@@ -6,11 +6,13 @@
 
 - ✅ **链式调用**: 链式的API调用
 - ✅ **完整功能**: 支持索引、文档、搜索、聚合、批量操作、集群管理
+- ✅ **进阶 API**: PIT、KNN、Async Search、SQL、Search Template、Stored Script、ILM、Cat APIs、Snapshot & Restore
+- ✅ **运维能力**: Rollover、Field Caps、Rank Eval、Termvectors 等常用诊断/评估接口
 - ✅ **类型安全**: 使用 Go 结构体，避免手写 JSON
 - ✅ **易于使用**: 简洁的 API，降低学习成本
 - ✅ **高性能**: 支持批量操作、连接池，内部重写了流式 JSON 解析与批量 NDJSON 零反射编码，极大地降低了 CPU 和内存分配（避免 OOM）。
 - ✅ **错误处理**: 完善的错误处理和重试机制
-- ✅ **链式Debug**: Debug模式，局部控制日志输出
+- ✅ **链式Debug**: Debug 模式，局部控制日志输出（支持持久 Debug）
 - ✅ **AutoMigrate**: 自动迁移，通过结构体标签定义映射
 
 ## 快速开始
@@ -552,6 +554,77 @@ for i := 0; i < 5500; i++ {
 
 // 3. 最后手动 Flush 剩余的数据
 resp, err := bulk.Flush(ctx)
+```
+
+### SQL API
+
+```go
+resp, err := builder.NewSQLBuilder(esClient).
+    Query("SELECT * FROM products ORDER BY price DESC").
+    FetchSize(10).
+    Do(ctx)
+```
+
+### Async Search
+
+```go
+resp, err := builder.NewAsyncSearchBuilder(esClient).
+    Index("products").
+    Query(map[string]any{"match_all": map[string]any{}}).
+    WaitForCompletionTimeout("1s").
+    KeepAlive("5m").
+    Do(ctx)
+
+if resp.IsRunning {
+    _, _ = builder.NewAsyncSearchBuilder(esClient).Get(ctx, resp.ID)
+}
+```
+
+### Search Template / Stored Script
+
+```go
+_, _ = builder.NewScriptBuilder(esClient).
+    ID("my_script").
+    Script("painless", "return 1", nil).
+    Put(ctx)
+
+_, _ = builder.NewSearchTemplateBuilder(esClient).
+    Index("products").
+    ID("my_search_tpl").
+    Params(map[string]any{"q": "iphone"}).
+    Do(ctx)
+```
+
+### Rollover / Field Caps / Rank Eval / Termvectors
+
+```go
+_, _ = builder.NewRolloverBuilder(esClient, "logs_write").
+    NewIndex("logs-000002").
+    Condition("max_docs", 1000000).
+    Do(ctx)
+
+_, _ = builder.NewFieldCapsBuilder(esClient, "products").
+    Fields("name", "price").
+    IncludeUnmapped(true).
+    Do(ctx)
+
+_, _ = builder.NewRankEvalBuilder(esClient, "products").
+    Body(map[string]any{"requests": []any{}, "metric": map[string]any{"precision": map[string]any{}}}).
+    Do(ctx)
+
+_, _ = builder.NewTermvectorsBuilder(esClient, "products").
+    ID("1").
+    Body(map[string]any{"fields": []any{"name"}}).
+    Do(ctx)
+```
+
+### DebugPersistent（持久 Debug）
+
+```go
+b := builder.NewSearchBuilder(esClient, "products")
+b.DebugPersistent(true)
+_, _ = b.Match("name", "iphone").Do(ctx)
+_, _ = b.Match("name", "mac").Do(ctx)
 ```
 
 ### 可观测性 Hook（Client Trace/Metrics）

@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -65,22 +64,16 @@ func (b *ClusterBuilder) Health(ctx context.Context) (*ClusterHealthResponse, er
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp ClusterHealthResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -89,14 +82,9 @@ func (b *ClusterBuilder) Health(ctx context.Context) (*ClusterHealthResponse, er
 // IndexHealth 获取索引健康状态
 func (b *ClusterBuilder) IndexHealth(ctx context.Context, index string) (*ClusterHealthResponse, error) {
 	path := fmt.Sprintf("/_cluster/health/%s", url.PathEscape(index))
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp ClusterHealthResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -121,14 +109,9 @@ type ClusterStateResponse struct {
 // State 获取集群状态
 func (b *ClusterBuilder) State(ctx context.Context) (*ClusterStateResponse, error) {
 	path := "/_cluster/state"
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp ClusterStateResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -162,22 +145,16 @@ func (b *ClusterBuilder) Stats(ctx context.Context) (*ClusterStatsResponse, erro
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
-	}
-
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
-	// 如果启用调试模式，打印响应信息
-	if b.isDebug() {
-		b.printResponse(respBody)
+		defer b.autoResetDebug()
 	}
 
 	var resp ClusterStatsResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
+	}
+
+	if b.isDebug() {
+		b.printResponseObj(resp)
 	}
 
 	return &resp, nil
@@ -194,14 +171,9 @@ type NodesInfoResponse struct {
 // NodesInfo 获取节点信息
 func (b *ClusterBuilder) NodesInfo(ctx context.Context) (*NodesInfoResponse, error) {
 	path := "/_nodes"
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp NodesInfoResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -218,14 +190,9 @@ type NodesStatsResponse struct {
 // NodesStats 获取节点统计
 func (b *ClusterBuilder) NodesStats(ctx context.Context) (*NodesStatsResponse, error) {
 	path := "/_nodes/stats"
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp NodesStatsResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -242,14 +209,9 @@ type TasksResponse struct {
 // Tasks 获取正在运行的任务
 func (b *ClusterBuilder) Tasks(ctx context.Context) (*TasksResponse, error) {
 	path := "/_tasks"
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp TasksResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -266,14 +228,9 @@ type ClusterSettingsResponse struct {
 // GetSettings 获取集群设置
 func (b *ClusterBuilder) GetSettings(ctx context.Context) (*ClusterSettingsResponse, error) {
 	path := "/_cluster/settings"
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp ClusterSettingsResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -293,7 +250,7 @@ func (b *ClusterBuilder) UpdateSettings(ctx context.Context, persistent, transie
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("PUT", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
@@ -332,14 +289,9 @@ func (b *ClusterBuilder) AllocationExplain(ctx context.Context, index string, sh
 		"primary": primary,
 	}
 
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp AllocationExplainResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodPost, path, body, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return &resp, nil
@@ -353,14 +305,9 @@ type RemoteClustersResponse map[string]map[string]any
 // RemoteClusters 获取远程集群信息
 func (b *ClusterBuilder) RemoteClusters(ctx context.Context) (RemoteClustersResponse, error) {
 	path := "/_remote/info"
-	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
-	if err != nil {
-		return nil, err
-	}
-
 	var resp RemoteClustersResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	if err := b.client.DoWithHeaderAndDecode(ctx, http.MethodGet, path, nil, b.getHeaders(), &resp); err != nil {
+		return nil, err
 	}
 
 	return resp, nil

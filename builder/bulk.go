@@ -477,7 +477,7 @@ func (b *BulkBuilder) Build() []byte {
 
 	buf := getBuffer()
 	defer putBuffer(buf)
-	
+
 	if buf.Cap() < len(b.operations)*200 {
 		buf.Grow(len(b.operations) * 200)
 	}
@@ -532,7 +532,7 @@ func (b *BulkBuilder) Do(ctx context.Context) (*BulkResponse, error) {
 	// 如果启用调试模式，打印请求信息
 	if b.isDebug() {
 		b.printDebug("POST", path, body)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	// 创建请求

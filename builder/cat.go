@@ -39,7 +39,7 @@ func (b *CatBuilder) Do(ctx context.Context, api string, params map[string]strin
 
 	if b.isDebug() {
 		b.printDebug("GET", path, nil)
-		defer b.setDebug(false)
+		defer b.autoResetDebug()
 	}
 
 	resp, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
