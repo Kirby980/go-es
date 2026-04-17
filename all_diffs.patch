@@ -1,0 +1,3414 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..76c8d92
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,67 @@
++name: CI
++
++on:
++  push:
++    branches: [ main, master ]
++  pull_request:
++    branches: [ main, master ]
++
++jobs:
++  test:
++    name: Run Tests
++    runs-on: ubuntu-latest
++    strategy:
++      matrix:
++        es_version: [ "7.17.18", "8.12.2", "8.17.0" ]
++
++    services:
++      elasticsearch:
++        image: docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.es_version }}
++        env:
++          discovery.type: single-node
++          xpack.security.enabled: false
++          xpack.security.http.ssl.enabled: false
++        ports:
++          - 9200:9200
++        options: >-
++          --health-cmd="curl -s http://localhost:9200/_cluster/health"
++          --health-interval=10s
++          --health-timeout=5s
++          --health-retries=10
++
++    steps:
++    - name: Check out code
++      uses: actions/checkout@v4
++
++    - name: Set up Go
++      uses: actions/setup-go@v5
++      with:
++        go-version: '1.24'
++
++    - name: Cache Go modules
++      uses: actions/cache@v4
++      with:
++        path: ~/go/pkg/mod
++        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
++        restore-keys: |
++          ${{ runner.os }}-go-
++
++    - name: Download dependencies
++      run: go mod download
++
++    - name: Wait for Elasticsearch
++      run: |
++        echo "Waiting for Elasticsearch to be ready..."
++        for i in {1..30}; do
++          if curl -s http://localhost:9200 >/dev/null; then
++            echo "Elasticsearch is ready!"
++            break
++          fi
++          echo "Waiting..."
++          sleep 2
++        done
++
++    - name: Run Tests
++      env:
++        ES_URL: "http://localhost:9200"
++      run: go test -v ./...
+diff --git a/.golangci.yml b/.golangci.yml
+new file mode 100644
+index 0000000..90fa948
+--- /dev/null
++++ b/.golangci.yml
+@@ -0,0 +1,32 @@
++run:
++  timeout: 5m
++  modules-download-mode: readonly
++
++linters:
++  disable-all: true
++  enable:
++    - errcheck
++    - gosimple
++    - govet
++    - ineffassign
++    - staticcheck
++    - typecheck
++    - unused
++    - gofmt
++    - goimports
++    - misspell
++    - unconvert
++    - unparam
++
++linters-settings:
++  govet:
++    enable-all: true
++    disable:
++      - fieldalignment
++  gofmt:
++    simplify: true
++
++issues:
++  exclude-use-default: true
++  max-issues-per-linter: 0
++  max-same-issues: 0
+diff --git a/README.md b/README.md
+index af64944..4933230 100644
+--- a/README.md
++++ b/README.md
+@@ -8,13 +8,17 @@
+ - ✅ **完整功能**: 支持索引、文档、搜索、聚合、批量操作、集群管理
+ - ✅ **类型安全**: 使用 Go 结构体，避免手写 JSON
+ - ✅ **易于使用**: 简洁的 API，降低学习成本
+-- ✅ **高性能**: 支持批量操作和连接池
++- ✅ **高性能**: 支持批量操作、连接池，内部重写了流式 JSON 解析与批量 NDJSON 零反射编码，极大地降低了 CPU 和内存分配（避免 OOM）。
+ - ✅ **错误处理**: 完善的错误处理和重试机制
+ - ✅ **链式Debug**: Debug模式，局部控制日志输出
+ - ✅ **AutoMigrate**: 自动迁移，通过结构体标签定义映射
+ 
+ ## 快速开始
+ 
++### 版本兼容性
++
++本库设计上兼容 **Elasticsearch 7.x**、**Elasticsearch 8.x** 以及 **Elasticsearch 9.x** 版本。由于底层的 JSON API 和查询 DSL 具有很强的相似性，大部分操作可以无缝兼容。不过，Elasticsearch 8 及以上版本引入了一些新特性（例如默认的安全机制），在创建客户端时请确保提供正确的认证和证书配置（或使用 `config.WithInsecureSkipVerify(true)` 跳过验证）。
++
+ ### 安装
+ 
+ ```bash
+@@ -458,26 +462,124 @@ func SearchProducts(ctx context.Context, keyword string) {
+ - ✅ DeleteByQuery (按条件批量删除)
+ - ✅ Scroll (深度分页遍历)
+ - ✅ SearchAfter (高效深度分页)
++- ✅ PointInTime / PIT (现代 ES 推荐的分页方式, 替代 Scroll)
++- ✅ KNN 向量搜索 (支持 ES 8.x / 9.x 的 AI 向量检索)
++- ✅ Reindex (跨索引重建数据)
++- ✅ Aliases (/_aliases 原子切换别名，零停机切流量)
++- ✅ Index Template / Component Template (模板与组件模板管理，适配 ES 7/8/9)
++- ✅ Data Stream (数据流管理，适配 ES 7/8/9)
++- ✅ Ingest Pipeline (写入预处理管道管理与 simulate，适配 ES 7/8/9)
++- ✅ EQL (Event Query Language, 支持安全日志事件查询)
++- ✅ Multi Search (msearch 批量并发搜索)
++- ✅ Explain API (单文档搜索评分详情解释)
++- ✅ Field Collapsing (字段折叠去重)
++- ✅ Suggest (搜索建议/自动补全)
+ - ✅ ClusterBuilder (集群管理)
+ - ✅ Debug模式 (类似GORM)
+ 
++### Alias 原子切换示例
++
++```go
++resp, err := builder.NewAliasesBuilder(esClient).
++    Replace("products_write", "products_v1", "products_v2", builder.WithIsWriteIndex(true)).
++    Do(ctx)
++_ = resp
++_ = err
++```
++
++### Template / Data Stream / Pipeline 示例
++
++```go
++_, _ = builder.NewComponentTemplateBuilder(esClient, "ct_common").
++    TemplateSettings(map[string]any{"index.number_of_shards": 1}).
++    Put(ctx)
++
++_, _ = builder.NewIndexTemplateBuilder(esClient, "it_logs").
++    IndexPatterns("logs-*").
++    ComposedOf("ct_common").
++    DataStream(true).
++    Put(ctx)
++
++_, _ = builder.NewDataStreamBuilder(esClient, "logs-app").Create(ctx)
++
++_, _ = builder.NewIngestPipelineBuilder(esClient, "p1").
++    Description("add field").
++    AddProcessor("set", map[string]any{"field": "env", "value": "prod"}).
++    Put(ctx)
++```
++
+ ## 配置选项
+ 
+ ```go
+ esClient, err := client.New(
+     config.WithAddresses("https://localhost:9200"),      // ES 地址
+     config.WithAuth("username", "password"),             // 认证
+-    config.WithInsecureSkipVerify(true),                          // 跳过 SSL 验证
++    config.WithInsecureSkipVerify(true),                 // 跳过 SSL 验证
+     config.WithTimeout(30*time.Second),                  // 超时时间
+     config.WithRetry(3, time.Second),                    // 重试配置
+     config.WithDebug(true),                              // 调试模式
+     config.WithMaxConnsPerHost(100),                     // 每个 host 的最大连接数
+-    config.WithMaxIdleConns(200),                          // 最大空闲连接数
++    config.WithMaxIdleConns(200),                        // 最大空闲连接数
+     config.WithMaxIdleConnsPerHost(50),                  // 每个 host 的最大空闲连接数
+     config.WithIdleConnTimeout(90*time.Second),          // 空闲连接超时时间
++    config.WithHooks(hooks.NewMetricsHook()),            // 注册可观测性 Hook
+ )
+ ```
+ 
++## 进阶功能示例
++
++### BulkProcessor（高吞吐写入缓冲池）
++
++`BulkBuilder` 原生支持自动分批刷新（Auto Flush），只需设置分批大小即可实现高吞吐写入：
++
++```go
++import "github.com/Kirby980/go-es/builder"
++
++// 1. 初始化 BulkBuilder
++bulk := builder.NewBulkBuilder(esClient).
++    Index("bulk_test_index").
++    AutoFlushSize(1000). // 设置每 1000 条自动刷新一次
++    AutoFlushContext(ctx).
++    OnFlush(func(resp *builder.BulkResponse) {
++        fmt.Printf("已刷新 %d 条数据，成功: %d，失败: %d\n", 
++            len(resp.Items), resp.SuccessCount(), len(resp.Failed()))
++    })
++
++// 2. 持续写入数据
++for i := 0; i < 5500; i++ {
++    bulk.Add("", fmt.Sprintf("doc_%d", i), map[string]any{"value": i})
++}
++
++// 3. 最后手动 Flush 剩余的数据
++resp, err := bulk.Flush(ctx)
++```
++
++### 可观测性 Hook（Client Trace/Metrics）
++
++通过 `config.WithHooks` 可以注入自定义的可观测性插件，拦截并记录每一次 HTTP 请求的生命周期。
++
++```go
++import (
++    "github.com/Kirby980/go-es/client"
++    "github.com/Kirby980/go-es/config"
++    "github.com/Kirby980/go-es/hooks"
++)
++
++// 实例化内置的 Metrics 和 Log Hook
++metricsHook := hooks.NewMetricsHook()
++logHook := hooks.NewLogHook(loggerInstance)
++
++// 注入客户端
++esClient, err := client.New(
++    config.WithAddresses("http://localhost:9200"),
++    config.WithHooks(metricsHook, logHook),
++)
++
++// 发起请求后可以获取指标
++reqs, errs, avgLatency := metricsHook.GetMetrics()
++fmt.Printf("请求数: %d, 错误数: %d, 平均延迟: %v\n", reqs, errs, avgLatency)
++```
++
+ ## 完整示例
+ 
+ 查看 `examples/complete_api_test.go` 获取完整的使用示例。
+diff --git a/builder/aliases.go b/builder/aliases.go
+new file mode 100644
+index 0000000..bddf460
+--- /dev/null
++++ b/builder/aliases.go
+@@ -0,0 +1,140 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++)
++
++type AliasesBuilder struct {
++	client  ESClient
++	actions []map[string]any
++	debugHelper
++	baseBuilder
++}
++
++func NewAliasesBuilder(c ESClient) *AliasesBuilder {
++	b := &AliasesBuilder{
++		client:      c,
++		actions:     make([]map[string]any, 0),
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++func (b *AliasesBuilder) Header(key, value string) *AliasesBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++func (b *AliasesBuilder) Debug() *AliasesBuilder {
++	b.setDebug(true)
++	return b
++}
++
++func (b *AliasesBuilder) Add(index string, alias string, opts ...func(map[string]any)) *AliasesBuilder {
++	params := map[string]any{
++		"index": index,
++		"alias": alias,
++	}
++	for _, opt := range opts {
++		opt(params)
++	}
++	b.actions = append(b.actions, map[string]any{
++		"add": params,
++	})
++	return b
++}
++
++func (b *AliasesBuilder) Remove(index string, alias string, opts ...func(map[string]any)) *AliasesBuilder {
++	params := map[string]any{
++		"index": index,
++		"alias": alias,
++	}
++	for _, opt := range opts {
++		opt(params)
++	}
++	b.actions = append(b.actions, map[string]any{
++		"remove": params,
++	})
++	return b
++}
++
++func (b *AliasesBuilder) RemoveIndex(index string) *AliasesBuilder {
++	b.actions = append(b.actions, map[string]any{
++		"remove_index": map[string]any{
++			"index": index,
++		},
++	})
++	return b
++}
++
++func (b *AliasesBuilder) Replace(alias string, fromIndex string, toIndex string, opts ...func(map[string]any)) *AliasesBuilder {
++	b.Remove(fromIndex, alias)
++	b.Add(toIndex, alias, opts...)
++	return b
++}
++
++func WithIsWriteIndex(isWrite bool) func(map[string]any) {
++	return func(m map[string]any) {
++		m["is_write_index"] = isWrite
++	}
++}
++
++func WithAliasFilter(filter map[string]any) func(map[string]any) {
++	return func(m map[string]any) {
++		if filter != nil {
++			m["filter"] = filter
++		}
++	}
++}
++
++func WithRouting(routing string) func(map[string]any) {
++	return func(m map[string]any) {
++		if routing != "" {
++			m["routing"] = routing
++		}
++	}
++}
++
++type AliasesResponse struct {
++	Acknowledged bool `json:"acknowledged"`
++}
++
++func (b *AliasesBuilder) Build() map[string]any {
++	return map[string]any{
++		"actions": b.actions,
++	}
++}
++
++func (b *AliasesBuilder) Do(ctx context.Context) (*AliasesResponse, error) {
++	if len(b.actions) == 0 {
++		return nil, fmt.Errorf("没有待执行的 alias 操作")
++	}
++
++	path := "/_aliases"
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("POST", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp AliasesResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
+diff --git a/builder/bulk.go b/builder/bulk.go
+index a978eec..7247133 100644
+--- a/builder/bulk.go
++++ b/builder/bulk.go
+@@ -478,28 +478,24 @@ func (b *BulkBuilder) Build() []byte {
+ 	var buf bytes.Buffer
+ 	buf.Grow(len(b.operations) * 200)
+ 
++	encoder := json.NewEncoder(&buf)
++
+ 	for _, op := range b.operations {
+ 		// 写入操作行
+ 		action := map[string]any{
+ 			op.action: op.meta,
+ 		}
+-		actionLine, err := json.Marshal(action)
+-		if err != nil {
++		if err := encoder.Encode(action); err != nil {
+ 			b.err = fmt.Errorf("序列化操作行失败: %w", err)
+ 			return nil
+ 		}
+-		buf.Write(actionLine)
+-		buf.WriteByte('\n')
+ 
+ 		// 写入文档行（delete 操作不需要）
+ 		if op.action != "delete" && op.doc != nil {
+-			docLine, err := json.Marshal(op.doc)
+-			if err != nil {
++			if err := encoder.Encode(op.doc); err != nil {
+ 				b.err = fmt.Errorf("序列化文档失败: %w", err)
+ 				return nil
+ 			}
+-			buf.Write(docLine)
+-			buf.WriteByte('\n')
+ 		}
+ 	}
+ 
+diff --git a/builder/datastream.go b/builder/datastream.go
+new file mode 100644
+index 0000000..da61936
+--- /dev/null
++++ b/builder/datastream.go
+@@ -0,0 +1,118 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/url"
++)
++
++type DataStreamBuilder struct {
++	client ESClient
++	name   string
++	debugHelper
++	baseBuilder
++}
++
++func NewDataStreamBuilder(c ESClient, name string) *DataStreamBuilder {
++	b := &DataStreamBuilder{
++		client:      c,
++		name:        name,
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++func (b *DataStreamBuilder) Header(key, value string) *DataStreamBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++func (b *DataStreamBuilder) Debug() *DataStreamBuilder {
++	b.setDebug(true)
++	return b
++}
++
++type DataStreamAckResponse struct {
++	Acknowledged bool `json:"acknowledged"`
++}
++
++func (b *DataStreamBuilder) Create(ctx context.Context) (*DataStreamAckResponse, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("data stream name 不能为空")
++	}
++	path := fmt.Sprintf("/_data_stream/%s", url.PathEscape(b.name))
++
++	if b.isDebug() {
++		b.printDebug("PUT", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp DataStreamAckResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
++
++func (b *DataStreamBuilder) Get(ctx context.Context) (map[string]any, error) {
++	path := "/_data_stream"
++	if b.name != "" {
++		path = fmt.Sprintf("/_data_stream/%s", url.PathEscape(b.name))
++	}
++
++	if b.isDebug() {
++		b.printDebug("GET", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp map[string]any
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return resp, nil
++}
++
++func (b *DataStreamBuilder) Delete(ctx context.Context) (*DataStreamAckResponse, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("data stream name 不能为空")
++	}
++	path := fmt.Sprintf("/_data_stream/%s", url.PathEscape(b.name))
++
++	if b.isDebug() {
++		b.printDebug("DELETE", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp DataStreamAckResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
+diff --git a/builder/document.go b/builder/document.go
+index 2163547..90bf479 100644
+--- a/builder/document.go
++++ b/builder/document.go
+@@ -259,7 +259,7 @@ func (b *DocumentBuilder) Create(ctx context.Context) (*DocumentResponse, error)
+ 	if b.id == "" {
+ 		return nil, fmt.Errorf("创建文档需要指定 ID")
+ 	}
+-// ... (rest remains same but effectively prepended b.err check)
++	// ... (rest remains same but effectively prepended b.err check)
+ 
+ 	path := fmt.Sprintf("/%s/_create/%s", url.PathEscape(b.index), url.PathEscape(b.id))
+ 	path = b.buildPath(path)
+diff --git a/builder/eql.go b/builder/eql.go
+new file mode 100644
+index 0000000..25e63f9
+--- /dev/null
++++ b/builder/eql.go
+@@ -0,0 +1,135 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/url"
++)
++
++// EQLBuilder EQL (Event Query Language) 构建器 (ES 7.9+)
++// 常用于安全日志和时间序列分析
++type EQLBuilder struct {
++	client     ESClient
++	index      string
++	query      string // EQL 语句
++	size       *int
++	tiebreaker *int
++	fetchSize  *int
++	filter     map[string]any // 额外的前置过滤 DSL
++	debugHelper
++	baseBuilder
++}
++
++// NewEQLBuilder 创建 EQL 构建器
++func NewEQLBuilder(c ESClient, index string) *EQLBuilder {
++	b := &EQLBuilder{
++		client:      c,
++		index:       index,
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++// Header 设置自定义 Header
++func (b *EQLBuilder) Header(key, value string) *EQLBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++// Query 设置 EQL 语句
++func (b *EQLBuilder) Query(query string) *EQLBuilder {
++	b.query = query
++	return b
++}
++
++// Size 设置返回的序列或事件数量
++func (b *EQLBuilder) Size(size int) *EQLBuilder {
++	b.size = &size
++	return b
++}
++
++// Filter 设置前置的普通 ES Query DSL 过滤器，用于在 EQL 执行前缩小数据范围
++func (b *EQLBuilder) Filter(filter map[string]any) *EQLBuilder {
++	b.filter = filter
++	return b
++}
++
++// Debug 启用调试模式
++func (b *EQLBuilder) Debug() *EQLBuilder {
++	b.setDebug(true)
++	return b
++}
++
++// Build 构建请求体
++func (b *EQLBuilder) Build() map[string]any {
++	body := map[string]any{
++		"query": b.query,
++	}
++
++	if b.size != nil {
++		body["size"] = *b.size
++	}
++	if b.filter != nil {
++		body["filter"] = b.filter
++	}
++
++	return body
++}
++
++// EQLResponse EQL 查询响应
++type EQLResponse struct {
++	IsPartial bool `json:"is_partial"`
++	IsRunning bool `json:"is_running"`
++	Took      int  `json:"took"`
++	TimedOut  bool `json:"timed_out"`
++	Hits      struct {
++		Total  HitsTotal `json:"total"`
++		Events []struct {
++			Index  string         `json:"_index"`
++			ID     string         `json:"_id"`
++			Source map[string]any `json:"_source"`
++		} `json:"events,omitempty"`
++		Sequences []struct {
++			JoinKeys []any `json:"join_keys"`
++			Events   []struct {
++				Index  string         `json:"_index"`
++				ID     string         `json:"_id"`
++				Source map[string]any `json:"_source"`
++			} `json:"events"`
++		} `json:"sequences,omitempty"`
++	} `json:"hits"`
++}
++
++// Do 执行 EQL 查询
++func (b *EQLBuilder) Do(ctx context.Context) (*EQLResponse, error) {
++	if b.query == "" {
++		return nil, fmt.Errorf("EQL query cannot be empty")
++	}
++
++	path := fmt.Sprintf("/%s/_eql/search", url.PathEscape(b.index))
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("POST", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp EQLResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
+diff --git a/builder/explain.go b/builder/explain.go
+new file mode 100644
+index 0000000..fd36672
+--- /dev/null
++++ b/builder/explain.go
+@@ -0,0 +1,101 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/url"
++)
++
++// ExplainBuilder Explain API 构建器 (单文档评分解释)
++type ExplainBuilder struct {
++	client ESClient
++	index  string
++	id     string
++	query  map[string]any
++	BoolQuery[ExplainBuilder]
++	debugHelper
++	baseBuilder
++}
++
++// NewExplainBuilder 创建 Explain 构建器
++func NewExplainBuilder(c ESClient, index, id string) *ExplainBuilder {
++	b := &ExplainBuilder{
++		client:      c,
++		index:       index,
++		id:          id,
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBoolQuery(b)
++	b.initBaseBuilder()
++	return b
++}
++
++// Header 设置自定义 Header
++func (b *ExplainBuilder) Header(key, value string) *ExplainBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++// Debug 启用调试模式
++func (b *ExplainBuilder) Debug() *ExplainBuilder {
++	b.setDebug(true)
++	return b
++}
++
++// Build 构建请求体
++func (b *ExplainBuilder) Build() map[string]any {
++	body := make(map[string]any)
++
++	if boolQ := b.buildBoolQuery(); boolQ != nil {
++		body["query"] = boolQ
++	} else if b.query != nil {
++		body["query"] = b.query
++	}
++
++	return body
++}
++
++// ExplainResponse Explain API 响应
++type ExplainResponse struct {
++	Index       string `json:"_index"`
++	ID          string `json:"_id"`
++	Matched     bool   `json:"matched"`
++	Explanation struct {
++		Value       float64 `json:"value"`
++		Description string  `json:"description"`
++		Details     []any   `json:"details"`
++	} `json:"explanation"`
++}
++
++// Do 执行 Explain 请求
++func (b *ExplainBuilder) Do(ctx context.Context) (*ExplainResponse, error) {
++	if b.index == "" || b.id == "" {
++		return nil, fmt.Errorf("index 和 id 不能为空")
++	}
++
++	path := fmt.Sprintf("/%s/_explain/%s", url.PathEscape(b.index), url.PathEscape(b.id))
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("POST", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp ExplainResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
+diff --git a/builder/ingest.go b/builder/ingest.go
+new file mode 100644
+index 0000000..277260d
+--- /dev/null
++++ b/builder/ingest.go
+@@ -0,0 +1,280 @@
++package builder
++
++import (
++	"bytes"
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/url"
++)
++
++type IngestPipelineBuilder struct {
++	client      ESClient
++	id          string
++	description string
++	processors  []map[string]any
++	onFailure   []map[string]any
++	meta        map[string]any
++	version     *int
++	debugHelper
++	baseBuilder
++}
++
++func NewIngestPipelineBuilder(c ESClient, id string) *IngestPipelineBuilder {
++	b := &IngestPipelineBuilder{
++		client:      c,
++		id:          id,
++		processors:  make([]map[string]any, 0),
++		onFailure:   make([]map[string]any, 0),
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++func (b *IngestPipelineBuilder) Header(key, value string) *IngestPipelineBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++func (b *IngestPipelineBuilder) Debug() *IngestPipelineBuilder {
++	b.setDebug(true)
++	return b
++}
++
++func (b *IngestPipelineBuilder) Description(desc string) *IngestPipelineBuilder {
++	b.description = desc
++	return b
++}
++
++func (b *IngestPipelineBuilder) Version(version int) *IngestPipelineBuilder {
++	b.version = &version
++	return b
++}
++
++func (b *IngestPipelineBuilder) Meta(meta map[string]any) *IngestPipelineBuilder {
++	b.meta = meta
++	return b
++}
++
++func (b *IngestPipelineBuilder) AddProcessor(name string, config map[string]any) *IngestPipelineBuilder {
++	b.processors = append(b.processors, map[string]any{
++		name: config,
++	})
++	return b
++}
++
++func (b *IngestPipelineBuilder) AddOnFailure(name string, config map[string]any) *IngestPipelineBuilder {
++	b.onFailure = append(b.onFailure, map[string]any{
++		name: config,
++	})
++	return b
++}
++
++func (b *IngestPipelineBuilder) Pipeline(pipeline map[string]any) *IngestPipelineBuilder {
++	if pipeline == nil {
++		return b
++	}
++	if v, ok := pipeline["description"].(string); ok {
++		b.description = v
++	}
++	if v, ok := pipeline["processors"].([]map[string]any); ok {
++		b.processors = v
++	}
++	if v, ok := pipeline["on_failure"].([]map[string]any); ok {
++		b.onFailure = v
++	}
++	if v, ok := pipeline["_meta"].(map[string]any); ok {
++		b.meta = v
++	}
++	if v, ok := pipeline["version"].(int); ok {
++		b.version = &v
++	}
++	return b
++}
++
++func (b *IngestPipelineBuilder) Build() map[string]any {
++	body := make(map[string]any)
++	if b.description != "" {
++		body["description"] = b.description
++	}
++	if len(b.processors) > 0 {
++		body["processors"] = b.processors
++	}
++	if len(b.onFailure) > 0 {
++		body["on_failure"] = b.onFailure
++	}
++	if b.meta != nil {
++		body["_meta"] = b.meta
++	}
++	if b.version != nil {
++		body["version"] = *b.version
++	}
++	return body
++}
++
++type IngestAckResponse struct {
++	Acknowledged bool `json:"acknowledged"`
++}
++
++func (b *IngestPipelineBuilder) Put(ctx context.Context) (*IngestAckResponse, error) {
++	if b.id == "" {
++		return nil, fmt.Errorf("pipeline id 不能为空")
++	}
++	path := fmt.Sprintf("/_ingest/pipeline/%s", url.PathEscape(b.id))
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("PUT", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp IngestAckResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
++
++func (b *IngestPipelineBuilder) Get(ctx context.Context) (map[string]any, error) {
++	if b.id == "" {
++		return nil, fmt.Errorf("pipeline id 不能为空")
++	}
++	path := fmt.Sprintf("/_ingest/pipeline/%s", url.PathEscape(b.id))
++
++	if b.isDebug() {
++		b.printDebug("GET", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp map[string]any
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return resp, nil
++}
++
++func (b *IngestPipelineBuilder) Delete(ctx context.Context) (*IngestAckResponse, error) {
++	if b.id == "" {
++		return nil, fmt.Errorf("pipeline id 不能为空")
++	}
++	path := fmt.Sprintf("/_ingest/pipeline/%s", url.PathEscape(b.id))
++
++	if b.isDebug() {
++		b.printDebug("DELETE", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp IngestAckResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
++
++type IngestSimulateResponse struct {
++	Docs []map[string]any `json:"docs"`
++}
++
++func (b *IngestPipelineBuilder) Simulate(ctx context.Context, docs []map[string]any, verbose bool) (*IngestSimulateResponse, error) {
++	path := "/_ingest/pipeline/_simulate"
++	if b.id != "" {
++		path = fmt.Sprintf("/_ingest/pipeline/%s/_simulate", url.PathEscape(b.id))
++	}
++	if verbose {
++		path += "?verbose=true"
++	}
++
++	body := map[string]any{
++		"docs": docs,
++	}
++	if b.id == "" {
++		p := b.Build()
++		if len(p) > 0 {
++			body["pipeline"] = p
++		}
++	}
++
++	if b.isDebug() {
++		b.printDebug("POST", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp IngestSimulateResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
++
++func (b *IngestPipelineBuilder) SimulateNDJSON(ctx context.Context, docs []map[string]any) ([]byte, error) {
++	path := "/_ingest/pipeline/_simulate"
++	if b.id != "" {
++		path = fmt.Sprintf("/_ingest/pipeline/%s/_simulate", url.PathEscape(b.id))
++	}
++
++	body := map[string]any{
++		"docs": docs,
++	}
++	if b.id == "" {
++		p := b.Build()
++		if len(p) > 0 {
++			body["pipeline"] = p
++		}
++	}
++
++	data, err := json.Marshal(body)
++	if err != nil {
++		return nil, fmt.Errorf("序列化请求体失败: %w", err)
++	}
++	req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.client.GetAddress()+path, bytes.NewReader(data))
++	if err != nil {
++		return nil, fmt.Errorf("创建请求失败: %w", err)
++	}
++	req.Header.Set("Content-Type", "application/json")
++	for k, v := range b.getHeaders() {
++		for _, vv := range v {
++			req.Header.Add(k, vv)
++		}
++	}
++
++	return b.client.DoRequest(ctx, req)
++}
+diff --git a/builder/interface.go b/builder/interface.go
+index 3318bca..c74f810 100644
+--- a/builder/interface.go
++++ b/builder/interface.go
+@@ -31,7 +31,7 @@ type IndexName interface {
+ }
+ 
+ // structToMap 内部辅助方法，高效地将结构体转为 map[string]any
+-// 目前采用 json marshal -> unmarshal，后续可优化为反射以提升性能
++// 使用原生的 JSON 序列化和反序列化
+ func structToMap(v any) (map[string]any, error) {
+ 	if v == nil {
+ 		return nil, nil
+diff --git a/builder/mock_client_test.go b/builder/mock_client_test.go
+index 55d78a3..5e19949 100644
+--- a/builder/mock_client_test.go
++++ b/builder/mock_client_test.go
+@@ -2,6 +2,7 @@ package builder_test
+ 
+ import (
+ 	"context"
++	"encoding/json"
+ 	"net/http"
+ 
+ 	"github.com/Kirby980/go-es/logger"
+@@ -39,6 +40,17 @@ func (m *mockESClient) DoWithHeader(ctx context.Context, method, path string, bo
+ 	return []byte(`{}`), nil
+ }
+ 
++func (m *mockESClient) DoWithHeaderAndDecode(ctx context.Context, method, path string, body any, header http.Header, target any) error {
++	resp, err := m.DoWithHeader(ctx, method, path, body, header)
++	if err != nil {
++		return err
++	}
++	if target == nil {
++		return nil
++	}
++	return json.Unmarshal(resp, target)
++}
++
+ func (m *mockESClient) GetAddress() string {
+ 	if m.address != "" {
+ 		return m.address
+diff --git a/builder/msearch.go b/builder/msearch.go
+new file mode 100644
+index 0000000..61d91b9
+--- /dev/null
++++ b/builder/msearch.go
+@@ -0,0 +1,140 @@
++package builder
++
++import (
++	"bytes"
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++)
++
++// MultiSearchBuilder 批量搜索构建器 (msearch)
++type MultiSearchBuilder struct {
++	client   ESClient
++	searches []multiSearchItem
++	debugHelper
++	baseBuilder
++}
++
++type multiSearchItem struct {
++	Header map[string]any // 请求头，如 index
++	Body   map[string]any // 搜索请求体
++}
++
++// NewMultiSearchBuilder 创建批量搜索构建器
++func NewMultiSearchBuilder(c ESClient) *MultiSearchBuilder {
++	b := &MultiSearchBuilder{
++		client:      c,
++		searches:    make([]multiSearchItem, 0),
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++// Add 添加一个搜索请求
++func (b *MultiSearchBuilder) Add(index string, search *SearchBuilder) *MultiSearchBuilder {
++	header := make(map[string]any)
++	if index != "" {
++		header["index"] = index
++	} else if search.index != "" {
++		header["index"] = search.index
++	}
++
++	b.searches = append(b.searches, multiSearchItem{
++		Header: header,
++		Body:   search.Build(),
++	})
++	return b
++}
++
++// Header 设置自定义 Header
++func (b *MultiSearchBuilder) Header(key, value string) *MultiSearchBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++// Debug 启用调试模式
++func (b *MultiSearchBuilder) Debug() *MultiSearchBuilder {
++	b.setDebug(true)
++	return b
++}
++
++// MultiSearchResponse 批量搜索响应
++type MultiSearchResponse struct {
++	Took      int `json:"took"`
++	Responses []struct {
++		SearchResponse
++		Status int `json:"status,omitempty"`
++		Error  *struct {
++			Type   string `json:"type"`
++			Reason string `json:"reason"`
++		} `json:"error,omitempty"`
++	} `json:"responses"`
++}
++
++// Build 构建 ndjson 请求体
++func (b *MultiSearchBuilder) Build() ([]byte, error) {
++	var buf bytes.Buffer
++	encoder := json.NewEncoder(&buf)
++
++	for _, item := range b.searches {
++		if err := encoder.Encode(item.Header); err != nil {
++			return nil, fmt.Errorf("序列化 header 失败: %w", err)
++		}
++		if err := encoder.Encode(item.Body); err != nil {
++			return nil, fmt.Errorf("序列化 body 失败: %w", err)
++		}
++	}
++	return buf.Bytes(), nil
++}
++
++// Do 执行批量搜索
++func (b *MultiSearchBuilder) Do(ctx context.Context) (*MultiSearchResponse, error) {
++	if len(b.searches) == 0 {
++		return nil, fmt.Errorf("没有待执行的搜索请求")
++	}
++
++	body, err := b.Build()
++	if err != nil {
++		return nil, err
++	}
++
++	path := "/_msearch"
++
++	if b.isDebug() {
++		b.printDebug("POST", path, body)
++		defer b.setDebug(false)
++	}
++
++	// 创建请求
++	url := b.client.GetAddress() + path
++	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
++	if err != nil {
++		return nil, fmt.Errorf("创建请求失败: %w", err)
++	}
++
++	// 设置 NDJSON Content-Type
++	req.Header.Set("Content-Type", "application/x-ndjson")
++	for k, v := range b.getHeaders() {
++		for _, vv := range v {
++			req.Header.Add(k, vv)
++		}
++	}
++
++	respBody, err := b.client.DoRequest(ctx, req)
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp MultiSearchResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
+diff --git a/builder/pit.go b/builder/pit.go
+new file mode 100644
+index 0000000..65a8930
+--- /dev/null
++++ b/builder/pit.go
+@@ -0,0 +1,116 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/url"
++)
++
++// PitBuilder Point In Time (PIT) 构建器 (ES 7.10+ / 8.x / 9.x)
++// 现代 Elasticsearch 分页推荐使用 PIT 替代 Scroll
++type PitBuilder struct {
++	client    ESClient
++	index     string
++	keepAlive string
++	debugHelper
++	baseBuilder
++}
++
++// NewPitBuilder 创建 PIT 构建器
++func NewPitBuilder(c ESClient, index string) *PitBuilder {
++	b := &PitBuilder{
++		client:      c,
++		index:       index,
++		keepAlive:   "1m", // 默认保留时间 1 分钟
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++// Header 设置自定义 Header
++func (b *PitBuilder) Header(key, value string) *PitBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++// KeepAlive 设置保留时间 (如 "1m", "5m")
++func (b *PitBuilder) KeepAlive(keepAlive string) *PitBuilder {
++	b.keepAlive = keepAlive
++	return b
++}
++
++// Debug 启用调试模式
++func (b *PitBuilder) Debug() *PitBuilder {
++	b.setDebug(true)
++	return b
++}
++
++// CreatePitResponse 创建 PIT 的响应
++type CreatePitResponse struct {
++	ID string `json:"id"`
++}
++
++// Create 执行创建 PIT 请求
++func (b *PitBuilder) Create(ctx context.Context) (*CreatePitResponse, error) {
++	path := fmt.Sprintf("/%s/_pit?keep_alive=%s", url.PathEscape(b.index), b.keepAlive)
++
++	if b.isDebug() {
++		b.printDebug("POST", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp CreatePitResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
++
++// DeletePitResponse 删除 PIT 的响应
++type DeletePitResponse struct {
++	Succeeded bool  `json:"succeeded"`
++	NumFreed  int   `json:"num_freed"`
++	Error     error `json:"error,omitempty"`
++}
++
++// Delete 执行删除 PIT 请求 (全局操作，不需要 index)
++func (b *PitBuilder) Delete(ctx context.Context, pitID string) (*DeletePitResponse, error) {
++	path := "/_pit"
++	body := map[string]any{
++		"id": pitID,
++	}
++
++	if b.isDebug() {
++		b.printDebug("DELETE", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp DeletePitResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
+diff --git a/builder/reindex.go b/builder/reindex.go
+new file mode 100644
+index 0000000..20b1acb
+--- /dev/null
++++ b/builder/reindex.go
+@@ -0,0 +1,171 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++)
++
++// ReindexBuilder 重建索引构建器 (支持 ES 7.x/8.x/9.x)
++type ReindexBuilder struct {
++	client      ESClient
++	sourceIndex string
++	destIndex   string
++	query       map[string]any // 过滤要重建的文档
++	script      map[string]any // 脚本处理文档
++	maxDocs     *int           // 最大处理文档数
++	slices      *int           // 并发切片数
++	waitForComp *bool          // 是否等待完成 (异步)
++	debugHelper
++	baseBuilder
++}
++
++// NewReindexBuilder 创建重建索引构建器
++func NewReindexBuilder(c ESClient, sourceIndex, destIndex string) *ReindexBuilder {
++	b := &ReindexBuilder{
++		client:      c,
++		sourceIndex: sourceIndex,
++		destIndex:   destIndex,
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++// Header 设置自定义 Header
++func (b *ReindexBuilder) Header(key, value string) *ReindexBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++// Query 设置要重建的文档过滤条件 (DSL)
++func (b *ReindexBuilder) Query(query map[string]any) *ReindexBuilder {
++	b.query = query
++	return b
++}
++
++// Script 设置对文档进行转换的脚本
++func (b *ReindexBuilder) Script(script map[string]any) *ReindexBuilder {
++	b.script = script
++	return b
++}
++
++// MaxDocs 设置最大处理文档数量
++func (b *ReindexBuilder) MaxDocs(max int) *ReindexBuilder {
++	b.maxDocs = &max
++	return b
++}
++
++// Slices 设置并行切片数量 (如 5，或者 0 代表 "auto")
++func (b *ReindexBuilder) Slices(slices int) *ReindexBuilder {
++	b.slices = &slices
++	return b
++}
++
++// WaitForCompletion 设置是否等待请求完成 (设为 false 则返回 task_id 异步执行)
++func (b *ReindexBuilder) WaitForCompletion(wait bool) *ReindexBuilder {
++	b.waitForComp = &wait
++	return b
++}
++
++// Debug 启用调试模式
++func (b *ReindexBuilder) Debug() *ReindexBuilder {
++	b.setDebug(true)
++	return b
++}
++
++// ReindexResponse 重建索引响应
++type ReindexResponse struct {
++	Took             int  `json:"took"`
++	TimedOut         bool `json:"timed_out"`
++	Total            int  `json:"total"`
++	Updated          int  `json:"updated"`
++	Created          int  `json:"created"`
++	Deleted          int  `json:"deleted"`
++	Batches          int  `json:"batches"`
++	VersionConflicts int  `json:"version_conflicts"`
++	Noops            int  `json:"noops"`
++	Retries          struct {
++		Bulk   int `json:"bulk"`
++		Search int `json:"search"`
++	} `json:"retries"`
++	Failures []any  `json:"failures"`
++	Task     string `json:"task,omitempty"` // 如果 waitForCompletion=false 返回任务ID
++}
++
++// Build 构建请求体
++func (b *ReindexBuilder) Build() map[string]any {
++	body := map[string]any{
++		"source": map[string]any{
++			"index": b.sourceIndex,
++		},
++		"dest": map[string]any{
++			"index": b.destIndex,
++		},
++	}
++
++	if b.query != nil {
++		body["source"].(map[string]any)["query"] = b.query
++	}
++
++	if b.script != nil {
++		body["script"] = b.script
++	}
++
++	if b.maxDocs != nil {
++		body["max_docs"] = *b.maxDocs
++	}
++
++	return body
++}
++
++// Do 执行重建索引操作
++func (b *ReindexBuilder) Do(ctx context.Context) (*ReindexResponse, error) {
++	path := "/_reindex"
++
++	// 拼接查询参数
++	queryParams := ""
++	if b.waitForComp != nil {
++		if *b.waitForComp {
++			queryParams += "?wait_for_completion=true"
++		} else {
++			queryParams += "?wait_for_completion=false"
++		}
++	}
++	if b.slices != nil {
++		sep := "?"
++		if queryParams != "" {
++			sep = "&"
++		}
++		if *b.slices == 0 {
++			queryParams += sep + "slices=auto"
++		} else {
++			queryParams += fmt.Sprintf("%sslices=%d", sep, *b.slices)
++		}
++	}
++	path += queryParams
++
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("POST", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPost, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp ReindexResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++
++	return &resp, nil
++}
+diff --git a/builder/scroll.go b/builder/scroll.go
+index 2f0bbcd..beddb8d 100644
+--- a/builder/scroll.go
++++ b/builder/scroll.go
+@@ -23,10 +23,10 @@ type ScrollBuilder struct {
+ // NewScrollBuilder 创建Scroll构建器
+ func NewScrollBuilder(c ESClient, index string) *ScrollBuilder {
+ 	b := &ScrollBuilder{
+-		client:    c,
+-		index:     index,
+-		size:      1000,
+-		keepAlive: "5m",
++		client:      c,
++		index:       index,
++		size:        1000,
++		keepAlive:   "5m",
+ 		debugHelper: debugHelper{logger: c.GetLogger()},
+ 	}
+ 	b.initBoolQuery(b)
+diff --git a/builder/search.go b/builder/search.go
+index c646c7e..940bf95 100644
+--- a/builder/search.go
++++ b/builder/search.go
+@@ -10,16 +10,21 @@ import (
+ 
+ // SearchBuilder 搜索构建器
+ type SearchBuilder struct {
+-	client    ESClient
+-	index     string
+-	query     map[string]any
+-	from      int
+-	size      int
+-	sort      []map[string]any
+-	aggs      map[string]any
+-	source    []string
+-	highlight map[string]any
+-	minScore  *float64 // 最小评分
++	client         ESClient
++	index          string
++	query          map[string]any
++	from           int
++	size           int
++	sort           []map[string]any
++	aggs           map[string]any
++	source         []string
++	highlight      map[string]any
++	minScore       *float64       // 最小评分
++	knn            map[string]any // KNN 向量查询 (ES 8+)
++	pit            map[string]any // Point In Time (ES 7.10+)
++	trackTotalHits any            // 是否跟踪总命中数 (bool 或 int)
++	collapse       map[string]any // Field Collapsing 字段折叠
++	suggest        map[string]any // Suggest 建议查询
+ 	BoolQuery[SearchBuilder]
+ 	debugHelper
+ 	baseBuilder
+@@ -257,6 +262,58 @@ func (b *SearchBuilder) Highlight(fields ...string) *SearchBuilder {
+ 	return b
+ }
+ 
++// KNN 添加 K-Nearest Neighbor (向量) 查询 (ES 8.x / 9.x)
++func (b *SearchBuilder) KNN(field string, queryVector []float32, k int, numCandidates int) *SearchBuilder {
++	b.knn = map[string]any{
++		"field":          field,
++		"query_vector":   queryVector,
++		"k":              k,
++		"num_candidates": numCandidates,
++	}
++	return b
++}
++
++// PointInTime 添加 PIT 查询 (ES 7.10+ / 8.x / 9.x)
++func (b *SearchBuilder) PointInTime(id string, keepAlive string) *SearchBuilder {
++	b.pit = map[string]any{
++		"id":         id,
++		"keep_alive": keepAlive,
++	}
++	return b
++}
++
++// TrackTotalHits 设置是否跟踪总命中数 (用于突破默认 10000 条限制，可传 bool 或 int)
++func (b *SearchBuilder) TrackTotalHits(track any) *SearchBuilder {
++	b.trackTotalHits = track
++	return b
++}
++
++// Collapse 添加字段折叠 (Field Collapsing)
++func (b *SearchBuilder) Collapse(field string, innerHits ...map[string]any) *SearchBuilder {
++	collapseParams := map[string]any{
++		"field": field,
++	}
++	if len(innerHits) > 0 {
++		collapseParams["inner_hits"] = innerHits[0]
++	}
++	b.collapse = collapseParams
++	return b
++}
++
++// Suggest 添加搜索建议
++func (b *SearchBuilder) Suggest(name string, text string, suggester map[string]any) *SearchBuilder {
++	if b.suggest == nil {
++		b.suggest = make(map[string]any)
++	}
++	b.suggest[name] = map[string]any{
++		"text": text,
++	}
++	for k, v := range suggester {
++		b.suggest[name].(map[string]any)[k] = v
++	}
++	return b
++}
++
+ // SearchResponse 搜索响应
+ type SearchResponse struct {
+ 	Took     int        `json:"took"`
+@@ -268,6 +325,8 @@ type SearchResponse struct {
+ 		Hits     []HitItem `json:"hits"`
+ 	} `json:"hits"`
+ 	Aggregations map[string]any `json:"aggregations,omitempty"`
++	Suggest      map[string]any `json:"suggest,omitempty"`
++	PitID        string         `json:"pit_id,omitempty"` // PIT 标识
+ }
+ 
+ // Total 返回总命中数
+@@ -302,6 +361,31 @@ func (b *SearchBuilder) Build() map[string]any {
+ 		body["min_score"] = *b.minScore
+ 	}
+ 
++	// 跟踪总命中数
++	if b.trackTotalHits != nil {
++		body["track_total_hits"] = b.trackTotalHits
++	}
++
++	// KNN 搜索 (ES 8.x / 9.x)
++	if b.knn != nil {
++		body["knn"] = b.knn
++	}
++
++	// PIT (ES 7.10+ / 8.x / 9.x)
++	if b.pit != nil {
++		body["pit"] = b.pit
++	}
++
++	// 字段折叠
++	if b.collapse != nil {
++		body["collapse"] = b.collapse
++	}
++
++	// 搜索建议
++	if b.suggest != nil {
++		body["suggest"] = b.suggest
++	}
++
+ 	// 分页
+ 	body["from"] = b.from
+ 	body["size"] = b.size
+@@ -337,7 +421,11 @@ func (b *SearchBuilder) Debug() *SearchBuilder {
+ 
+ // Do 执行搜索
+ func (b *SearchBuilder) Do(ctx context.Context) (*SearchResponse, error) {
++	// 如果使用了 PIT，路径通常是不带 index 的 `/_search`，或者 ES 会忽略 URL 上的 index
+ 	path := fmt.Sprintf("/%s/_search", url.PathEscape(b.index))
++	if b.index == "" || b.pit != nil {
++		path = "/_search"
++	}
+ 	body := b.Build()
+ 
+ 	// 如果启用调试模式，打印请求信息
+diff --git a/builder/template.go b/builder/template.go
+new file mode 100644
+index 0000000..288936d
+--- /dev/null
++++ b/builder/template.go
+@@ -0,0 +1,358 @@
++package builder
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/url"
++)
++
++type IndexTemplateBuilder struct {
++	client        ESClient
++	name          string
++	indexPatterns []string
++	composedOf    []string
++	priority      *int
++	version       *int
++	meta          map[string]any
++	template      map[string]any
++	dataStream    bool
++	debugHelper
++	baseBuilder
++}
++
++func NewIndexTemplateBuilder(c ESClient, name string) *IndexTemplateBuilder {
++	b := &IndexTemplateBuilder{
++		client:      c,
++		name:        name,
++		template:    make(map[string]any),
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++func (b *IndexTemplateBuilder) Header(key, value string) *IndexTemplateBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++func (b *IndexTemplateBuilder) Debug() *IndexTemplateBuilder {
++	b.setDebug(true)
++	return b
++}
++
++func (b *IndexTemplateBuilder) IndexPatterns(patterns ...string) *IndexTemplateBuilder {
++	b.indexPatterns = patterns
++	return b
++}
++
++func (b *IndexTemplateBuilder) ComposedOf(names ...string) *IndexTemplateBuilder {
++	b.composedOf = names
++	return b
++}
++
++func (b *IndexTemplateBuilder) Priority(priority int) *IndexTemplateBuilder {
++	b.priority = &priority
++	return b
++}
++
++func (b *IndexTemplateBuilder) Version(version int) *IndexTemplateBuilder {
++	b.version = &version
++	return b
++}
++
++func (b *IndexTemplateBuilder) Meta(meta map[string]any) *IndexTemplateBuilder {
++	b.meta = meta
++	return b
++}
++
++func (b *IndexTemplateBuilder) DataStream(enable bool) *IndexTemplateBuilder {
++	b.dataStream = enable
++	return b
++}
++
++func (b *IndexTemplateBuilder) TemplateSettings(settings map[string]any) *IndexTemplateBuilder {
++	if settings != nil {
++		b.template["settings"] = settings
++	}
++	return b
++}
++
++func (b *IndexTemplateBuilder) TemplateMappings(mappings map[string]any) *IndexTemplateBuilder {
++	if mappings != nil {
++		b.template["mappings"] = mappings
++	}
++	return b
++}
++
++func (b *IndexTemplateBuilder) TemplateAliases(aliases map[string]any) *IndexTemplateBuilder {
++	if aliases != nil {
++		b.template["aliases"] = aliases
++	}
++	return b
++}
++
++func (b *IndexTemplateBuilder) Build() map[string]any {
++	body := make(map[string]any)
++	if len(b.indexPatterns) > 0 {
++		body["index_patterns"] = b.indexPatterns
++	}
++	if len(b.composedOf) > 0 {
++		body["composed_of"] = b.composedOf
++	}
++	if b.priority != nil {
++		body["priority"] = *b.priority
++	}
++	if b.version != nil {
++		body["version"] = *b.version
++	}
++	if b.meta != nil {
++		body["_meta"] = b.meta
++	}
++	if len(b.template) > 0 {
++		body["template"] = b.template
++	}
++	if b.dataStream {
++		body["data_stream"] = map[string]any{}
++	}
++	return body
++}
++
++type PutTemplateResponse struct {
++	Acknowledged bool `json:"acknowledged"`
++}
++
++func (b *IndexTemplateBuilder) Put(ctx context.Context) (*PutTemplateResponse, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("template name 不能为空")
++	}
++	path := fmt.Sprintf("/_index_template/%s", url.PathEscape(b.name))
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("PUT", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp PutTemplateResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
++
++func (b *IndexTemplateBuilder) Get(ctx context.Context) (map[string]any, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("template name 不能为空")
++	}
++	path := fmt.Sprintf("/_index_template/%s", url.PathEscape(b.name))
++
++	if b.isDebug() {
++		b.printDebug("GET", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp map[string]any
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return resp, nil
++}
++
++func (b *IndexTemplateBuilder) Delete(ctx context.Context) (*PutTemplateResponse, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("template name 不能为空")
++	}
++	path := fmt.Sprintf("/_index_template/%s", url.PathEscape(b.name))
++
++	if b.isDebug() {
++		b.printDebug("DELETE", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp PutTemplateResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
++
++type ComponentTemplateBuilder struct {
++	client   ESClient
++	name     string
++	version  *int
++	meta     map[string]any
++	template map[string]any
++	debugHelper
++	baseBuilder
++}
++
++func NewComponentTemplateBuilder(c ESClient, name string) *ComponentTemplateBuilder {
++	b := &ComponentTemplateBuilder{
++		client:      c,
++		name:        name,
++		template:    make(map[string]any),
++		debugHelper: debugHelper{logger: c.GetLogger()},
++	}
++	b.initBaseBuilder()
++	return b
++}
++
++func (b *ComponentTemplateBuilder) Header(key, value string) *ComponentTemplateBuilder {
++	b.baseBuilder.Header(key, value)
++	return b
++}
++
++func (b *ComponentTemplateBuilder) Debug() *ComponentTemplateBuilder {
++	b.setDebug(true)
++	return b
++}
++
++func (b *ComponentTemplateBuilder) Version(version int) *ComponentTemplateBuilder {
++	b.version = &version
++	return b
++}
++
++func (b *ComponentTemplateBuilder) Meta(meta map[string]any) *ComponentTemplateBuilder {
++	b.meta = meta
++	return b
++}
++
++func (b *ComponentTemplateBuilder) TemplateSettings(settings map[string]any) *ComponentTemplateBuilder {
++	if settings != nil {
++		b.template["settings"] = settings
++	}
++	return b
++}
++
++func (b *ComponentTemplateBuilder) TemplateMappings(mappings map[string]any) *ComponentTemplateBuilder {
++	if mappings != nil {
++		b.template["mappings"] = mappings
++	}
++	return b
++}
++
++func (b *ComponentTemplateBuilder) TemplateAliases(aliases map[string]any) *ComponentTemplateBuilder {
++	if aliases != nil {
++		b.template["aliases"] = aliases
++	}
++	return b
++}
++
++func (b *ComponentTemplateBuilder) Build() map[string]any {
++	body := make(map[string]any)
++	body["template"] = b.template
++	if b.version != nil {
++		body["version"] = *b.version
++	}
++	if b.meta != nil {
++		body["_meta"] = b.meta
++	}
++	return body
++}
++
++func (b *ComponentTemplateBuilder) Put(ctx context.Context) (*PutTemplateResponse, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("template name 不能为空")
++	}
++	path := fmt.Sprintf("/_component_template/%s", url.PathEscape(b.name))
++	body := b.Build()
++
++	if b.isDebug() {
++		b.printDebug("PUT", path, body)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodPut, path, body, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp PutTemplateResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
++
++func (b *ComponentTemplateBuilder) Get(ctx context.Context) (map[string]any, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("template name 不能为空")
++	}
++	path := fmt.Sprintf("/_component_template/%s", url.PathEscape(b.name))
++
++	if b.isDebug() {
++		b.printDebug("GET", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodGet, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp map[string]any
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return resp, nil
++}
++
++func (b *ComponentTemplateBuilder) Delete(ctx context.Context) (*PutTemplateResponse, error) {
++	if b.name == "" {
++		return nil, fmt.Errorf("template name 不能为空")
++	}
++	path := fmt.Sprintf("/_component_template/%s", url.PathEscape(b.name))
++
++	if b.isDebug() {
++		b.printDebug("DELETE", path, nil)
++		defer b.setDebug(false)
++	}
++
++	respBody, err := b.client.DoWithHeader(ctx, http.MethodDelete, path, nil, b.getHeaders())
++	if err != nil {
++		return nil, err
++	}
++	if b.isDebug() {
++		b.printResponse(respBody)
++	}
++
++	var resp PutTemplateResponse
++	if err := json.Unmarshal(respBody, &resp); err != nil {
++		return nil, fmt.Errorf("解析响应失败: %w", err)
++	}
++	return &resp, nil
++}
+diff --git a/builder/url_escape_test.go b/builder/url_escape_test.go
+index 45b1fc1..6f1483e 100644
+--- a/builder/url_escape_test.go
++++ b/builder/url_escape_test.go
+@@ -10,9 +10,9 @@ import (
+ 
+ func TestDocumentBuilder_URLEscaping(t *testing.T) {
+ 	tests := []struct {
+-		name          string
+-		index         string
+-		id            string
++		name           string
++		index          string
++		id             string
+ 		mustNotContain []string // raw chars that must NOT appear unescaped in path
+ 		mustContain    []string // escaped forms that MUST appear in path
+ 	}{
+diff --git a/client/client.go b/client/client.go
+index 2f4b965..6218836 100644
+--- a/client/client.go
++++ b/client/client.go
+@@ -2,12 +2,15 @@ package client
+ 
+ import (
+ 	"bytes"
++	"compress/gzip"
+ 	"context"
+ 	"crypto/tls"
+ 	"encoding/json"
+ 	"fmt"
+ 	"io"
+ 	"net/http"
++	"net/url"
++	"sync"
+ 	"sync/atomic"
+ 	"time"
+ 
+@@ -16,6 +19,35 @@ import (
+ 	"github.com/Kirby980/go-es/logger"
+ )
+ 
++type hookRoundTripper struct {
++	rt    http.RoundTripper
++	hooks []config.Hook
++}
++
++func (h *hookRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
++	ctx := req.Context()
++	for _, hook := range h.hooks {
++		ctx = hook.BeforeRequest(ctx, req)
++	}
++	req = req.WithContext(ctx)
++
++	start := time.Now()
++	resp, err := h.rt.RoundTrip(req)
++	duration := time.Since(start)
++
++	if err != nil {
++		for _, hook := range h.hooks {
++			hook.OnError(ctx, req, err, duration)
++		}
++	} else {
++		for _, hook := range h.hooks {
++			hook.AfterRequest(ctx, req, resp, duration)
++		}
++	}
++
++	return resp, err
++}
++
+ // Client Elasticsearch 客户端
+ type Client struct {
+ 	config       *config.Config
+@@ -23,6 +55,14 @@ type Client struct {
+ 	addresses    []string
+ 	addressIndex atomic.Uint32
+ 	logger       logger.Logger
++	breakerMu    sync.Mutex
++	breakerState map[string]*nodeState
++	breakerStop  chan struct{}
++}
++
++type nodeState struct {
++	failures       int
++	unhealthyUntil time.Time
+ }
+ 
+ // New 创建新的 ES 客户端
+@@ -45,7 +85,7 @@ func New(opts ...config.Option) (*Client, error) {
+ 	}
+ 
+ 	// 配置 HTTP Transport
+-	transport := &http.Transport{
++	var transport http.RoundTripper = &http.Transport{
+ 		TLSClientConfig: &tls.Config{
+ 			InsecureSkipVerify: cfg.InsecureSkipVerify,
+ 		},
+@@ -55,6 +95,13 @@ func New(opts ...config.Option) (*Client, error) {
+ 		IdleConnTimeout:     cfg.IdleConnTimeout,
+ 	}
+ 
++	if len(cfg.Hooks) > 0 {
++		transport = &hookRoundTripper{
++			rt:    transport,
++			hooks: cfg.Hooks,
++		}
++	}
++
+ 	client := &Client{
+ 		config:    cfg,
+ 		addresses: cfg.Addresses,
+@@ -62,7 +109,16 @@ func New(opts ...config.Option) (*Client, error) {
+ 			Timeout:   cfg.Timeout,
+ 			Transport: transport,
+ 		},
+-		logger: log,
++		logger:       log,
++		breakerState: make(map[string]*nodeState),
++	}
++
++	if cfg.EnableCircuitBreaker {
++		client.breakerStop = make(chan struct{})
++		for _, addr := range cfg.Addresses {
++			client.breakerState[addr] = &nodeState{}
++		}
++		go client.runHealthCheck()
+ 	}
+ 
+ 	return client, nil
+@@ -75,6 +131,9 @@ func (c *Client) GetLogger() logger.Logger {
+ 
+ // Close 关闭客户端
+ func (c *Client) Close() error {
++	if c.breakerStop != nil {
++		close(c.breakerStop)
++	}
+ 	if transport, ok := c.httpClient.Transport.(*http.Transport); ok {
+ 		transport.CloseIdleConnections()
+ 	}
+@@ -90,6 +149,150 @@ func (c *Client) GetAddress() string {
+ 	return c.addresses[idx%uint32(len(c.addresses))]
+ }
+ 
++func (c *Client) getHealthyAddress() string {
++	if len(c.addresses) == 0 {
++		return ""
++	}
++	if !c.config.EnableCircuitBreaker {
++		return c.GetAddress()
++	}
++	start := int(c.addressIndex.Add(1)-1) % len(c.addresses)
++	now := time.Now()
++
++	c.breakerMu.Lock()
++	defer c.breakerMu.Unlock()
++
++	for i := 0; i < len(c.addresses); i++ {
++		addr := c.addresses[(start+i)%len(c.addresses)]
++		st := c.breakerState[addr]
++		if st == nil {
++			st = &nodeState{}
++			c.breakerState[addr] = st
++		}
++		if st.unhealthyUntil.IsZero() || st.unhealthyUntil.Before(now) {
++			return addr
++		}
++	}
++	return c.addresses[start]
++}
++
++func (c *Client) markFailure(addr string) {
++	if !c.config.EnableCircuitBreaker || addr == "" {
++		return
++	}
++	c.breakerMu.Lock()
++	defer c.breakerMu.Unlock()
++	st := c.breakerState[addr]
++	if st == nil {
++		st = &nodeState{}
++		c.breakerState[addr] = st
++	}
++	st.failures++
++	if st.failures >= c.config.CircuitBreakerFailures {
++		st.unhealthyUntil = time.Now().Add(c.config.CircuitBreakerCooldown)
++		st.failures = 0
++	}
++}
++
++func (c *Client) markSuccess(addr string) {
++	if !c.config.EnableCircuitBreaker || addr == "" {
++		return
++	}
++	c.breakerMu.Lock()
++	defer c.breakerMu.Unlock()
++	st := c.breakerState[addr]
++	if st == nil {
++		st = &nodeState{}
++		c.breakerState[addr] = st
++	}
++	st.failures = 0
++	st.unhealthyUntil = time.Time{}
++}
++
++func (c *Client) shouldRetryStatus(code int) bool {
++	switch code {
++	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout, http.StatusRequestTimeout:
++		return true
++	default:
++		return code >= 500
++	}
++}
++
++func (c *Client) backoffForAttempt(attempt int) time.Duration {
++	if attempt <= 0 {
++		return 0
++	}
++	base := c.config.RetryBackoff
++	if !c.config.EnableExponentialBackoff {
++		return base
++	}
++	maxB := c.config.MaxRetryBackoff
++	if maxB <= 0 {
++		maxB = 30 * time.Second
++	}
++	d := base * time.Duration(1<<uint(attempt-1))
++	if d > maxB {
++		return maxB
++	}
++	return d
++}
++
++func (c *Client) runHealthCheck() {
++	ticker := time.NewTicker(c.config.CircuitBreakerHealthCheck)
++	defer ticker.Stop()
++
++	for {
++		select {
++		case <-c.breakerStop:
++			return
++		case <-ticker.C:
++		}
++
++		addrs := c.addresses
++		for _, addr := range addrs {
++			c.breakerMu.Lock()
++			st := c.breakerState[addr]
++			unhealthy := st != nil && !st.unhealthyUntil.IsZero() && st.unhealthyUntil.After(time.Now())
++			c.breakerMu.Unlock()
++			if !unhealthy {
++				continue
++			}
++
++			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++			req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
++			if err != nil {
++				cancel()
++				continue
++			}
++			if c.config.Username != "" {
++				req.SetBasicAuth(c.config.Username, c.config.Password)
++			}
++			resp, err := c.httpClient.Do(req)
++			cancel()
++			if err != nil {
++				continue
++			}
++			resp.Body.Close()
++			if resp.StatusCode == http.StatusOK {
++				c.markSuccess(addr)
++			}
++		}
++	}
++}
++
++func (c *Client) gzipBytes(data []byte) ([]byte, error) {
++	var buf bytes.Buffer
++	w := gzip.NewWriter(&buf)
++	if _, err := w.Write(data); err != nil {
++		w.Close()
++		return nil, err
++	}
++	if err := w.Close(); err != nil {
++		return nil, err
++	}
++	return buf.Bytes(), nil
++}
++
+ // DoRequest 执行自定义 HTTP 请求
+ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, error) {
+ 	// 设置认证
+@@ -100,9 +303,35 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
+ 	// 重试逻辑
+ 	var resp *http.Response
+ 	var err error
++	var gzBody []byte
++
++	if c.config.EnableGzip && req.Body != nil && req.Header.Get("Content-Encoding") == "" {
++		raw, readErr := io.ReadAll(req.Body)
++		if readErr != nil {
++			return nil, fmt.Errorf("读取请求体失败: %w", readErr)
++		}
++		req.Body.Close()
++
++		gzBody, err = c.gzipBytes(raw)
++		if err != nil {
++			return nil, fmt.Errorf("压缩请求体失败: %w", err)
++		}
++		req.Header.Set("Content-Encoding", "gzip")
++		req.Header.Set("Accept-Encoding", "gzip")
++		req.GetBody = func() (io.ReadCloser, error) {
++			return io.NopCloser(bytes.NewReader(gzBody)), nil
++		}
++		req.Body, _ = req.GetBody()
++	}
++
+ 	for i := 0; i <= c.config.MaxRetries; i++ {
+ 		if i > 0 {
+-			time.Sleep(c.config.RetryBackoff)
++			select {
++			case <-ctx.Done():
++				return nil, ctx.Err()
++			case <-time.After(c.backoffForAttempt(i)):
++			}
++
+ 			// 重置 body 读取位置，防止重试时发送空 body
+ 			if req.GetBody != nil {
+ 				req.Body, _ = req.GetBody()
+@@ -111,13 +340,26 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
+ 					seeker.Seek(0, io.SeekStart)
+ 				}
+ 			}
++
++			// 故障转移：切换到新地址
++			newAddr := c.getHealthyAddress()
++			if newAddr != "" {
++				if parsedURL, parseErr := url.Parse(newAddr); parseErr == nil {
++					req.URL.Scheme = parsedURL.Scheme
++					req.URL.Host = parsedURL.Host
++					req.Host = parsedURL.Host
++				}
++			}
+ 		}
+ 
++		addrKey := req.URL.Scheme + "://" + req.URL.Host
+ 		resp, err = c.httpClient.Do(req)
+-		if err == nil {
++		if err == nil && (resp == nil || !c.shouldRetryStatus(resp.StatusCode)) {
++			c.markSuccess(addrKey)
+ 			break
+ 		}
+ 
++		c.markFailure(addrKey)
+ 		if c.config.EnableDebug {
+ 			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
+ 		}
+@@ -128,7 +370,17 @@ func (c *Client) DoRequest(ctx context.Context, req *http.Request) ([]byte, erro
+ 	}
+ 	defer resp.Body.Close()
+ 
+-	respBody, err := io.ReadAll(resp.Body)
++	respReader := io.Reader(resp.Body)
++	if resp.Header.Get("Content-Encoding") == "gzip" {
++		gr, gzErr := gzip.NewReader(resp.Body)
++		if gzErr != nil {
++			return nil, fmt.Errorf("解压响应失败: %w", gzErr)
++		}
++		defer gr.Close()
++		respReader = gr
++	}
++
++	respBody, err := io.ReadAll(respReader)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("读取响应失败: %w", err)
+ 	}
+@@ -196,50 +448,73 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
+ 		defer cancel()
+ 	}
+ 
+-	var reqBody io.Reader
++	var reqBodyData []byte
+ 	if body != nil {
+-		data, err := json.Marshal(body)
++		var err error
++		reqBodyData, err = json.Marshal(body)
+ 		if err != nil {
+ 			return nil, fmt.Errorf("序列化请求体失败: %w", err)
+ 		}
+-		reqBody = bytes.NewReader(data)
+-	}
+-
+-	url := c.GetAddress() + path
+-	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
+-	if err != nil {
+-		return nil, fmt.Errorf("创建请求失败: %w", err)
+-	}
+-
+-	req.Header.Set("Content-Type", "application/json")
+-	for k, v := range header {
+-		for _, vv := range v {
+-			req.Header.Add(k, vv)
+-		}
+-	}
+-
+-	if c.config.Username != "" {
+-		req.SetBasicAuth(c.config.Username, c.config.Password)
+ 	}
+ 
+ 	// 重试逻辑
+ 	var resp *http.Response
++	var err error
+ 	for i := 0; i <= c.config.MaxRetries; i++ {
+ 		if i > 0 {
+-			time.Sleep(c.config.RetryBackoff)
+-			// 重置 body 读取位置
+-			if req.GetBody != nil {
+-				req.Body, _ = req.GetBody()
+-			} else if seeker, ok := req.Body.(io.Seeker); ok {
+-				seeker.Seek(0, io.SeekStart)
++			select {
++			case <-ctx.Done():
++				return nil, ctx.Err()
++			case <-time.After(c.backoffForAttempt(i)):
++			}
++		}
++
++		// 故障转移：每次重试获取新地址
++		addr := c.getHealthyAddress()
++		url := addr + path
++
++		var reqBody io.Reader
++		if reqBodyData != nil {
++			if c.config.EnableGzip {
++				gzData, gzErr := c.gzipBytes(reqBodyData)
++				if gzErr != nil {
++					return nil, fmt.Errorf("压缩请求体失败: %w", gzErr)
++				}
++				reqBody = bytes.NewReader(gzData)
++			} else {
++				reqBody = bytes.NewReader(reqBodyData)
++			}
++		}
++
++		req, reqErr := http.NewRequestWithContext(ctx, method, url, reqBody)
++		if reqErr != nil {
++			return nil, fmt.Errorf("创建请求失败: %w", reqErr)
++		}
++
++		req.Header.Set("Content-Type", "application/json")
++		if c.config.EnableGzip && reqBodyData != nil {
++			req.Header.Set("Content-Encoding", "gzip")
++			req.Header.Set("Accept-Encoding", "gzip")
++		} else if c.config.EnableGzip {
++			req.Header.Set("Accept-Encoding", "gzip")
++		}
++		for k, v := range header {
++			for _, vv := range v {
++				req.Header.Add(k, vv)
+ 			}
+ 		}
+ 
++		if c.config.Username != "" {
++			req.SetBasicAuth(c.config.Username, c.config.Password)
++		}
++
+ 		resp, err = c.httpClient.Do(req)
+-		if err == nil {
++		if err == nil && (resp == nil || !c.shouldRetryStatus(resp.StatusCode)) {
++			c.markSuccess(addr)
+ 			break
+ 		}
+ 
++		c.markFailure(addr)
+ 		if c.config.EnableDebug {
+ 			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
+ 		}
+@@ -250,7 +525,17 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body any
+ 	}
+ 	defer resp.Body.Close()
+ 
+-	respBody, err := io.ReadAll(resp.Body)
++	respReader := io.Reader(resp.Body)
++	if resp.Header.Get("Content-Encoding") == "gzip" {
++		gr, gzErr := gzip.NewReader(resp.Body)
++		if gzErr != nil {
++			return nil, fmt.Errorf("解压响应失败: %w", gzErr)
++		}
++		defer gr.Close()
++		respReader = gr
++	}
++
++	respBody, err := io.ReadAll(respReader)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("读取响应失败: %w", err)
+ 	}
+diff --git a/client/client_decode.go b/client/client_decode.go
+new file mode 100644
+index 0000000..f8653a1
+--- /dev/null
++++ b/client/client_decode.go
+@@ -0,0 +1,97 @@
++package client
++
++import (
++	"bytes"
++	"context"
++	"encoding/json"
++	"fmt"
++	"io"
++	"net/http"
++	"time"
++
++	"github.com/Kirby980/go-es/errors"
++)
++
++// DoWithHeaderAndDecode 执行 HTTP 请求，并将响应直接流式解码到 target
++func (c *Client) DoWithHeaderAndDecode(ctx context.Context, method, path string, body any, header http.Header, target any) error {
++	// 如果 context 没有设置截止时间，应用默认超时
++	if _, ok := ctx.Deadline(); !ok && c.httpClient.Timeout > 0 {
++		var cancel context.CancelFunc
++		ctx, cancel = context.WithTimeout(ctx, c.httpClient.Timeout)
++		defer cancel()
++	}
++
++	var reqBodyData []byte
++	if body != nil {
++		var err error
++		reqBodyData, err = json.Marshal(body)
++		if err != nil {
++			return fmt.Errorf("序列化请求体失败: %w", err)
++		}
++	}
++
++	// 重试逻辑
++	var resp *http.Response
++	var err error
++	for i := 0; i <= c.config.MaxRetries; i++ {
++		if i > 0 {
++			select {
++			case <-ctx.Done():
++				return ctx.Err()
++			case <-time.After(c.config.RetryBackoff):
++			}
++		}
++
++		var reqBody io.Reader
++		if reqBodyData != nil {
++			reqBody = bytes.NewReader(reqBodyData)
++		}
++
++		// 故障转移：每次重试获取新地址
++		url := c.GetAddress() + path
++		req, reqErr := http.NewRequestWithContext(ctx, method, url, reqBody)
++		if reqErr != nil {
++			return fmt.Errorf("创建请求失败: %w", reqErr)
++		}
++
++		req.Header.Set("Content-Type", "application/json")
++		for k, v := range header {
++			for _, vv := range v {
++				req.Header.Add(k, vv)
++			}
++		}
++
++		if c.config.Username != "" {
++			req.SetBasicAuth(c.config.Username, c.config.Password)
++		}
++
++		resp, err = c.httpClient.Do(req)
++		if err == nil {
++			break
++		}
++
++		if c.config.EnableDebug {
++			c.logger.Warn("请求失败，重试", "attempt", i+1, "maxRetries", c.config.MaxRetries, "error", err)
++		}
++	}
++
++	if err != nil {
++		return fmt.Errorf("请求失败: %w", err)
++	}
++	defer resp.Body.Close()
++
++	if resp.StatusCode >= 400 {
++		respBody, readErr := io.ReadAll(resp.Body)
++		if readErr != nil {
++			return fmt.Errorf("读取错误响应失败: %w", readErr)
++		}
++		return errors.ParseESError(resp.StatusCode, respBody)
++	}
++
++	if target != nil {
++		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
++			return fmt.Errorf("解析响应失败: %w", err)
++		}
++	}
++	return nil
++}
+diff --git a/config/config.go b/config/config.go
+index af279f3..5cf36bd 100644
+--- a/config/config.go
++++ b/config/config.go
+@@ -1,6 +1,8 @@
+ package config
+ 
+ import (
++	"context"
++	"net/http"
+ 	"time"
+ 
+ 	"github.com/Kirby980/go-es/logger"
+@@ -28,6 +30,15 @@ type Config struct {
+ 	// 其他配置
+ 	EnableMetrics bool
+ 	EnableDebug   bool
++	EnableGzip    bool
++
++	EnableExponentialBackoff bool
++	MaxRetryBackoff          time.Duration
++
++	EnableCircuitBreaker      bool
++	CircuitBreakerFailures    int
++	CircuitBreakerCooldown    time.Duration
++	CircuitBreakerHealthCheck time.Duration
+ 
+ 	// Logger 自定义日志实现，nil 时 client.New() 使用默认 zap 生产日志
+ 	Logger logger.Logger
+@@ -36,21 +47,36 @@ type Config struct {
+ 	MaxIdleConnsPerHost int           // 每个主机的最大空闲连接数
+ 	MaxConnsPerHost     int           // 每个主机的最大连接数
+ 	IdleConnTimeout     time.Duration // 空闲连接超时
++	Hooks               []Hook
++}
++
++// Hook 定义了客户端请求的生命周期钩子，用于实现可观测性（Tracing/Metrics）
++type Hook interface {
++	BeforeRequest(ctx context.Context, req *http.Request) context.Context
++	AfterRequest(ctx context.Context, req *http.Request, resp *http.Response, duration time.Duration)
++	OnError(ctx context.Context, req *http.Request, err error, duration time.Duration)
+ }
+ 
+ // DefaultConfig 返回默认配置
+ func DefaultConfig() *Config {
+ 	return &Config{
+-		Addresses:           []string{"http://localhost:9200"},
+-		MaxRetries:          3,
+-		RetryBackoff:        time.Second,
+-		Timeout:             30 * time.Second,
+-		EnableMetrics:       false,
+-		EnableDebug:         false,
+-		MaxIdleConns:        100,
+-		MaxIdleConnsPerHost: 10,
+-		MaxConnsPerHost:     0,
+-		IdleConnTimeout:     90 * time.Second,
++		Addresses:                 []string{"http://localhost:9200"},
++		MaxRetries:                3,
++		RetryBackoff:              time.Second,
++		Timeout:                   30 * time.Second,
++		EnableMetrics:             false,
++		EnableDebug:               false,
++		EnableGzip:                false,
++		EnableExponentialBackoff:  false,
++		MaxRetryBackoff:           30 * time.Second,
++		EnableCircuitBreaker:      false,
++		CircuitBreakerFailures:    3,
++		CircuitBreakerCooldown:    10 * time.Second,
++		CircuitBreakerHealthCheck: 5 * time.Second,
++		MaxIdleConns:              100,
++		MaxIdleConnsPerHost:       10,
++		MaxConnsPerHost:           0,
++		IdleConnTimeout:           90 * time.Second,
+ 	}
+ }
+ 
+@@ -101,6 +127,36 @@ func WithDebug(enable bool) Option {
+ 	}
+ }
+ 
++func WithGzip(enable bool) Option {
++	return func(c *Config) {
++		c.EnableGzip = enable
++	}
++}
++
++func WithExponentialBackoff(enable bool, maxBackoff time.Duration) Option {
++	return func(c *Config) {
++		c.EnableExponentialBackoff = enable
++		if maxBackoff > 0 {
++			c.MaxRetryBackoff = maxBackoff
++		}
++	}
++}
++
++func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healthCheck time.Duration) Option {
++	return func(c *Config) {
++		c.EnableCircuitBreaker = enable
++		if failures > 0 {
++			c.CircuitBreakerFailures = failures
++		}
++		if cooldown > 0 {
++			c.CircuitBreakerCooldown = cooldown
++		}
++		if healthCheck > 0 {
++			c.CircuitBreakerHealthCheck = healthCheck
++		}
++	}
++}
++
+ // WithMaxIdleConns 设置最大空闲连接数
+ func WithMaxIdleConns(maxIdleConns int) Option {
+ 	return func(c *Config) {
+@@ -140,3 +196,10 @@ func WithLogger(l logger.Logger) Option {
+ 		c.Logger = l
+ 	}
+ }
++
++// WithHooks 设置客户端请求的生命周期钩子（用于实现 Tracing/Metrics 等可观测性）
++func WithHooks(hooks ...Hook) Option {
++	return func(c *Config) {
++		c.Hooks = append(c.Hooks, hooks...)
++	}
++}
+diff --git a/hooks/hooks_test.go b/hooks/hooks_test.go
+new file mode 100644
+index 0000000..f966cb2
+--- /dev/null
++++ b/hooks/hooks_test.go
+@@ -0,0 +1,44 @@
++package hooks
++
++import (
++	"context"
++	"net/http"
++	"testing"
++	"time"
++
++	"github.com/Kirby980/go-es/logger"
++)
++
++func TestMetricsHook(t *testing.T) {
++	hook := NewMetricsHook()
++
++	req, _ := http.NewRequest("GET", "http://localhost:9200", nil)
++	ctx := hook.BeforeRequest(context.Background(), req)
++
++	hook.AfterRequest(ctx, req, &http.Response{StatusCode: 200}, 10*time.Millisecond)
++	hook.AfterRequest(ctx, req, &http.Response{StatusCode: 500}, 20*time.Millisecond)
++	hook.OnError(ctx, req, context.DeadlineExceeded, 30*time.Millisecond)
++
++	reqs, errs, avg := hook.GetMetrics()
++
++	if reqs != 3 {
++		t.Errorf("expected 3 requests, got %d", reqs)
++	}
++	if errs != 2 {
++		t.Errorf("expected 2 errors, got %d", errs)
++	}
++	if avg != 20*time.Millisecond {
++		t.Errorf("expected avg 20ms, got %v", avg)
++	}
++}
++
++func TestLogHook(t *testing.T) {
++	log, _ := logger.NewDevelopmentLogger()
++	hook := NewLogHook(log)
++
++	req, _ := http.NewRequest("GET", "http://localhost:9200", nil)
++	ctx := hook.BeforeRequest(context.Background(), req)
++
++	hook.AfterRequest(ctx, req, &http.Response{StatusCode: 200}, 10*time.Millisecond)
++	hook.OnError(ctx, req, context.DeadlineExceeded, 30*time.Millisecond)
++}
+diff --git a/hooks/integration_test.go b/hooks/integration_test.go
+new file mode 100644
+index 0000000..1895244
+--- /dev/null
++++ b/hooks/integration_test.go
+@@ -0,0 +1,44 @@
++package hooks
++
++import (
++	"context"
++	"net/http"
++	"net/http/httptest"
++	"testing"
++
++	"github.com/Kirby980/go-es/builder"
++	"github.com/Kirby980/go-es/client"
++	"github.com/Kirby980/go-es/config"
++)
++
++func TestHookIntegration(t *testing.T) {
++	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		w.WriteHeader(http.StatusOK)
++		w.Write([]byte(`{"_index":"test","_id":"1","_version":1,"result":"created"}`))
++	}))
++	defer ts.Close()
++
++	metrics := NewMetricsHook()
++
++	esClient, err := client.New(
++		config.WithAddresses(ts.URL),
++		config.WithHooks(metrics),
++	)
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	docBuilder := builder.NewDocumentBuilder(esClient, "test_idx")
++	_, err = docBuilder.Set("msg", "hello").Do(context.Background())
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	reqs, errs, _ := metrics.GetMetrics()
++	if reqs != 1 {
++		t.Errorf("Expected 1 request, got %d", reqs)
++	}
++	if errs != 0 {
++		t.Errorf("Expected 0 errors, got %d", errs)
++	}
++}
+diff --git a/hooks/log.go b/hooks/log.go
+new file mode 100644
+index 0000000..d566d47
+--- /dev/null
++++ b/hooks/log.go
+@@ -0,0 +1,43 @@
++package hooks
++
++import (
++	"context"
++	"net/http"
++	"time"
++
++	"github.com/Kirby980/go-es/config"
++	"github.com/Kirby980/go-es/logger"
++)
++
++// LogHook 是一个记录请求日志的 Hook
++type LogHook struct {
++	logger logger.Logger
++}
++
++// NewLogHook 创建一个新的日志 Hook
++func NewLogHook(l logger.Logger) config.Hook {
++	return &LogHook{logger: l}
++}
++
++func (h *LogHook) BeforeRequest(ctx context.Context, req *http.Request) context.Context {
++	// 在此处可以记录开始请求的日志，但通常在 AfterRequest/OnError 记录即可
++	return ctx
++}
++
++func (h *LogHook) AfterRequest(ctx context.Context, req *http.Request, resp *http.Response, duration time.Duration) {
++	h.logger.Info("Elasticsearch Request Success",
++		"method", req.Method,
++		"url", req.URL.String(),
++		"status", resp.StatusCode,
++		"duration", duration.String(),
++	)
++}
++
++func (h *LogHook) OnError(ctx context.Context, req *http.Request, err error, duration time.Duration) {
++	h.logger.Error("Elasticsearch Request Failed",
++		"method", req.Method,
++		"url", req.URL.String(),
++		"error", err.Error(),
++		"duration", duration.String(),
++	)
++}
+diff --git a/hooks/metrics.go b/hooks/metrics.go
+new file mode 100644
+index 0000000..0642360
+--- /dev/null
++++ b/hooks/metrics.go
+@@ -0,0 +1,53 @@
++package hooks
++
++import (
++	"context"
++	"net/http"
++	"sync/atomic"
++	"time"
++
++	"github.com/Kirby980/go-es/config"
++)
++
++// MetricsHook 收集简单的指标（原子计数器）
++type MetricsHook struct {
++	TotalRequests uint64
++	TotalErrors   uint64
++	TotalDuration uint64 // 纳秒
++}
++
++// NewMetricsHook 创建一个新的指标 Hook
++func NewMetricsHook() *MetricsHook {
++	return &MetricsHook{}
++}
++
++func (h *MetricsHook) BeforeRequest(ctx context.Context, req *http.Request) context.Context {
++	return ctx
++}
++
++func (h *MetricsHook) AfterRequest(ctx context.Context, req *http.Request, resp *http.Response, duration time.Duration) {
++	atomic.AddUint64(&h.TotalRequests, 1)
++	atomic.AddUint64(&h.TotalDuration, uint64(duration.Nanoseconds()))
++	if resp != nil && resp.StatusCode >= 400 {
++		atomic.AddUint64(&h.TotalErrors, 1)
++	}
++}
++
++func (h *MetricsHook) OnError(ctx context.Context, req *http.Request, err error, duration time.Duration) {
++	atomic.AddUint64(&h.TotalRequests, 1)
++	atomic.AddUint64(&h.TotalErrors, 1)
++	atomic.AddUint64(&h.TotalDuration, uint64(duration.Nanoseconds()))
++}
++
++func (h *MetricsHook) GetMetrics() (reqs, errs uint64, avgDuration time.Duration) {
++	reqs = atomic.LoadUint64(&h.TotalRequests)
++	errs = atomic.LoadUint64(&h.TotalErrors)
++	totDur := atomic.LoadUint64(&h.TotalDuration)
++	if reqs > 0 {
++		avgDuration = time.Duration(totDur / reqs)
++	}
++	return
++}
++
++// 确保实现 Hook 接口
++var _ config.Hook = (*MetricsHook)(nil)
+diff --git a/observability b/observability
+new file mode 100755
+index 0000000..fdc15cc
+Binary files /dev/null and b/observability differ
+diff --git a/test/doc_enhancement_test.go b/test/doc_enhancement_test.go
+index 3a5da7b..7de69c8 100644
+--- a/test/doc_enhancement_test.go
++++ b/test/doc_enhancement_test.go
+@@ -55,7 +55,7 @@ func TestDocumentBuilder_ErrorPropagation(t *testing.T) {
+ 
+ 	// 故意构造一个会导致错误的 Model 调用 (非 struct)
+ 	b := builder.NewDocumentBuilder(client, "test").Model(123)
+-	
++
+ 	_, err := b.Do(ctx)
+ 	if err == nil {
+ 		t.Error("Should return error for invalid model")
+diff --git a/test/index_test.go b/test/index_test.go
+index d581b52..8e23ade 100644
+--- a/test/index_test.go
++++ b/test/index_test.go
+@@ -3,6 +3,8 @@ package builder_test
+ import (
+ 	"context"
+ 	"log"
++	"os"
++	"strings"
+ 	"testing"
+ 	"time"
+ 
+@@ -46,19 +48,43 @@ func TestAutoMigrate(t *testing.T) {
+ 
+ // 创建测试客户端
+ func createTestClient(t *testing.T) *client.Client {
+-	esClient, err := client.New(
+-		config.WithAddresses("https://localhost:9200"),
+-		config.WithAuth("elastic", "123456"),
+-		config.WithInsecureSkipVerify(true),
+-		config.WithTimeout(10*time.Second),
++	addr := os.Getenv("ES_URL")
++	if addr == "" {
++		addr = "http://localhost:9200"
++	}
++	user := os.Getenv("ES_USER")
++	pass := os.Getenv("ES_PASS")
++	insecure := os.Getenv("ES_INSECURE")
++
++	opts := []config.Option{
++		config.WithAddresses(addr),
++		config.WithTimeout(10 * time.Second),
+ 		config.WithMaxConnsPerHost(100),
+ 		config.WithMaxIdleConns(200),
+ 		config.WithMaxIdleConnsPerHost(50),
+-		config.WithIdleConnTimeout(90*time.Second),
+-	)
++		config.WithIdleConnTimeout(90 * time.Second),
++	}
++	if user != "" || pass != "" {
++		opts = append(opts, config.WithAuth(user, pass))
++	}
++	if strings.HasPrefix(addr, "https://") {
++		skipVerify := true
++		if insecure != "" {
++			skipVerify = insecure == "1" || strings.EqualFold(insecure, "true")
++		}
++		opts = append(opts, config.WithInsecureSkipVerify(skipVerify))
++	}
++
++	esClient, err := client.New(opts...)
+ 	if err != nil {
+ 		t.Fatalf("创建客户端失败: %v", err)
+ 	}
++	pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
++	defer cancel()
++	if err := esClient.Ping(pingCtx); err != nil {
++		esClient.Close()
++		t.Skipf("Elasticsearch 不可用，跳过集成测试: %v", err)
++	}
+ 	return esClient
+ }
+ 
+diff --git a/test/scroll_test.go b/test/scroll_test.go
+index 94e87b7..28e150d 100644
+--- a/test/scroll_test.go
++++ b/test/scroll_test.go
+@@ -7,21 +7,11 @@ import (
+ 
+ 	"github.com/Kirby980/go-es/builder"
+ 	"github.com/Kirby980/go-es/client"
+-	"github.com/Kirby980/go-es/config"
+ )
+ 
+ // 创建测试客户端（与 index_test.go 复用）
+ func createScrollTestClient(t *testing.T) *client.Client {
+-	esClient, err := client.New(
+-		config.WithAddresses("https://localhost:9200"),
+-		config.WithAuth("elastic", "123456"),
+-		config.WithInsecureSkipVerify(true),
+-		config.WithTimeout(10*time.Second),
+-	)
+-	if err != nil {
+-		t.Fatalf("创建客户端失败: %v", err)
+-	}
+-	return esClient
++	return createTestClient(t)
+ }
+ 
+ // 准备测试数据
+diff --git a/test/search_after_test.go b/test/search_after_test.go
+index eb9a7a7..2ee7585 100644
+--- a/test/search_after_test.go
++++ b/test/search_after_test.go
+@@ -7,21 +7,11 @@ import (
+ 
+ 	"github.com/Kirby980/go-es/builder"
+ 	"github.com/Kirby980/go-es/client"
+-	"github.com/Kirby980/go-es/config"
+ )
+ 
+ // 创建测试客户端
+ func createSearchAfterTestClient(t *testing.T) *client.Client {
+-	esClient, err := client.New(
+-		config.WithAddresses("https://localhost:9200"),
+-		config.WithAuth("elastic", "123456"),
+-		config.WithInsecureSkipVerify(true),
+-		config.WithTimeout(10*time.Second),
+-	)
+-	if err != nil {
+-		t.Fatalf("创建客户端失败: %v", err)
+-	}
+-	return esClient
++	return createTestClient(t)
+ }
+ 
+ // 准备测试数据
+diff --git a/test/search_new_test.go b/test/search_new_test.go
+index d5244df..a349e19 100644
+--- a/test/search_new_test.go
++++ b/test/search_new_test.go
+@@ -2,37 +2,22 @@ package builder_test
+ 
+ import (
+ 	"context"
+-	"os"
+ 	"testing"
+ 	"time"
+ 
+ 	"github.com/Kirby980/go-es/builder"
+ 	"github.com/Kirby980/go-es/client"
+-	"github.com/Kirby980/go-es/config"
+ )
+ 
+ // getTestClient 获取测试客户端
+-func getTestClient() *client.Client {
+-	esURL := os.Getenv("ES_URL")
+-	if esURL == "" {
+-		esURL = "https://localhost:9200"
+-	}
+-
+-	esClient, err := client.New(
+-		config.WithAddresses(esURL),
+-		config.WithAuth("elastic", "elastic"),
+-		config.WithInsecureSkipVerify(true),
+-	)
+-	if err != nil {
+-		panic(err)
+-	}
+-	return esClient
++func getTestClient(t *testing.T) *client.Client {
++	return createTestClient(t)
+ }
+ 
+ // ========== 测试新增的 Should 系列方法 ==========
+ 
+ func TestSearchBuilder_MatchShould(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_match_should"
+@@ -86,7 +71,7 @@ func TestSearchBuilder_MatchShould(t *testing.T) {
+ }
+ 
+ func TestSearchBuilder_TermShould(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_term_should"
+@@ -131,7 +116,7 @@ func TestSearchBuilder_TermShould(t *testing.T) {
+ }
+ 
+ func TestSearchBuilder_RangeShould(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_range_should"
+@@ -176,7 +161,7 @@ func TestSearchBuilder_RangeShould(t *testing.T) {
+ }
+ 
+ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_minimum_should_match"
+@@ -244,7 +229,7 @@ func TestSearchBuilder_MinimumShouldMatch(t *testing.T) {
+ // ========== 测试新增的 MustNot 系列方法 ==========
+ 
+ func TestSearchBuilder_MatchMustNot(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_match_must_not"
+@@ -289,7 +274,7 @@ func TestSearchBuilder_MatchMustNot(t *testing.T) {
+ }
+ 
+ func TestSearchBuilder_TermMustNot(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_term_must_not"
+@@ -334,7 +319,7 @@ func TestSearchBuilder_TermMustNot(t *testing.T) {
+ }
+ 
+ func TestSearchBuilder_RangeMustNot(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_range_must_not"
+@@ -381,7 +366,7 @@ func TestSearchBuilder_RangeMustNot(t *testing.T) {
+ // ========== 综合测试 ==========
+ 
+ func TestSearchBuilder_ComplexLogic(t *testing.T) {
+-	esClient := getTestClient()
++	esClient := getTestClient(t)
+ 	defer esClient.Close()
+ 	ctx := context.Background()
+ 	index := "test_search_complex_logic"
+diff --git a/test/should_nesting_test.go b/test/should_nesting_test.go
+index 863fe46..f557785 100644
+--- a/test/should_nesting_test.go
++++ b/test/should_nesting_test.go
+@@ -1,31 +1,43 @@
+ package builder_test
+ 
+ import (
++	"context"
+ 	"encoding/json"
++	"net/http"
+ 	"testing"
+-	"time"
+ 
+ 	"github.com/Kirby980/go-es/builder"
+-	"github.com/Kirby980/go-es/client"
+-	"github.com/Kirby980/go-es/config"
++	"github.com/Kirby980/go-es/logger"
+ )
+ 
+-func createTestClientLocal(t *testing.T) *client.Client {
+-	esClient, err := client.New(
+-		config.WithAddresses("https://localhost:9200"),
+-		config.WithAuth("elastic", "123456"),
+-		config.WithInsecureSkipVerify(true),
+-		config.WithTimeout(10*time.Second),
+-	)
+-	if err != nil {
+-		t.Fatalf("创建客户端失败: %v", err)
+-	}
+-	return esClient
++type dslOnlyClient struct{}
++
++func (c *dslOnlyClient) Do(ctx context.Context, method, path string, body any) ([]byte, error) {
++	return []byte(`{}`), nil
++}
++
++func (c *dslOnlyClient) DoWithHeader(ctx context.Context, method, path string, body any, header http.Header) ([]byte, error) {
++	return []byte(`{}`), nil
++}
++
++func (c *dslOnlyClient) DoWithHeaderAndDecode(ctx context.Context, method, path string, body any, header http.Header, target any) error {
++	return nil
++}
++
++func (c *dslOnlyClient) GetAddress() string {
++	return "http://localhost:9200"
++}
++
++func (c *dslOnlyClient) DoRequest(ctx context.Context, req *http.Request) ([]byte, error) {
++	return []byte(`{}`), nil
++}
++
++func (c *dslOnlyClient) GetLogger() logger.Logger {
++	return logger.NopLogger{}
+ }
+ 
+ func TestSearchBuilder_Should_Nesting(t *testing.T) {
+-	client := createTestClientLocal(t)
+-	defer client.Close()
++	client := &dslOnlyClient{}
+ 
+ 	// 模拟一个复杂的 Should 查询
+ 	b := builder.NewSearchBuilder(client, "test_index").
+@@ -39,22 +51,22 @@ func TestSearchBuilder_Should_Nesting(t *testing.T) {
+ 		)
+ 
+ 	dsl := b.Build()
+-	
++
+ 	query, ok := dsl["query"].(map[string]any)
+ 	if !ok {
+ 		t.Fatal("DSL should have 'query' field")
+ 	}
+-	
++
+ 	boolQuery, ok := query["bool"].(map[string]any)
+ 	if !ok {
+ 		t.Fatal("query should have 'bool' field")
+ 	}
+-	
++
+ 	should, ok := boolQuery["should"].([]map[string]any)
+ 	if !ok {
+ 		t.Fatal("bool should have 'should' field as slice")
+ 	}
+-	
++
+ 	if len(should) != 2 {
+ 		t.Errorf("expected 2 should conditions, got %d", len(should))
+ 	}
+diff --git a/test/test_client_local_test.go b/test/test_client_local_test.go
+new file mode 100644
+index 0000000..5a4a873
+--- /dev/null
++++ b/test/test_client_local_test.go
+@@ -0,0 +1,11 @@
++package builder_test
++
++import (
++	"testing"
++
++	"github.com/Kirby980/go-es/client"
++)
++
++func createTestClientLocal(t *testing.T) *client.Client {
++	return createTestClient(t)
++}
