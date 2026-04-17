@@ -391,6 +391,13 @@ func (b *DocumentBuilder) Get(ctx context.Context) (*GetResponse, error) {
 
 	respBody, err := b.client.Do(ctx, http.MethodGet, path, nil)
 	if err != nil {
+		var esErr *errors.ESError
+		if stderrors.As(err, &esErr) && esErr.IsNotFound() {
+			var resp GetResponse
+			if unmarshalErr := json.Unmarshal(respBody, &resp); unmarshalErr == nil {
+				return &resp, nil
+			}
+		}
 		return nil, err
 	}
 
