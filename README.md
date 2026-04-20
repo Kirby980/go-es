@@ -86,6 +86,20 @@ exists, _ := builder.NewIndexBuilder(esClient, "products").Exists(ctx)
 err = builder.NewIndexBuilder(esClient, "products").Delete(ctx)
 ```
 
+如果你已经有一段完整的 mappings/settings JSON，也可以直接按原始 JSON 创建索引：
+
+```go
+raw := `{
+  "mappings": {
+    "properties": {
+      "id": { "type": "long" },
+      "title": { "type": "text" }
+    }
+  }
+}`
+err := esClient.CreateIndexRaw(ctx, "articles", raw)
+```
+
 #### AutoMigrate
 
 ```go
