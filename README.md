@@ -251,6 +251,25 @@ var results []Product
 resp.Scan(&results)
 ```
 
+#### 复杂查询（Boost 加权与混合 DSL）
+你可以使用 `xxxBoost` 快捷方法设置权重，或通过 `xxxRaw` 方法直接注入原生 DSL：
+```go
+resp, err := builder.NewSearchBuilder(esClient, "articles").
+    Term("status", 2).                                 // Must: status = 2
+    Should(func(b *builder.SearchBuilder) {
+        b.MatchShould("title", "k1 k2").               // Should: title 包含关键字
+          MatchShould("content", "k1 k2").             // Should: content 包含关键字
+          TermsShouldBoost("id", 2.0, 1, 2, 3)         // Should: id 在列表中，且权重为 2.0
+    }).
+    MustRaw(map[string]any{                            // 直接注入复杂的原生 DSL 块
+        "range": map[string]any{"views": map[string]any{"gte": 100}},
+    }).
+    RawQuery(map[string]any{                           // (可选) 覆盖整个 query 节点
+        "match_all": map[string]any{},
+    }).
+    Do(ctx)
+```
+
 [查看完整搜索文档](docs/search.md)
 
 ### 4. 聚合分析
