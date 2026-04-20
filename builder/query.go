@@ -21,11 +21,30 @@ func (q *BoolQuery[T]) initBoolQuery(self *T) {
 
 // ========== Must 条件 ==========
 
+// MustRaw 注入原生的 must 查询 DSL
+func (q *BoolQuery[T]) MustRaw(query map[string]any) *T {
+	q.must = append(q.must, query)
+	return q.self
+}
+
 // Match 添加 match 查询
 func (q *BoolQuery[T]) Match(field string, value any) *T {
 	q.must = append(q.must, map[string]any{
 		"match": map[string]any{
 			field: value,
+		},
+	})
+	return q.self
+}
+
+// MatchBoost 添加带 boost 的 match 查询
+func (q *BoolQuery[T]) MatchBoost(field string, value any, boost float64) *T {
+	q.must = append(q.must, map[string]any{
+		"match": map[string]any{
+			field: map[string]any{
+				"query": value,
+				"boost": boost,
+			},
 		},
 	})
 	return q.self
@@ -43,6 +62,12 @@ func (q *BoolQuery[T]) MatchPhrase(field string, value any) *T {
 
 // ========== Filter 条件 ==========
 
+// FilterRaw 注入原生的 filter 查询 DSL
+func (q *BoolQuery[T]) FilterRaw(query map[string]any) *T {
+	q.filters = append(q.filters, query)
+	return q.self
+}
+
 // Term 添加 term 查询
 func (q *BoolQuery[T]) Term(field string, value any) *T {
 	q.filters = append(q.filters, map[string]any{
@@ -53,11 +78,35 @@ func (q *BoolQuery[T]) Term(field string, value any) *T {
 	return q.self
 }
 
+// TermBoost 添加带 boost 的 term 查询
+func (q *BoolQuery[T]) TermBoost(field string, value any, boost float64) *T {
+	q.filters = append(q.filters, map[string]any{
+		"term": map[string]any{
+			field: map[string]any{
+				"value": value,
+				"boost": boost,
+			},
+		},
+	})
+	return q.self
+}
+
 // Terms 添加 terms 查询
 func (q *BoolQuery[T]) Terms(field string, values ...any) *T {
 	q.filters = append(q.filters, map[string]any{
 		"terms": map[string]any{
 			field: values,
+		},
+	})
+	return q.self
+}
+
+// TermsBoost 添加带 boost 的 terms 查询
+func (q *BoolQuery[T]) TermsBoost(field string, boost float64, values ...any) *T {
+	q.filters = append(q.filters, map[string]any{
+		"terms": map[string]any{
+			field:   values,
+			"boost": boost,
 		},
 	})
 	return q.self
@@ -92,6 +141,12 @@ func (q *BoolQuery[T]) Exists(field string) *T {
 
 // ========== Should 条件 ==========
 
+// ShouldRaw 注入原生的 should 查询 DSL
+func (q *BoolQuery[T]) ShouldRaw(query map[string]any) *T {
+	q.should = append(q.should, query)
+	return q.self
+}
+
 // MatchShould 添加 match 查询到 should 条件
 func (q *BoolQuery[T]) MatchShould(field string, value any) *T {
 	q.should = append(q.should, map[string]any{
@@ -102,11 +157,58 @@ func (q *BoolQuery[T]) MatchShould(field string, value any) *T {
 	return q.self
 }
 
+// MatchShouldBoost 添加带 boost 的 match 查询到 should 条件
+func (q *BoolQuery[T]) MatchShouldBoost(field string, value any, boost float64) *T {
+	q.should = append(q.should, map[string]any{
+		"match": map[string]any{
+			field: map[string]any{
+				"query": value,
+				"boost": boost,
+			},
+		},
+	})
+	return q.self
+}
+
 // TermShould 添加 term 查询到 should 条件
 func (q *BoolQuery[T]) TermShould(field string, value any) *T {
 	q.should = append(q.should, map[string]any{
 		"term": map[string]any{
 			field: value,
+		},
+	})
+	return q.self
+}
+
+// TermShouldBoost 添加带 boost 的 term 查询到 should 条件
+func (q *BoolQuery[T]) TermShouldBoost(field string, value any, boost float64) *T {
+	q.should = append(q.should, map[string]any{
+		"term": map[string]any{
+			field: map[string]any{
+				"value": value,
+				"boost": boost,
+			},
+		},
+	})
+	return q.self
+}
+
+// TermsShould 添加 terms 查询到 should 条件
+func (q *BoolQuery[T]) TermsShould(field string, values ...any) *T {
+	q.should = append(q.should, map[string]any{
+		"terms": map[string]any{
+			field: values,
+		},
+	})
+	return q.self
+}
+
+// TermsShouldBoost 添加带 boost 的 terms 查询到 should 条件
+func (q *BoolQuery[T]) TermsShouldBoost(field string, boost float64, values ...any) *T {
+	q.should = append(q.should, map[string]any{
+		"terms": map[string]any{
+			field:   values,
+			"boost": boost,
 		},
 	})
 	return q.self
@@ -130,6 +232,12 @@ func (q *BoolQuery[T]) RangeShould(field string, gte, lte any) *T {
 }
 
 // ========== Must Not 条件 ==========
+
+// MustNotRaw 注入原生的 must_not 查询 DSL
+func (q *BoolQuery[T]) MustNotRaw(query map[string]any) *T {
+	q.mustNot = append(q.mustNot, query)
+	return q.self
+}
 
 // MustNot 添加 must_not 条件（term 查询）
 func (q *BoolQuery[T]) MustNot(field string, value any) *T {

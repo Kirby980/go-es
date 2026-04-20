@@ -103,6 +103,13 @@ func (b *SearchBuilder) MatchAll() *SearchBuilder {
 	return b
 }
 
+// RawQuery 直接设置自定义查询 DSL (将作为 "query" 字段的值)
+// 注意：如果同时使用了 Match/Term 等链式方法，链式方法生成的 bool 查询将覆盖此 RawQuery
+func (b *SearchBuilder) RawQuery(query map[string]any) *SearchBuilder {
+	b.query = query
+	return b
+}
+
 // MultiMatch 多字段匹配
 func (b *SearchBuilder) MultiMatch(query string, fields ...string) *SearchBuilder {
 	b.must = append(b.must, map[string]any{
