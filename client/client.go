@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -53,11 +54,13 @@ type Client struct {
 	config       *config.Config
 	httpClient   *http.Client
 	addresses    []string
+	addressesMu  sync.RWMutex
 	addressIndex atomic.Uint32
 	logger       logger.Logger
 	breakerMu    sync.Mutex
 	breakerState map[string]*nodeState
 	breakerStop  chan struct{}
+	sniffStop    chan struct{}
 }
 
 type nodeState struct {
@@ -124,6 +127,11 @@ func New(opts ...config.Option) (*Client, error) {
 		go client.runHealthCheck()
 	}
 
+	if cfg.EnableSniff {
+		client.sniffStop = make(chan struct{})
+		go client.runSniff()
+	}
+
 	return client, nil
 }
 
@@ -137,6 +145,9 @@ func (c *Client) Close() error {
 	if c.breakerStop != nil {
 		close(c.breakerStop)
 	}
+	if c.sniffStop != nil {
+		close(c.sniffStop)
+	}
 	if transport, ok := c.httpClient.Transport.(*http.Transport); ok {
 		transport.CloseIdleConnections()
 	}
@@ -145,6 +156,8 @@ func (c *Client) Close() error {
 
 // GetAddress 获取第一个地址
 func (c *Client) GetAddress() string {
+	c.addressesMu.RLock()
+	defer c.addressesMu.RUnlock()
 	if len(c.addresses) == 0 {
 		return ""
 	}
@@ -153,20 +166,24 @@ func (c *Client) GetAddress() string {
 }
 
 func (c *Client) getHealthyAddress() string {
-	if len(c.addresses) == 0 {
+	c.addressesMu.RLock()
+	addrs := append([]string(nil), c.addresses...)
+	c.addressesMu.RUnlock()
+	if len(addrs) == 0 {
 		return ""
 	}
 	if !c.config.EnableCircuitBreaker {
-		return c.GetAddress()
+		idx := c.addressIndex.Add(1) - 1
+		return addrs[idx%uint32(len(addrs))]
 	}
-	start := int(c.addressIndex.Add(1)-1) % len(c.addresses)
+	start := int(c.addressIndex.Add(1)-1) % len(addrs)
 	now := time.Now()
 
 	c.breakerMu.Lock()
 	defer c.breakerMu.Unlock()
 
-	for i := 0; i < len(c.addresses); i++ {
-		addr := c.addresses[(start+i)%len(c.addresses)]
+	for i := 0; i < len(addrs); i++ {
+		addr := addrs[(start+i)%len(addrs)]
 		st := c.breakerState[addr]
 		if st == nil {
 			st = &nodeState{}
@@ -176,7 +193,7 @@ func (c *Client) getHealthyAddress() string {
 			return addr
 		}
 	}
-	return c.addresses[start]
+	return addrs[start]
 }
 
 func (c *Client) markFailure(addr string) {
@@ -251,7 +268,9 @@ func (c *Client) runHealthCheck() {
 		case <-ticker.C:
 		}
 
-		addrs := c.addresses
+		c.addressesMu.RLock()
+		addrs := append([]string(nil), c.addresses...)
+		c.addressesMu.RUnlock()
 		for _, addr := range addrs {
 			c.breakerMu.Lock()
 			st := c.breakerState[addr]
@@ -281,6 +300,108 @@ func (c *Client) runHealthCheck() {
 			}
 		}
 	}
+}
+
+type sniffNodesResponse struct {
+	Nodes map[string]struct {
+		HTTP struct {
+			PublishAddress string `json:"publish_address"`
+		} `json:"http"`
+	} `json:"nodes"`
+}
+
+func (c *Client) runSniff() {
+	interval := c.config.SniffInterval
+	if interval <= 0 {
+		interval = 5 * time.Minute
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	c.sniffOnce(context.Background())
+
+	for {
+		select {
+		case <-c.sniffStop:
+			return
+		case <-ticker.C:
+			c.sniffOnce(context.Background())
+		}
+	}
+}
+
+func (c *Client) sniffOnce(ctx context.Context) {
+	addr := c.GetAddress()
+	if addr == "" {
+		return
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr+"/_nodes/http", nil)
+	if err != nil {
+		return
+	}
+	if c.config.Username != "" {
+		req.SetBasicAuth(c.config.Username, c.config.Password)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+
+	var nodes sniffNodesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&nodes); err != nil {
+		return
+	}
+
+	newAddrs := make([]string, 0, len(nodes.Nodes))
+	seen := make(map[string]struct{})
+	for _, n := range nodes.Nodes {
+		p := n.HTTP.PublishAddress
+		if p == "" {
+			continue
+		}
+		host := p
+		if strings.Contains(p, "/") {
+			parts := strings.Split(p, "/")
+			host = parts[len(parts)-1]
+		}
+		if !strings.Contains(host, "://") {
+			scheme := "http"
+			if strings.HasPrefix(addr, "https://") {
+				scheme = "https"
+			}
+			host = scheme + "://" + host
+		}
+		u, parseErr := url.Parse(host)
+		if parseErr != nil || u.Host == "" {
+			continue
+		}
+		normalized := u.Scheme + "://" + u.Host
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		newAddrs = append(newAddrs, normalized)
+	}
+	if len(newAddrs) == 0 {
+		return
+	}
+
+	c.addressesMu.Lock()
+	c.addresses = newAddrs
+	if c.config.EnableCircuitBreaker {
+		for _, a := range newAddrs {
+			if _, ok := c.breakerState[a]; !ok {
+				c.breakerState[a] = &nodeState{}
+			}
+		}
+	}
+	c.addressesMu.Unlock()
 }
 
 func (c *Client) gzipBytes(data []byte) ([]byte, error) {

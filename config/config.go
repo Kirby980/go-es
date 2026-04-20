@@ -40,6 +40,9 @@ type Config struct {
 	CircuitBreakerCooldown    time.Duration
 	CircuitBreakerHealthCheck time.Duration
 
+	EnableSniff   bool
+	SniffInterval time.Duration
+
 	// Logger 自定义日志实现，nil 时 client.New() 使用默认 zap 生产日志
 	Logger logger.Logger
 	// 连接池配置
@@ -73,6 +76,8 @@ func DefaultConfig() *Config {
 		CircuitBreakerFailures:    3,
 		CircuitBreakerCooldown:    10 * time.Second,
 		CircuitBreakerHealthCheck: 5 * time.Second,
+		EnableSniff:               false,
+		SniffInterval:             5 * time.Minute,
 		MaxIdleConns:              100,
 		MaxIdleConnsPerHost:       10,
 		MaxConnsPerHost:           0,
@@ -153,6 +158,15 @@ func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healt
 		}
 		if healthCheck > 0 {
 			c.CircuitBreakerHealthCheck = healthCheck
+		}
+	}
+}
+
+func WithSniff(enable bool, interval time.Duration) Option {
+	return func(c *Config) {
+		c.EnableSniff = enable
+		if interval > 0 {
+			c.SniffInterval = interval
 		}
 	}
 }
