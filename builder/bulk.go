@@ -145,7 +145,7 @@ func (b *BulkBuilder) flush(ctx context.Context) (*BulkResponse, error) {
 	return resp, err
 }
 
-// Flush ...
+// Flush 强制将当前在内存中积压的 Bulk 请求或缓冲区数据发送到 Elasticsearch。
 func (b *BulkBuilder) Flush(ctx context.Context) (*BulkResponse, error) {
 	return b.flush(ctx)
 }

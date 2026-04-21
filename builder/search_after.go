@@ -98,7 +98,7 @@ func (b *SearchAfterBuilder) MinScore(score float64) *SearchAfterBuilder {
 	return b
 }
 
-// PIT ...
+// PIT 设置 Point In Time (PIT) 标识符及保持活跃的时间，用于深度分页或确保搜索结果的一致性视图。
 func (b *SearchAfterBuilder) PIT(id string, keepAlive string) *SearchAfterBuilder {
 	if id == "" {
 		b.pit = nil

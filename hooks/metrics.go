@@ -21,12 +21,12 @@ func NewMetricsHook() *MetricsHook {
 	return &MetricsHook{}
 }
 
-// BeforeRequest ...
+// BeforeRequest 在 HTTP 请求实际发送到 Elasticsearch 之前被调用，可用于请求修改、打点或上下文注入。
 func (h *MetricsHook) BeforeRequest(ctx context.Context, req *http.Request) context.Context {
 	return ctx
 }
 
-// AfterRequest ...
+// AfterRequest 在 Elasticsearch 成功返回 HTTP 响应后被调用，可用于记录耗时、解析响应头或指标统计。
 func (h *MetricsHook) AfterRequest(ctx context.Context, req *http.Request, resp *http.Response, duration time.Duration) {
 	atomic.AddUint64(&h.TotalRequests, 1)
 	atomic.AddUint64(&h.TotalDuration, uint64(duration.Nanoseconds()))
@@ -35,14 +35,14 @@ func (h *MetricsHook) AfterRequest(ctx context.Context, req *http.Request, resp 
 	}
 }
 
-// OnError ...
+// OnError 在发起 HTTP 请求遇到网络错误或连接失败时被调用。
 func (h *MetricsHook) OnError(ctx context.Context, req *http.Request, err error, duration time.Duration) {
 	atomic.AddUint64(&h.TotalRequests, 1)
 	atomic.AddUint64(&h.TotalErrors, 1)
 	atomic.AddUint64(&h.TotalDuration, uint64(duration.Nanoseconds()))
 }
 
-// GetMetrics ...
+// GetMetrics 返回当前收集到的指标统计数据。
 func (h *MetricsHook) GetMetrics() (reqs, errs uint64, avgDuration time.Duration) {
 	reqs = atomic.LoadUint64(&h.TotalRequests)
 	errs = atomic.LoadUint64(&h.TotalErrors)

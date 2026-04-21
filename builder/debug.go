@@ -37,7 +37,7 @@ func (d *debugHelper) setDebugPersistent(enabled bool) {
 	d.debug = true
 }
 
-// DebugPersistent ...
+// DebugPersistent 开启或关闭持久调试模式。开启时 (true)，同一构建器的所有后续请求都将被打印；关闭时 (false) 则停止打印。
 func (d *debugHelper) DebugPersistent(enable bool) {
 	d.setDebugPersistent(enable)
 }

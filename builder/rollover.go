@@ -6,7 +6,7 @@ import (
 	"net/url"
 )
 
-// RolloverBuilder ...
+// RolloverBuilder 是用于构建和执行 Elasticsearch Rollover 操作的链式 API 构建器。
 type RolloverBuilder struct {
 	client     ESClient
 	alias      string
@@ -20,7 +20,7 @@ type RolloverBuilder struct {
 	baseBuilder
 }
 
-// RolloverResponse ...
+// RolloverResponse 定义了 Elasticsearch Rollover 操作返回的结构化响应数据，包含元数据及核心结果。
 type RolloverResponse struct {
 	Acknowledged       bool           `json:"acknowledged"`
 	ShardsAcknowledged bool           `json:"shards_acknowledged"`
@@ -31,7 +31,7 @@ type RolloverResponse struct {
 	Conditions         map[string]any `json:"conditions"`
 }
 
-// NewRolloverBuilder ...
+// NewRolloverBuilder 创建并返回一个 Rollover 构建器实例，用于构造和执行 Elasticsearch 的 Rollover 请求。
 func NewRolloverBuilder(c ESClient, alias string) *RolloverBuilder {
 	b := &RolloverBuilder{
 		client: c,
@@ -41,19 +41,19 @@ func NewRolloverBuilder(c ESClient, alias string) *RolloverBuilder {
 	return b
 }
 
-// Header ...
+// Header 设置自定义的 HTTP 请求头 (例如: Header("Content-Type", "application/json"))。此方法支持链式调用。
 func (b *RolloverBuilder) Header(key, value string) *RolloverBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
-// NewIndex ...
+// NewIndex 指定 Rollover 或 Reindex 等操作生成的新索引名称。
 func (b *RolloverBuilder) NewIndex(name string) *RolloverBuilder {
 	b.newIndex = name
 	return b
 }
 
-// Condition ...
+// Condition 设置触发某些操作 (如 Rollover) 的条件 (例如: max_age, max_docs, max_size)。
 func (b *RolloverBuilder) Condition(name string, value any) *RolloverBuilder {
 	if b.conditions == nil {
 		b.conditions = make(map[string]any)
@@ -62,37 +62,37 @@ func (b *RolloverBuilder) Condition(name string, value any) *RolloverBuilder {
 	return b
 }
 
-// Settings ...
+// Settings 配置索引或集群的设置项 (如 number_of_shards, number_of_replicas 等)。
 func (b *RolloverBuilder) Settings(settings map[string]any) *RolloverBuilder {
 	b.settings = settings
 	return b
 }
 
-// Mappings ...
+// Mappings 配置索引的映射规则 (定义字段的类型、分词器等)。
 func (b *RolloverBuilder) Mappings(mappings map[string]any) *RolloverBuilder {
 	b.mappings = mappings
 	return b
 }
 
-// Aliases ...
+// Aliases 为索引配置别名。
 func (b *RolloverBuilder) Aliases(aliases map[string]any) *RolloverBuilder {
 	b.aliases = aliases
 	return b
 }
 
-// DryRun ...
+// DryRun 开启试运行模式。开启后，请求不会对 Elasticsearch 产生实际修改，仅返回预期的操作结果。
 func (b *RolloverBuilder) DryRun(enable bool) *RolloverBuilder {
 	b.dryRun = &enable
 	return b
 }
 
-// Debug ...
+// Debug 开启当前请求的单次调试模式。开启后，请求的完整 HTTP URL、Method、Body 及响应将被打印到日志中，便于排查问题。
 func (b *RolloverBuilder) Debug(enable bool) *RolloverBuilder {
 	b.setDebugPersistent(enable)
 	return b
 }
 
-// Do ...
+// Do 立即执行当前构建好的请求，并返回结构化的 Elasticsearch 响应结果或错误。请确保在调用此方法前已设置好所有必要参数。
 func (b *RolloverBuilder) Do(ctx context.Context) (*RolloverResponse, error) {
 	path := "/" + url.PathEscape(b.alias) + "/_rollover"
 	if b.newIndex != "" {
