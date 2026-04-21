@@ -132,12 +132,14 @@ func WithDebug(enable bool) Option {
 	}
 }
 
+// WithGzip 配置客户端是否启用 Gzip 压缩，开启后会减少网络传输带宽，但略微增加 CPU 消耗。
 func WithGzip(enable bool) Option {
 	return func(c *Config) {
 		c.EnableGzip = enable
 	}
 }
 
+// WithExponentialBackoff 配置客户端的重试策略为指数退避 (Exponential Backoff)。在遇到网络失败或 429/5xx 错误时，等待时间会指数级增加。
 func WithExponentialBackoff(enable bool, maxBackoff time.Duration) Option {
 	return func(c *Config) {
 		c.EnableExponentialBackoff = enable
@@ -147,6 +149,7 @@ func WithExponentialBackoff(enable bool, maxBackoff time.Duration) Option {
 	}
 }
 
+// WithCircuitBreaker 开启断路器/故障转移机制。当某个节点的连续失败次数达到阈值时，该节点将被短时间熔断，后续请求自动切换到其他可用节点。
 func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healthCheck time.Duration) Option {
 	return func(c *Config) {
 		c.EnableCircuitBreaker = enable
@@ -162,6 +165,7 @@ func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healt
 	}
 }
 
+// WithSniff 开启节点嗅探功能。客户端将按照指定的间隔定期访问 Elasticsearch 集群的 /_nodes/http 接口，动态发现并更新可用节点列表。
 func WithSniff(enable bool, interval time.Duration) Option {
 	return func(c *Config) {
 		c.EnableSniff = enable

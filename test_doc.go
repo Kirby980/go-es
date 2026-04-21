@@ -18,7 +18,7 @@ func main() {
 	defer ts.Close()
 
 	c, _ := client.New(config.WithAddresses(ts.URL))
-	
+
 	getResp, err := builder.NewDocumentBuilder(c, "test").
 		ID("delete-1").
 		Get(context.Background())

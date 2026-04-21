@@ -25,6 +25,7 @@ type hookRoundTripper struct {
 	hooks []config.Hook
 }
 
+// RoundTrip 是 hookRoundTripper 拦截器的核心实现，它会在实际发起 HTTP 请求前后，按顺序触发所有注册的 Hook 的 BeforeRequest, AfterRequest 或 OnError 生命周期方法。
 func (h *hookRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()
 	for _, hook := range h.hooks {

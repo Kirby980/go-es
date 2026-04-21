@@ -63,9 +63,65 @@ ctx := context.Background()
 当开启 Sniff 时，客户端会定时从 `/_nodes/http` 拉取节点列表并更新地址池，以适配集群扩缩容和节点漂移。
 Sniff 默认关闭；如需显式关闭可不传该配置，或使用 `config.WithSniff(false, 0)`。
 
+## 核心 Builder 速览
+在 go-es 中，为了与 Elasticsearch 原生 API 体系对齐，不同的操作被严格划分给了不同的 Builder。
+你可以通过这张表快速知道“我该用哪个 Builder”：
+
+| Builder | 核心用途 | 对应 ES 操作类型 |
+| :--- | :--- | :--- |
+| **`IndexBuilder`** | **表结构管理 (DDL)**。用于创建/删除索引、修改 Settings（分片/副本）、配置 Mappings（字段映射）。 | `PUT /{index}`<br>`PUT /{index}/_mapping` |
+| **`DocumentBuilder`** | **单条数据操作 (DML)**。用于按 ID 新增、更新、替换、删除单条文档。 | `PUT /{index}/_doc/{id}`<br>`GET /{index}/_doc/{id}` |
+| **`SearchBuilder`** | **复杂查询与检索 (DQL)**。用于多条件组合搜索、高亮、排序、分页（From/Size）及挂载聚合。 | `POST /{index}/_search` |
+| **`AggregationBuilder`**| **独立的数据统计与分析**。专门用于编写独立于搜索的各类桶聚合与指标聚合。 | `POST /{index}/_search` (size=0) |
+| **`BulkBuilder`** | **批量高性能写入**。通过复用内存池将大量新增/修改/删除指令打包发送，大幅提升吞吐。 | `POST /_bulk` |
+| **`ScrollBuilder`** | **静态快照深度分页**。用于一次性导出或遍历海量数据，依赖服务端维护游标状态。 | `POST /_search/scroll` |
+| **`SearchAfterBuilder`**| **动态实时深度分页**。通过上一页最后一条记录的排序值获取下一页，无状态且性能更好。 | `POST /{index}/_search` |
+| **`UpdateByQueryBuilder`**| **条件批量更新**。通过查询条件筛选出一批数据并执行 Painless 脚本进行批量更新。 | `POST /{index}/_update_by_query`|
+| **`DeleteByQueryBuilder`**| **条件批量删除**。通过查询条件筛选出一批数据并批量删除。 | `POST /{index}/_delete_by_query`|
+
+### 全部 Builder 列表
+下面列出 builder 包当前提供的所有 Builder（便于检索和选型）：
+
+| Builder | 核心用途 | 对应 ES 操作类型 |
+| :--- | :--- | :--- |
+| **`AggregationBuilder`** | 聚合分析（桶聚合/指标聚合等）。 | `POST /{index}/_search` (size=0) |
+| **`AliasesBuilder`** | 索引别名管理（add/remove/replace 等原子操作）。 | `POST /_aliases` |
+| **`AsyncSearchBuilder`** | 异步搜索（提交任务并通过 ID 轮询结果）。 | `POST /{index}/_async_search`<br>`GET /_async_search/{id}` |
+| **`BulkBuilder`** | Bulk 批量写入（index/create/update/delete）。 | `POST /_bulk` |
+| **`CatBuilder`** | Cat 系列接口（快速查看集群/索引/节点信息）。 | `GET /_cat/*` |
+| **`ClusterBuilder`** | 集群与节点运维（health/state/stats/nodes/tasks/settings 等）。 | `GET /_cluster/*`<br>`GET /_nodes/*` |
+| **`ComponentTemplateBuilder`** | 组件模板管理（组合成 Index Template）。 | `PUT /_component_template/{name}` |
+| **`DataStreamBuilder`** | 数据流管理（create/get/delete）。 | `PUT /_data_stream/{name}` |
+| **`DeleteByQueryBuilder`** | 条件批量删除（按 query 删除一批文档）。 | `POST /{index}/_delete_by_query` |
+| **`DocumentBuilder`** | 单条文档 CRUD（按 ID 创建/更新/删除/查询）。 | `PUT /{index}/_doc/{id}`<br>`GET /{index}/_doc/{id}` |
+| **`EQLBuilder`** | EQL 查询（事件序列查询）。 | `POST /{index}/_eql/search` |
+| **`ExplainBuilder`** | Explain 解释查询/评分来源（调试相关性/性能）。 | `GET /{index}/_explain/{id}` |
+| **`FieldCapsBuilder`** | 字段能力查询（字段类型、是否可聚合/可搜索等）。 | `GET /{index}/_field_caps` |
+| **`ILMBuilder`** | ILM 生命周期策略管理（put/get/delete policy）。 | `PUT /_ilm/policy/{name}` |
+| **`IndexBuilder`** | 索引管理（settings/mappings/aliases）。 | `PUT /{index}`<br>`PUT /{index}/_mapping` |
+| **`IndexTemplateBuilder`** | 索引模板管理（index template）。 | `PUT /_index_template/{name}` |
+| **`IngestPipelineBuilder`** | Ingest Pipeline 管道管理与模拟执行。 | `PUT /_ingest/pipeline/{id}`<br>`POST /_ingest/pipeline/{id}/_simulate` |
+| **`MGetBuilder`** | mget 批量按 ID 获取文档。 | `POST /{index}/_mget` |
+| **`MultiSearchBuilder`** | msearch 批量搜索（NDJSON）。 | `POST /_msearch` |
+| **`PitBuilder`** | PIT（Point In Time）一致性视图（深度分页场景常用）。 | `POST /{index}/_pit`<br>`DELETE /_pit` |
+| **`RankEvalBuilder`** | Rank Eval 相关性评估（用于评测 query 效果）。 | `POST /{index}/_rank_eval` |
+| **`ReindexBuilder`** | Reindex（重建索引/迁移数据）。 | `POST /_reindex` |
+| **`RolloverBuilder`** | Rollover（滚动索引，alias 切换新旧索引）。 | `POST /{alias}/_rollover` |
+| **`SQLBuilder`** | SQL 查询接口（用 SQL 方式查询 ES）。 | `POST /_sql` |
+| **`ScriptBuilder`** | Stored Script 管理（put/get/delete）。 | `PUT /_scripts/{id}` |
+| **`ScrollBuilder`** | Scroll 深度分页/导出（服务端游标）。 | `POST /{index}/_search?scroll=...`<br>`POST /_search/scroll` |
+| **`SearchAfterBuilder`** | Search After 深度分页（无服务端游标）。 | `POST /{index}/_search` |
+| **`SearchBuilder`** | 常规搜索（query DSL、排序、分页、高亮、聚合等）。 | `POST /{index}/_search` |
+| **`SearchTemplateBuilder`** | Search Template（模板化搜索）。 | `POST /{index}/_search/template` |
+| **`SnapshotBuilder`** | Snapshot 快照仓库/快照创建/恢复。 | `PUT /_snapshot/{repo}`<br>`PUT /_snapshot/{repo}/{snapshot}` |
+| **`TermvectorsBuilder`** | Termvectors（词项向量/分词详情分析）。 | `GET /{index}/_termvectors/{id}` |
+| **`UpdateByQueryBuilder`** | 条件批量更新（按 query + script 更新一批文档）。 | `POST /{index}/_update_by_query` |
+
+---
+
 ## 核心功能示例
 
-### 1. 索引管理
+### 1. 索引管理 (`IndexBuilder`)
 
 ```go
 import esconst "github.com/Kirby980/go-es/const"
@@ -125,7 +181,7 @@ err := s.AutoMigrate(&Product{})
 
 [查看完整索引管理文档](docs/index.md)
 
-### 2. 文档操作
+### 2. 文档操作 (`DocumentBuilder` 与 Sugar 扩展)
 
 本库支持两种 API 风格：**简洁风格**（类似 GORM）和 **Builder 风格**（更灵活）。
 
@@ -204,7 +260,7 @@ delResp, err := builder.NewDocumentBuilder(esClient, "products").
 
 [查看完整文档操作文档](docs/document.md)
 
-### 3. 搜索
+### 3. 搜索 (`SearchBuilder`)
 
 ```go
 // 基础搜索
@@ -272,7 +328,7 @@ resp, err := builder.NewSearchBuilder(esClient, "articles").
 
 [查看完整搜索文档](docs/search.md)
 
-### 4. 聚合分析
+### 4. 聚合分析 (`AggregationBuilder`)
 
 ```go
 // 统计聚合
@@ -296,7 +352,7 @@ dateHistResp, _ := builder.NewAggregationBuilder(esClient, "orders").
 
 [查看完整聚合文档](docs/aggregation.md)
 
-### 5. 批量操作
+### 5. 批量操作 (`BulkBuilder`)
 
 ```go
 bulkResp, err := builder.NewBulkBuilder(esClient).
@@ -315,7 +371,7 @@ if bulkResp.HasErrors() {
 }
 ```
 
-### 6. 深度分页
+### 6. 深度分页 (`ScrollBuilder` 与 `SearchAfterBuilder`)
 
 ```go
 // Scroll 遍历（适合大数据导出）

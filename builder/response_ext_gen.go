@@ -29,82 +29,182 @@ func ToPrettyJSON(v any) string {
 	return string(data)
 }
 
-func (r *DocumentResponse) JSON() string       { return ToJSON(r) }
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *DocumentResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *DocumentResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *DocumentResponse) String() string     { return r.PrettyJSON() }
 
-func (r *GetResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *DocumentResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *GetResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *GetResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *GetResponse) String() string     { return r.PrettyJSON() }
 
-func (r *MGetResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *GetResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *MGetResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *MGetResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *MGetResponse) String() string     { return r.PrettyJSON() }
 
-func (r *BulkResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *MGetResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *BulkResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *BulkResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *BulkResponse) String() string     { return r.PrettyJSON() }
 
-func (r *SearchResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *BulkResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *SearchResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *SearchResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *SearchResponse) String() string     { return r.PrettyJSON() }
 
-func (r *CountResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *SearchResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *CountResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *CountResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *CountResponse) String() string     { return r.PrettyJSON() }
 
-func (r *DeleteByQueryResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *CountResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *DeleteByQueryResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *DeleteByQueryResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *DeleteByQueryResponse) String() string     { return r.PrettyJSON() }
 
-func (r *UpdateByQueryResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *DeleteByQueryResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *UpdateByQueryResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *UpdateByQueryResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *UpdateByQueryResponse) String() string     { return r.PrettyJSON() }
 
-func (r *ScrollResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *UpdateByQueryResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *ScrollResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *ScrollResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *ScrollResponse) String() string     { return r.PrettyJSON() }
 
-func (r *SearchAfterResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *ScrollResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *SearchAfterResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *SearchAfterResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *SearchAfterResponse) String() string     { return r.PrettyJSON() }
 
-func (r *AggregationResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *SearchAfterResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *AggregationResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *AggregationResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *AggregationResponse) String() string     { return r.PrettyJSON() }
 
-func (r *IndexInfo) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *AggregationResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *IndexInfo) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *IndexInfo) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *IndexInfo) String() string     { return r.PrettyJSON() }
 
-func (r *ClusterHealthResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *IndexInfo) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *ClusterHealthResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *ClusterHealthResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *ClusterHealthResponse) String() string     { return r.PrettyJSON() }
 
-func (r *ClusterStateResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *ClusterHealthResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *ClusterStateResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *ClusterStateResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *ClusterStateResponse) String() string     { return r.PrettyJSON() }
 
-func (r *ClusterStatsResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *ClusterStateResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *ClusterStatsResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *ClusterStatsResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *ClusterStatsResponse) String() string     { return r.PrettyJSON() }
 
-func (r *NodesInfoResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *ClusterStatsResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *NodesInfoResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *NodesInfoResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *NodesInfoResponse) String() string     { return r.PrettyJSON() }
 
-func (r *NodesStatsResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *NodesInfoResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *NodesStatsResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *NodesStatsResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *NodesStatsResponse) String() string     { return r.PrettyJSON() }
 
-func (r *TasksResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *NodesStatsResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *TasksResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *TasksResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *TasksResponse) String() string     { return r.PrettyJSON() }
 
-func (r *ClusterSettingsResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *TasksResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *ClusterSettingsResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *ClusterSettingsResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *ClusterSettingsResponse) String() string     { return r.PrettyJSON() }
 
-func (r *AllocationExplainResponse) JSON() string       { return ToJSON(r) }
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *ClusterSettingsResponse) String() string { return r.PrettyJSON() }
+
+// JSON 将当前响应对象序列化为紧凑格式的 JSON 字符串。
+func (r *AllocationExplainResponse) JSON() string { return ToJSON(r) }
+
+// PrettyJSON 将当前响应对象序列化为带有缩进的格式化 JSON 字符串。
 func (r *AllocationExplainResponse) PrettyJSON() string { return ToPrettyJSON(r) }
-func (r *AllocationExplainResponse) String() string     { return r.PrettyJSON() }
+
+// String 实现了 fmt.Stringer 接口，默认输出对象的 PrettyJSON 格式字符串。
+func (r *AllocationExplainResponse) String() string { return r.PrettyJSON() }

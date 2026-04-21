@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// ESError 定义了标准的 Elasticsearch 错误结构，包含错误类型、具体原因等详细信息。
 type ESError struct {
 	StatusCode int              // HTTP状态码
 	Type       string           // 错误类型
@@ -13,6 +14,7 @@ type ESError struct {
 	RawBody    []byte           // 原始响应体
 }
 
+// Error 记录一条 Error 级别的日志信息。
 func (e *ESError) Error() string {
 	return fmt.Sprintf("ES错误 [%d]: %s - %s", e.StatusCode, e.Type, e.Reason)
 }
@@ -37,6 +39,7 @@ func (e *ESError) IsTimeout() bool {
 	return e.StatusCode == 408 || e.Type == "timeout_exception"
 }
 
+// ParseESError 解析 Elasticsearch 返回的原始响应体和 HTTP 状态码，并转换为结构化的 ESError 对象，方便程序进行错误类型的判断 (如 IsNotFound, IsConflict 等)。
 func ParseESError(statusCode int, body []byte) *ESError {
 	var errResp struct {
 		Error struct {

@@ -18,9 +18,16 @@ type Logger interface {
 // NopLogger 空日志实现，用于完全禁用日志输出
 type NopLogger struct{}
 
+// Debug 开启当前请求的单次调试模式。开启后，请求的完整 HTTP URL、Method、Body 及响应将被打印到日志中，便于排查问题。
 func (NopLogger) Debug(msg string, keysAndValues ...any) {}
-func (NopLogger) Info(msg string, keysAndValues ...any)  {}
-func (NopLogger) Warn(msg string, keysAndValues ...any)  {}
+
+// Info 记录一条 Info 级别的日志信息。
+func (NopLogger) Info(msg string, keysAndValues ...any) {}
+
+// Warn 记录一条 Warn (警告) 级别的日志信息。
+func (NopLogger) Warn(msg string, keysAndValues ...any) {}
+
+// Error 记录一条 Error 级别的日志信息。
 func (NopLogger) Error(msg string, keysAndValues ...any) {}
 
 // -----------------------------------------------------------------------
@@ -64,18 +71,22 @@ func NewDevelopmentLogger() (*ZapLogger, error) {
 	return NewZapLogger(z), nil
 }
 
+// Debug 开启当前请求的单次调试模式。开启后，请求的完整 HTTP URL、Method、Body 及响应将被打印到日志中，便于排查问题。
 func (l *ZapLogger) Debug(msg string, keysAndValues ...any) {
 	l.sugar.Debugw(msg, keysAndValues...)
 }
 
+// Info 记录一条 Info 级别的日志信息。
 func (l *ZapLogger) Info(msg string, keysAndValues ...any) {
 	l.sugar.Infow(msg, keysAndValues...)
 }
 
+// Warn 记录一条 Warn (警告) 级别的日志信息。
 func (l *ZapLogger) Warn(msg string, keysAndValues ...any) {
 	l.sugar.Warnw(msg, keysAndValues...)
 }
 
+// Error 记录一条 Error 级别的日志信息。
 func (l *ZapLogger) Error(msg string, keysAndValues ...any) {
 	l.sugar.Errorw(msg, keysAndValues...)
 }

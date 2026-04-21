@@ -8,6 +8,7 @@ import (
 	"net/url"
 )
 
+// CreateIndexRaw 提供了一种便捷方法，允许直接传递原始的 JSON 字符串 (如 {"settings": {...}, "mappings": {...}}) 来创建 Elasticsearch 索引，内部自动处理序列化，避免二次转义。
 func (c *Client) CreateIndexRaw(ctx context.Context, index string, rawJSON string) error {
 	if index == "" {
 		return fmt.Errorf("index 不能为空")
