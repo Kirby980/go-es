@@ -79,7 +79,43 @@ Sniff 默认关闭；如需显式关闭可不传该配置，或使用 `config.Wi
 | **`UpdateByQueryBuilder`**| **条件批量更新**。通过查询条件筛选出一批数据并执行 Painless 脚本进行批量更新。 | `POST /{index}/_update_by_query`|
 | **`DeleteByQueryBuilder`**| **条件批量删除**。通过查询条件筛选出一批数据并批量删除。 | `POST /{index}/_delete_by_query`|
 
-> 💡 **进阶/运维 Builder**：如果你需要处理集群维度的运维任务，库中还提供了 `ClusterBuilder` (集群状态与节点)、`AliasesBuilder` (索引别名)、`ILMBuilder` (生命周期策略)、`SnapshotBuilder` (快照备份)、`RolloverBuilder` (滚动索引)、`DataStreamBuilder` (数据流) 等。
+### 全部 Builder 列表
+下面列出 builder 包当前提供的所有 Builder（便于检索和选型）：
+
+| Builder | 核心用途 | 对应 ES 操作类型 |
+| :--- | :--- | :--- |
+| **`AggregationBuilder`** | 聚合分析（桶聚合/指标聚合等）。 | `POST /{index}/_search` (size=0) |
+| **`AliasesBuilder`** | 索引别名管理（add/remove/replace 等原子操作）。 | `POST /_aliases` |
+| **`AsyncSearchBuilder`** | 异步搜索（提交任务并通过 ID 轮询结果）。 | `POST /{index}/_async_search`<br>`GET /_async_search/{id}` |
+| **`BulkBuilder`** | Bulk 批量写入（index/create/update/delete）。 | `POST /_bulk` |
+| **`CatBuilder`** | Cat 系列接口（快速查看集群/索引/节点信息）。 | `GET /_cat/*` |
+| **`ClusterBuilder`** | 集群与节点运维（health/state/stats/nodes/tasks/settings 等）。 | `GET /_cluster/*`<br>`GET /_nodes/*` |
+| **`ComponentTemplateBuilder`** | 组件模板管理（组合成 Index Template）。 | `PUT /_component_template/{name}` |
+| **`DataStreamBuilder`** | 数据流管理（create/get/delete）。 | `PUT /_data_stream/{name}` |
+| **`DeleteByQueryBuilder`** | 条件批量删除（按 query 删除一批文档）。 | `POST /{index}/_delete_by_query` |
+| **`DocumentBuilder`** | 单条文档 CRUD（按 ID 创建/更新/删除/查询）。 | `PUT /{index}/_doc/{id}`<br>`GET /{index}/_doc/{id}` |
+| **`EQLBuilder`** | EQL 查询（事件序列查询）。 | `POST /{index}/_eql/search` |
+| **`ExplainBuilder`** | Explain 解释查询/评分来源（调试相关性/性能）。 | `GET /{index}/_explain/{id}` |
+| **`FieldCapsBuilder`** | 字段能力查询（字段类型、是否可聚合/可搜索等）。 | `GET /{index}/_field_caps` |
+| **`ILMBuilder`** | ILM 生命周期策略管理（put/get/delete policy）。 | `PUT /_ilm/policy/{name}` |
+| **`IndexBuilder`** | 索引管理（settings/mappings/aliases）。 | `PUT /{index}`<br>`PUT /{index}/_mapping` |
+| **`IndexTemplateBuilder`** | 索引模板管理（index template）。 | `PUT /_index_template/{name}` |
+| **`IngestPipelineBuilder`** | Ingest Pipeline 管道管理与模拟执行。 | `PUT /_ingest/pipeline/{id}`<br>`POST /_ingest/pipeline/{id}/_simulate` |
+| **`MGetBuilder`** | mget 批量按 ID 获取文档。 | `POST /{index}/_mget` |
+| **`MultiSearchBuilder`** | msearch 批量搜索（NDJSON）。 | `POST /_msearch` |
+| **`PitBuilder`** | PIT（Point In Time）一致性视图（深度分页场景常用）。 | `POST /{index}/_pit`<br>`DELETE /_pit` |
+| **`RankEvalBuilder`** | Rank Eval 相关性评估（用于评测 query 效果）。 | `POST /{index}/_rank_eval` |
+| **`ReindexBuilder`** | Reindex（重建索引/迁移数据）。 | `POST /_reindex` |
+| **`RolloverBuilder`** | Rollover（滚动索引，alias 切换新旧索引）。 | `POST /{alias}/_rollover` |
+| **`SQLBuilder`** | SQL 查询接口（用 SQL 方式查询 ES）。 | `POST /_sql` |
+| **`ScriptBuilder`** | Stored Script 管理（put/get/delete）。 | `PUT /_scripts/{id}` |
+| **`ScrollBuilder`** | Scroll 深度分页/导出（服务端游标）。 | `POST /{index}/_search?scroll=...`<br>`POST /_search/scroll` |
+| **`SearchAfterBuilder`** | Search After 深度分页（无服务端游标）。 | `POST /{index}/_search` |
+| **`SearchBuilder`** | 常规搜索（query DSL、排序、分页、高亮、聚合等）。 | `POST /{index}/_search` |
+| **`SearchTemplateBuilder`** | Search Template（模板化搜索）。 | `POST /{index}/_search/template` |
+| **`SnapshotBuilder`** | Snapshot 快照仓库/快照创建/恢复。 | `PUT /_snapshot/{repo}`<br>`PUT /_snapshot/{repo}/{snapshot}` |
+| **`TermvectorsBuilder`** | Termvectors（词项向量/分词详情分析）。 | `GET /{index}/_termvectors/{id}` |
+| **`UpdateByQueryBuilder`** | 条件批量更新（按 query + script 更新一批文档）。 | `POST /{index}/_update_by_query` |
 
 ---
 
