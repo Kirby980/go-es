@@ -25,6 +25,7 @@ type hookRoundTripper struct {
 	hooks []config.Hook
 }
 
+// RoundTrip ...
 func (h *hookRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()
 	for _, hook := range h.hooks {

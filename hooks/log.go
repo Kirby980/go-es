@@ -19,11 +19,13 @@ func NewLogHook(l logger.Logger) config.Hook {
 	return &LogHook{logger: l}
 }
 
+// BeforeRequest ...
 func (h *LogHook) BeforeRequest(ctx context.Context, req *http.Request) context.Context {
 	// 在此处可以记录开始请求的日志，但通常在 AfterRequest/OnError 记录即可
 	return ctx
 }
 
+// AfterRequest ...
 func (h *LogHook) AfterRequest(ctx context.Context, req *http.Request, resp *http.Response, duration time.Duration) {
 	h.logger.Info("Elasticsearch Request Success",
 		"method", req.Method,
@@ -33,6 +35,7 @@ func (h *LogHook) AfterRequest(ctx context.Context, req *http.Request, resp *htt
 	)
 }
 
+// OnError ...
 func (h *LogHook) OnError(ctx context.Context, req *http.Request, err error, duration time.Duration) {
 	h.logger.Error("Elasticsearch Request Failed",
 		"method", req.Method,

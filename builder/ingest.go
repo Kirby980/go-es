@@ -9,6 +9,7 @@ import (
 	"net/url"
 )
 
+// IngestPipelineBuilder ...
 type IngestPipelineBuilder struct {
 	client      ESClient
 	id          string
@@ -21,6 +22,7 @@ type IngestPipelineBuilder struct {
 	baseBuilder
 }
 
+// NewIngestPipelineBuilder ...
 func NewIngestPipelineBuilder(c ESClient, id string) *IngestPipelineBuilder {
 	b := &IngestPipelineBuilder{
 		client:      c,
@@ -33,31 +35,37 @@ func NewIngestPipelineBuilder(c ESClient, id string) *IngestPipelineBuilder {
 	return b
 }
 
+// Header ...
 func (b *IngestPipelineBuilder) Header(key, value string) *IngestPipelineBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// Debug ...
 func (b *IngestPipelineBuilder) Debug() *IngestPipelineBuilder {
 	b.setDebug(true)
 	return b
 }
 
+// Description ...
 func (b *IngestPipelineBuilder) Description(desc string) *IngestPipelineBuilder {
 	b.description = desc
 	return b
 }
 
+// Version ...
 func (b *IngestPipelineBuilder) Version(version int) *IngestPipelineBuilder {
 	b.version = &version
 	return b
 }
 
+// Meta ...
 func (b *IngestPipelineBuilder) Meta(meta map[string]any) *IngestPipelineBuilder {
 	b.meta = meta
 	return b
 }
 
+// AddProcessor ...
 func (b *IngestPipelineBuilder) AddProcessor(name string, config map[string]any) *IngestPipelineBuilder {
 	b.processors = append(b.processors, map[string]any{
 		name: config,
@@ -65,6 +73,7 @@ func (b *IngestPipelineBuilder) AddProcessor(name string, config map[string]any)
 	return b
 }
 
+// AddOnFailure ...
 func (b *IngestPipelineBuilder) AddOnFailure(name string, config map[string]any) *IngestPipelineBuilder {
 	b.onFailure = append(b.onFailure, map[string]any{
 		name: config,
@@ -72,6 +81,7 @@ func (b *IngestPipelineBuilder) AddOnFailure(name string, config map[string]any)
 	return b
 }
 
+// Pipeline ...
 func (b *IngestPipelineBuilder) Pipeline(pipeline map[string]any) *IngestPipelineBuilder {
 	if pipeline == nil {
 		return b
@@ -94,6 +104,7 @@ func (b *IngestPipelineBuilder) Pipeline(pipeline map[string]any) *IngestPipelin
 	return b
 }
 
+// Build ...
 func (b *IngestPipelineBuilder) Build() map[string]any {
 	body := make(map[string]any)
 	if b.description != "" {
@@ -114,10 +125,12 @@ func (b *IngestPipelineBuilder) Build() map[string]any {
 	return body
 }
 
+// IngestAckResponse ...
 type IngestAckResponse struct {
 	Acknowledged bool `json:"acknowledged"`
 }
 
+// Put ...
 func (b *IngestPipelineBuilder) Put(ctx context.Context) (*IngestAckResponse, error) {
 	if b.id == "" {
 		return nil, fmt.Errorf("pipeline id 不能为空")
@@ -140,6 +153,7 @@ func (b *IngestPipelineBuilder) Put(ctx context.Context) (*IngestAckResponse, er
 	return &resp, nil
 }
 
+// Get ...
 func (b *IngestPipelineBuilder) Get(ctx context.Context) (map[string]any, error) {
 	if b.id == "" {
 		return nil, fmt.Errorf("pipeline id 不能为空")
@@ -161,6 +175,7 @@ func (b *IngestPipelineBuilder) Get(ctx context.Context) (map[string]any, error)
 	return resp, nil
 }
 
+// Delete ...
 func (b *IngestPipelineBuilder) Delete(ctx context.Context) (*IngestAckResponse, error) {
 	if b.id == "" {
 		return nil, fmt.Errorf("pipeline id 不能为空")
@@ -182,10 +197,12 @@ func (b *IngestPipelineBuilder) Delete(ctx context.Context) (*IngestAckResponse,
 	return &resp, nil
 }
 
+// IngestSimulateResponse ...
 type IngestSimulateResponse struct {
 	Docs []map[string]any `json:"docs"`
 }
 
+// Simulate ...
 func (b *IngestPipelineBuilder) Simulate(ctx context.Context, docs []map[string]any, verbose bool) (*IngestSimulateResponse, error) {
 	path := "/_ingest/pipeline/_simulate"
 	if b.id != "" {
@@ -221,6 +238,7 @@ func (b *IngestPipelineBuilder) Simulate(ctx context.Context, docs []map[string]
 	return &resp, nil
 }
 
+// SimulateNDJSON ...
 func (b *IngestPipelineBuilder) SimulateNDJSON(ctx context.Context, docs []map[string]any) ([]byte, error) {
 	path := "/_ingest/pipeline/_simulate"
 	if b.id != "" {

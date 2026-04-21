@@ -44,8 +44,8 @@ type JSONSerializer interface {
 	String() string
 }
 
-// ToJSON 返回任意结构体的紧凑 JSON 字符串
-func ToJSON(v any) string {
+// toJSON 返回任意结构体的紧凑 JSON 字符串
+func toJSON(v any) string {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return ""
@@ -53,8 +53,8 @@ func ToJSON(v any) string {
 	return string(data)
 }
 
-// ToPrettyJSON 返回任意结构体的格式化 JSON 字符串
-func ToPrettyJSON(v any) string {
+// toPrettyJSON 返回任意结构体的格式化 JSON 字符串
+func toPrettyJSON(v any) string {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return ""
@@ -62,8 +62,11 @@ func ToPrettyJSON(v any) string {
 	return string(data)
 }
 {{range .}}
-func (r *{{.}}) JSON() string       { return ToJSON(r) }
-func (r *{{.}}) PrettyJSON() string { return ToPrettyJSON(r) }
+// JSON 序列化
+func (r *{{.}}) JSON() string       { return toJSON(r) }
+// PrettyJSON 格式化序列化
+func (r *{{.}}) PrettyJSON() string { return toPrettyJSON(r) }
+// String 字符串输出
 func (r *{{.}}) String() string     { return r.PrettyJSON() }
 {{end}}`
 

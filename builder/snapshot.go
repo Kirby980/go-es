@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// SnapshotBuilder ...
 type SnapshotBuilder struct {
 	client     ESClient
 	repository string
@@ -16,37 +17,44 @@ type SnapshotBuilder struct {
 	baseBuilder
 }
 
+// NewSnapshotBuilder ...
 func NewSnapshotBuilder(client ESClient) *SnapshotBuilder {
 	return &SnapshotBuilder{
 		client: client,
 	}
 }
 
+// Repository ...
 func (b *SnapshotBuilder) Repository(repo string) *SnapshotBuilder {
 	b.repository = repo
 	return b
 }
 
+// Snapshot ...
 func (b *SnapshotBuilder) Snapshot(snapshot string) *SnapshotBuilder {
 	b.snapshot = snapshot
 	return b
 }
 
+// Indices ...
 func (b *SnapshotBuilder) Indices(indices ...string) *SnapshotBuilder {
 	b.indices = indices
 	return b
 }
 
+// Settings ...
 func (b *SnapshotBuilder) Settings(settings map[string]any) *SnapshotBuilder {
 	b.settings = settings
 	return b
 }
 
+// Debug ...
 func (b *SnapshotBuilder) Debug(enable bool) *SnapshotBuilder {
 	b.setDebug(enable)
 	return b
 }
 
+// CreateRepository ...
 func (b *SnapshotBuilder) CreateRepository(ctx context.Context, repoType string) (*AcknowledgedResponse, error) {
 	path := "/_snapshot/" + url.PathEscape(b.repository)
 	body := map[string]any{
@@ -68,6 +76,7 @@ func (b *SnapshotBuilder) CreateRepository(ctx context.Context, repoType string)
 	return &resp, nil
 }
 
+// Create ...
 func (b *SnapshotBuilder) Create(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_snapshot/" + url.PathEscape(b.repository) + "/" + url.PathEscape(b.snapshot)
 
@@ -90,6 +99,7 @@ func (b *SnapshotBuilder) Create(ctx context.Context) (*AcknowledgedResponse, er
 	return &resp, nil
 }
 
+// Restore ...
 func (b *SnapshotBuilder) Restore(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_snapshot/" + url.PathEscape(b.repository) + "/" + url.PathEscape(b.snapshot) + "/_restore"
 

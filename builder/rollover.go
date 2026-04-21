@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// RolloverBuilder ...
 type RolloverBuilder struct {
 	client     ESClient
 	alias      string
@@ -19,6 +20,7 @@ type RolloverBuilder struct {
 	baseBuilder
 }
 
+// RolloverResponse ...
 type RolloverResponse struct {
 	Acknowledged       bool           `json:"acknowledged"`
 	ShardsAcknowledged bool           `json:"shards_acknowledged"`
@@ -26,9 +28,10 @@ type RolloverResponse struct {
 	NewIndex           string         `json:"new_index"`
 	RolledOver         bool           `json:"rolled_over"`
 	DryRun             bool           `json:"dry_run"`
-	Conditions         map[string]any  `json:"conditions"`
+	Conditions         map[string]any `json:"conditions"`
 }
 
+// NewRolloverBuilder ...
 func NewRolloverBuilder(c ESClient, alias string) *RolloverBuilder {
 	b := &RolloverBuilder{
 		client: c,
@@ -38,16 +41,19 @@ func NewRolloverBuilder(c ESClient, alias string) *RolloverBuilder {
 	return b
 }
 
+// Header ...
 func (b *RolloverBuilder) Header(key, value string) *RolloverBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// NewIndex ...
 func (b *RolloverBuilder) NewIndex(name string) *RolloverBuilder {
 	b.newIndex = name
 	return b
 }
 
+// Condition ...
 func (b *RolloverBuilder) Condition(name string, value any) *RolloverBuilder {
 	if b.conditions == nil {
 		b.conditions = make(map[string]any)
@@ -56,31 +62,37 @@ func (b *RolloverBuilder) Condition(name string, value any) *RolloverBuilder {
 	return b
 }
 
+// Settings ...
 func (b *RolloverBuilder) Settings(settings map[string]any) *RolloverBuilder {
 	b.settings = settings
 	return b
 }
 
+// Mappings ...
 func (b *RolloverBuilder) Mappings(mappings map[string]any) *RolloverBuilder {
 	b.mappings = mappings
 	return b
 }
 
+// Aliases ...
 func (b *RolloverBuilder) Aliases(aliases map[string]any) *RolloverBuilder {
 	b.aliases = aliases
 	return b
 }
 
+// DryRun ...
 func (b *RolloverBuilder) DryRun(enable bool) *RolloverBuilder {
 	b.dryRun = &enable
 	return b
 }
 
+// Debug ...
 func (b *RolloverBuilder) Debug(enable bool) *RolloverBuilder {
 	b.setDebugPersistent(enable)
 	return b
 }
 
+// Do ...
 func (b *RolloverBuilder) Do(ctx context.Context) (*RolloverResponse, error) {
 	path := "/" + url.PathEscape(b.alias) + "/_rollover"
 	if b.newIndex != "" {

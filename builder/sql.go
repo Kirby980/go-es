@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// SQLBuilder ...
 type SQLBuilder struct {
 	client    ESClient
 	query     string
@@ -13,27 +14,32 @@ type SQLBuilder struct {
 	baseBuilder
 }
 
+// NewSQLBuilder ...
 func NewSQLBuilder(client ESClient) *SQLBuilder {
 	return &SQLBuilder{
 		client: client,
 	}
 }
 
+// Query ...
 func (b *SQLBuilder) Query(query string) *SQLBuilder {
 	b.query = query
 	return b
 }
 
+// FetchSize ...
 func (b *SQLBuilder) FetchSize(size int) *SQLBuilder {
 	b.fetchSize = size
 	return b
 }
 
+// Debug ...
 func (b *SQLBuilder) Debug(enable bool) *SQLBuilder {
 	b.setDebug(enable)
 	return b
 }
 
+// SQLResponse ...
 type SQLResponse struct {
 	Columns []struct {
 		Name string `json:"name"`
@@ -43,6 +49,7 @@ type SQLResponse struct {
 	Cursor string  `json:"cursor,omitempty"`
 }
 
+// Do ...
 func (b *SQLBuilder) Do(ctx context.Context) (*SQLResponse, error) {
 	path := "/_sql?format=json"
 

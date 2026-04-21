@@ -32,4 +32,3 @@ func TestRankEvalBuilder_Do(t *testing.T) {
 		t.Fatalf("unexpected resp: %v", resp)
 	}
 }
-

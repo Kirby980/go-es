@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// SearchTemplateBuilder ...
 type SearchTemplateBuilder struct {
 	client  ESClient
 	index   string
@@ -18,6 +19,7 @@ type SearchTemplateBuilder struct {
 	baseBuilder
 }
 
+// NewSearchTemplateBuilder ...
 func NewSearchTemplateBuilder(c ESClient) *SearchTemplateBuilder {
 	b := &SearchTemplateBuilder{
 		client: c,
@@ -26,46 +28,55 @@ func NewSearchTemplateBuilder(c ESClient) *SearchTemplateBuilder {
 	return b
 }
 
+// Header ...
 func (b *SearchTemplateBuilder) Header(key, value string) *SearchTemplateBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// Index ...
 func (b *SearchTemplateBuilder) Index(index string) *SearchTemplateBuilder {
 	b.index = index
 	return b
 }
 
+// ID ...
 func (b *SearchTemplateBuilder) ID(id string) *SearchTemplateBuilder {
 	b.id = id
 	return b
 }
 
+// Source ...
 func (b *SearchTemplateBuilder) Source(source any) *SearchTemplateBuilder {
 	b.source = source
 	return b
 }
 
+// Params ...
 func (b *SearchTemplateBuilder) Params(params map[string]any) *SearchTemplateBuilder {
 	b.params = params
 	return b
 }
 
+// Explain ...
 func (b *SearchTemplateBuilder) Explain(enable bool) *SearchTemplateBuilder {
 	b.explain = &enable
 	return b
 }
 
+// Profile ...
 func (b *SearchTemplateBuilder) Profile(enable bool) *SearchTemplateBuilder {
 	b.profile = &enable
 	return b
 }
 
+// Debug ...
 func (b *SearchTemplateBuilder) Debug(enable bool) *SearchTemplateBuilder {
 	b.setDebugPersistent(enable)
 	return b
 }
 
+// Do ...
 func (b *SearchTemplateBuilder) Do(ctx context.Context) (*SearchResponse, error) {
 	path := "/_search/template"
 	if b.index != "" {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// AliasesBuilder ...
 type AliasesBuilder struct {
 	client  ESClient
 	actions []map[string]any
@@ -13,6 +14,7 @@ type AliasesBuilder struct {
 	baseBuilder
 }
 
+// NewAliasesBuilder ...
 func NewAliasesBuilder(c ESClient) *AliasesBuilder {
 	b := &AliasesBuilder{
 		client:      c,
@@ -23,16 +25,19 @@ func NewAliasesBuilder(c ESClient) *AliasesBuilder {
 	return b
 }
 
+// Header ...
 func (b *AliasesBuilder) Header(key, value string) *AliasesBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// Debug ...
 func (b *AliasesBuilder) Debug() *AliasesBuilder {
 	b.setDebug(true)
 	return b
 }
 
+// Add ...
 func (b *AliasesBuilder) Add(index string, alias string, opts ...func(map[string]any)) *AliasesBuilder {
 	params := map[string]any{
 		"index": index,
@@ -47,6 +52,7 @@ func (b *AliasesBuilder) Add(index string, alias string, opts ...func(map[string
 	return b
 }
 
+// Remove ...
 func (b *AliasesBuilder) Remove(index string, alias string, opts ...func(map[string]any)) *AliasesBuilder {
 	params := map[string]any{
 		"index": index,
@@ -61,6 +67,7 @@ func (b *AliasesBuilder) Remove(index string, alias string, opts ...func(map[str
 	return b
 }
 
+// RemoveIndex ...
 func (b *AliasesBuilder) RemoveIndex(index string) *AliasesBuilder {
 	b.actions = append(b.actions, map[string]any{
 		"remove_index": map[string]any{
@@ -70,18 +77,21 @@ func (b *AliasesBuilder) RemoveIndex(index string) *AliasesBuilder {
 	return b
 }
 
+// Replace ...
 func (b *AliasesBuilder) Replace(alias string, fromIndex string, toIndex string, opts ...func(map[string]any)) *AliasesBuilder {
 	b.Remove(fromIndex, alias)
 	b.Add(toIndex, alias, opts...)
 	return b
 }
 
+// WithIsWriteIndex ...
 func WithIsWriteIndex(isWrite bool) func(map[string]any) {
 	return func(m map[string]any) {
 		m["is_write_index"] = isWrite
 	}
 }
 
+// WithAliasFilter ...
 func WithAliasFilter(filter map[string]any) func(map[string]any) {
 	return func(m map[string]any) {
 		if filter != nil {
@@ -90,6 +100,7 @@ func WithAliasFilter(filter map[string]any) func(map[string]any) {
 	}
 }
 
+// WithRouting ...
 func WithRouting(routing string) func(map[string]any) {
 	return func(m map[string]any) {
 		if routing != "" {
@@ -98,16 +109,19 @@ func WithRouting(routing string) func(map[string]any) {
 	}
 }
 
+// AliasesResponse ...
 type AliasesResponse struct {
 	Acknowledged bool `json:"acknowledged"`
 }
 
+// Build ...
 func (b *AliasesBuilder) Build() map[string]any {
 	return map[string]any{
 		"actions": b.actions,
 	}
 }
 
+// Do ...
 func (b *AliasesBuilder) Do(ctx context.Context) (*AliasesResponse, error) {
 	if len(b.actions) == 0 {
 		return nil, fmt.Errorf("没有待执行的 alias 操作")

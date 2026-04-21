@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// ESError ...
 type ESError struct {
 	StatusCode int              // HTTP状态码
 	Type       string           // 错误类型
@@ -13,6 +14,7 @@ type ESError struct {
 	RawBody    []byte           // 原始响应体
 }
 
+// Error ...
 func (e *ESError) Error() string {
 	return fmt.Sprintf("ES错误 [%d]: %s - %s", e.StatusCode, e.Type, e.Reason)
 }
@@ -37,6 +39,7 @@ func (e *ESError) IsTimeout() bool {
 	return e.StatusCode == 408 || e.Type == "timeout_exception"
 }
 
+// ParseESError ...
 func ParseESError(statusCode int, body []byte) *ESError {
 	var errResp struct {
 		Error struct {

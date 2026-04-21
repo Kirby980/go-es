@@ -37,6 +37,7 @@ func (d *debugHelper) setDebugPersistent(enabled bool) {
 	d.debug = true
 }
 
+// DebugPersistent ...
 func (d *debugHelper) DebugPersistent(enable bool) {
 	d.setDebugPersistent(enable)
 }

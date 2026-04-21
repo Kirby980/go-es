@@ -8,6 +8,7 @@ import (
 	"net/url"
 )
 
+// CreateIndexRaw ...
 func (c *Client) CreateIndexRaw(ctx context.Context, index string, rawJSON string) error {
 	if index == "" {
 		return fmt.Errorf("index 不能为空")

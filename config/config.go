@@ -132,12 +132,14 @@ func WithDebug(enable bool) Option {
 	}
 }
 
+// WithGzip ...
 func WithGzip(enable bool) Option {
 	return func(c *Config) {
 		c.EnableGzip = enable
 	}
 }
 
+// WithExponentialBackoff ...
 func WithExponentialBackoff(enable bool, maxBackoff time.Duration) Option {
 	return func(c *Config) {
 		c.EnableExponentialBackoff = enable
@@ -147,6 +149,7 @@ func WithExponentialBackoff(enable bool, maxBackoff time.Duration) Option {
 	}
 }
 
+// WithCircuitBreaker ...
 func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healthCheck time.Duration) Option {
 	return func(c *Config) {
 		c.EnableCircuitBreaker = enable
@@ -162,6 +165,7 @@ func WithCircuitBreaker(enable bool, failures int, cooldown time.Duration, healt
 	}
 }
 
+// WithSniff ...
 func WithSniff(enable bool, interval time.Duration) Option {
 	return func(c *Config) {
 		c.EnableSniff = enable

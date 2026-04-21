@@ -7,6 +7,7 @@ import (
 	"net/url"
 )
 
+// DataStreamBuilder ...
 type DataStreamBuilder struct {
 	client ESClient
 	name   string
@@ -14,6 +15,7 @@ type DataStreamBuilder struct {
 	baseBuilder
 }
 
+// NewDataStreamBuilder ...
 func NewDataStreamBuilder(c ESClient, name string) *DataStreamBuilder {
 	b := &DataStreamBuilder{
 		client:      c,
@@ -24,20 +26,24 @@ func NewDataStreamBuilder(c ESClient, name string) *DataStreamBuilder {
 	return b
 }
 
+// Header ...
 func (b *DataStreamBuilder) Header(key, value string) *DataStreamBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// Debug ...
 func (b *DataStreamBuilder) Debug() *DataStreamBuilder {
 	b.setDebug(true)
 	return b
 }
 
+// DataStreamAckResponse ...
 type DataStreamAckResponse struct {
 	Acknowledged bool `json:"acknowledged"`
 }
 
+// Create ...
 func (b *DataStreamBuilder) Create(ctx context.Context) (*DataStreamAckResponse, error) {
 	if b.name == "" {
 		return nil, fmt.Errorf("data stream name 不能为空")
@@ -59,6 +65,7 @@ func (b *DataStreamBuilder) Create(ctx context.Context) (*DataStreamAckResponse,
 	return &resp, nil
 }
 
+// Get ...
 func (b *DataStreamBuilder) Get(ctx context.Context) (map[string]any, error) {
 	path := "/_data_stream"
 	if b.name != "" {
@@ -80,6 +87,7 @@ func (b *DataStreamBuilder) Get(ctx context.Context) (map[string]any, error) {
 	return resp, nil
 }
 
+// Delete ...
 func (b *DataStreamBuilder) Delete(ctx context.Context) (*DataStreamAckResponse, error) {
 	if b.name == "" {
 		return nil, fmt.Errorf("data stream name 不能为空")

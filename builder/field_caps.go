@@ -7,15 +7,17 @@ import (
 	"strings"
 )
 
+// FieldCapsBuilder ...
 type FieldCapsBuilder struct {
-	client         ESClient
-	index          string
-	fields         []string
+	client          ESClient
+	index           string
+	fields          []string
 	includeUnmapped *bool
 	debugHelper
 	baseBuilder
 }
 
+// NewFieldCapsBuilder ...
 func NewFieldCapsBuilder(c ESClient, index string) *FieldCapsBuilder {
 	b := &FieldCapsBuilder{
 		client: c,
@@ -25,26 +27,31 @@ func NewFieldCapsBuilder(c ESClient, index string) *FieldCapsBuilder {
 	return b
 }
 
+// Header ...
 func (b *FieldCapsBuilder) Header(key, value string) *FieldCapsBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// Fields ...
 func (b *FieldCapsBuilder) Fields(fields ...string) *FieldCapsBuilder {
 	b.fields = append(b.fields, fields...)
 	return b
 }
 
+// IncludeUnmapped ...
 func (b *FieldCapsBuilder) IncludeUnmapped(enable bool) *FieldCapsBuilder {
 	b.includeUnmapped = &enable
 	return b
 }
 
+// Debug ...
 func (b *FieldCapsBuilder) Debug(enable bool) *FieldCapsBuilder {
 	b.setDebugPersistent(enable)
 	return b
 }
 
+// Do ...
 func (b *FieldCapsBuilder) Do(ctx context.Context) (map[string]any, error) {
 	path := "/_field_caps"
 	if b.index != "" {

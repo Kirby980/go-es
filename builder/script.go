@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// ScriptBuilder ...
 type ScriptBuilder struct {
 	client ESClient
 	id     string
@@ -14,6 +15,7 @@ type ScriptBuilder struct {
 	baseBuilder
 }
 
+// NewScriptBuilder ...
 func NewScriptBuilder(c ESClient) *ScriptBuilder {
 	b := &ScriptBuilder{
 		client: c,
@@ -22,16 +24,19 @@ func NewScriptBuilder(c ESClient) *ScriptBuilder {
 	return b
 }
 
+// Header ...
 func (b *ScriptBuilder) Header(key, value string) *ScriptBuilder {
 	b.baseBuilder.Header(key, value)
 	return b
 }
 
+// ID ...
 func (b *ScriptBuilder) ID(id string) *ScriptBuilder {
 	b.id = id
 	return b
 }
 
+// Script ...
 func (b *ScriptBuilder) Script(lang string, source string, params map[string]any) *ScriptBuilder {
 	s := map[string]any{
 		"lang":   lang,
@@ -44,11 +49,13 @@ func (b *ScriptBuilder) Script(lang string, source string, params map[string]any
 	return b
 }
 
+// Debug ...
 func (b *ScriptBuilder) Debug(enable bool) *ScriptBuilder {
 	b.setDebugPersistent(enable)
 	return b
 }
 
+// Put ...
 func (b *ScriptBuilder) Put(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_scripts/" + url.PathEscape(b.id)
 	body := map[string]any{
@@ -72,6 +79,7 @@ func (b *ScriptBuilder) Put(ctx context.Context) (*AcknowledgedResponse, error) 
 	return &resp, nil
 }
 
+// Get ...
 func (b *ScriptBuilder) Get(ctx context.Context) (map[string]any, error) {
 	path := "/_scripts/" + url.PathEscape(b.id)
 
@@ -92,6 +100,7 @@ func (b *ScriptBuilder) Get(ctx context.Context) (map[string]any, error) {
 	return resp, nil
 }
 
+// Delete ...
 func (b *ScriptBuilder) Delete(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_scripts/" + url.PathEscape(b.id)
 

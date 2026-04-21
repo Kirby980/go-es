@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// AsyncSearchBuilder ...
 type AsyncSearchBuilder struct {
 	client                   ESClient
 	index                    string
@@ -16,37 +17,44 @@ type AsyncSearchBuilder struct {
 	baseBuilder
 }
 
+// NewAsyncSearchBuilder ...
 func NewAsyncSearchBuilder(client ESClient) *AsyncSearchBuilder {
 	return &AsyncSearchBuilder{
 		client: client,
 	}
 }
 
+// Index ...
 func (b *AsyncSearchBuilder) Index(index string) *AsyncSearchBuilder {
 	b.index = index
 	return b
 }
 
+// Query ...
 func (b *AsyncSearchBuilder) Query(query map[string]any) *AsyncSearchBuilder {
 	b.query = query
 	return b
 }
 
+// WaitForCompletionTimeout ...
 func (b *AsyncSearchBuilder) WaitForCompletionTimeout(timeout string) *AsyncSearchBuilder {
 	b.waitForCompletionTimeout = timeout
 	return b
 }
 
+// KeepAlive ...
 func (b *AsyncSearchBuilder) KeepAlive(keepAlive string) *AsyncSearchBuilder {
 	b.keepAlive = keepAlive
 	return b
 }
 
+// Debug ...
 func (b *AsyncSearchBuilder) Debug(enable bool) *AsyncSearchBuilder {
 	b.setDebug(enable)
 	return b
 }
 
+// AsyncSearchResponse ...
 type AsyncSearchResponse struct {
 	ID             string         `json:"id"`
 	IsPartial      bool           `json:"is_partial"`
@@ -56,6 +64,7 @@ type AsyncSearchResponse struct {
 	Response       SearchResponse `json:"response"`
 }
 
+// Do ...
 func (b *AsyncSearchBuilder) Do(ctx context.Context) (*AsyncSearchResponse, error) {
 	path := "/_async_search"
 	if b.index != "" {
@@ -95,6 +104,7 @@ func (b *AsyncSearchBuilder) Do(ctx context.Context) (*AsyncSearchResponse, erro
 	return &resp, nil
 }
 
+// Get ...
 func (b *AsyncSearchBuilder) Get(ctx context.Context, id string) (*AsyncSearchResponse, error) {
 	path := "/_async_search/" + url.PathEscape(id)
 

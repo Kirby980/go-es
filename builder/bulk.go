@@ -145,6 +145,7 @@ func (b *BulkBuilder) flush(ctx context.Context) (*BulkResponse, error) {
 	return resp, err
 }
 
+// Flush ...
 func (b *BulkBuilder) Flush(ctx context.Context) (*BulkResponse, error) {
 	return b.flush(ctx)
 }

@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// ILMBuilder ...
 type ILMBuilder struct {
 	client ESClient
 	name   string
@@ -14,27 +15,32 @@ type ILMBuilder struct {
 	baseBuilder
 }
 
+// NewILMBuilder ...
 func NewILMBuilder(client ESClient) *ILMBuilder {
 	return &ILMBuilder{
 		client: client,
 	}
 }
 
+// Name ...
 func (b *ILMBuilder) Name(name string) *ILMBuilder {
 	b.name = name
 	return b
 }
 
+// Policy ...
 func (b *ILMBuilder) Policy(policy map[string]any) *ILMBuilder {
 	b.policy = policy
 	return b
 }
 
+// Debug ...
 func (b *ILMBuilder) Debug(enable bool) *ILMBuilder {
 	b.setDebug(enable)
 	return b
 }
 
+// Put ...
 func (b *ILMBuilder) Put(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_ilm/policy/" + url.PathEscape(b.name)
 	body := map[string]any{
@@ -55,6 +61,7 @@ func (b *ILMBuilder) Put(ctx context.Context) (*AcknowledgedResponse, error) {
 	return &resp, nil
 }
 
+// Get ...
 func (b *ILMBuilder) Get(ctx context.Context) (map[string]any, error) {
 	path := "/_ilm/policy"
 	if b.name != "" {
@@ -75,6 +82,7 @@ func (b *ILMBuilder) Get(ctx context.Context) (map[string]any, error) {
 	return resp, nil
 }
 
+// Delete ...
 func (b *ILMBuilder) Delete(ctx context.Context) (*AcknowledgedResponse, error) {
 	path := "/_ilm/policy/" + url.PathEscape(b.name)
 

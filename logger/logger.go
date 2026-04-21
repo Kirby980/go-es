@@ -18,9 +18,16 @@ type Logger interface {
 // NopLogger 空日志实现，用于完全禁用日志输出
 type NopLogger struct{}
 
+// Debug ...
 func (NopLogger) Debug(msg string, keysAndValues ...any) {}
-func (NopLogger) Info(msg string, keysAndValues ...any)  {}
-func (NopLogger) Warn(msg string, keysAndValues ...any)  {}
+
+// Info ...
+func (NopLogger) Info(msg string, keysAndValues ...any) {}
+
+// Warn ...
+func (NopLogger) Warn(msg string, keysAndValues ...any) {}
+
+// Error ...
 func (NopLogger) Error(msg string, keysAndValues ...any) {}
 
 // -----------------------------------------------------------------------
@@ -64,18 +71,22 @@ func NewDevelopmentLogger() (*ZapLogger, error) {
 	return NewZapLogger(z), nil
 }
 
+// Debug ...
 func (l *ZapLogger) Debug(msg string, keysAndValues ...any) {
 	l.sugar.Debugw(msg, keysAndValues...)
 }
 
+// Info ...
 func (l *ZapLogger) Info(msg string, keysAndValues ...any) {
 	l.sugar.Infow(msg, keysAndValues...)
 }
 
+// Warn ...
 func (l *ZapLogger) Warn(msg string, keysAndValues ...any) {
 	l.sugar.Warnw(msg, keysAndValues...)
 }
 
+// Error ...
 func (l *ZapLogger) Error(msg string, keysAndValues ...any) {
 	l.sugar.Errorw(msg, keysAndValues...)
 }

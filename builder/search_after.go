@@ -98,6 +98,7 @@ func (b *SearchAfterBuilder) MinScore(score float64) *SearchAfterBuilder {
 	return b
 }
 
+// PIT ...
 func (b *SearchAfterBuilder) PIT(id string, keepAlive string) *SearchAfterBuilder {
 	if id == "" {
 		b.pit = nil
