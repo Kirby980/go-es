@@ -63,9 +63,29 @@ ctx := context.Background()
 当开启 Sniff 时，客户端会定时从 `/_nodes/http` 拉取节点列表并更新地址池，以适配集群扩缩容和节点漂移。
 Sniff 默认关闭；如需显式关闭可不传该配置，或使用 `config.WithSniff(false, 0)`。
 
+## 核心 Builder 速览
+在 go-es 中，为了与 Elasticsearch 原生 API 体系对齐，不同的操作被严格划分给了不同的 Builder。
+你可以通过这张表快速知道“我该用哪个 Builder”：
+
+| Builder | 核心用途 | 对应 ES 操作类型 |
+| :--- | :--- | :--- |
+| **`IndexBuilder`** | **表结构管理 (DDL)**。用于创建/删除索引、修改 Settings（分片/副本）、配置 Mappings（字段映射）。 | `PUT /{index}`<br>`PUT /{index}/_mapping` |
+| **`DocumentBuilder`** | **单条数据操作 (DML)**。用于按 ID 新增、更新、替换、删除单条文档。 | `PUT /{index}/_doc/{id}`<br>`GET /{index}/_doc/{id}` |
+| **`SearchBuilder`** | **复杂查询与检索 (DQL)**。用于多条件组合搜索、高亮、排序、分页（From/Size）及挂载聚合。 | `POST /{index}/_search` |
+| **`AggregationBuilder`**| **独立的数据统计与分析**。专门用于编写独立于搜索的各类桶聚合与指标聚合。 | `POST /{index}/_search` (size=0) |
+| **`BulkBuilder`** | **批量高性能写入**。通过复用内存池将大量新增/修改/删除指令打包发送，大幅提升吞吐。 | `POST /_bulk` |
+| **`ScrollBuilder`** | **静态快照深度分页**。用于一次性导出或遍历海量数据，依赖服务端维护游标状态。 | `POST /_search/scroll` |
+| **`SearchAfterBuilder`**| **动态实时深度分页**。通过上一页最后一条记录的排序值获取下一页，无状态且性能更好。 | `POST /{index}/_search` |
+| **`UpdateByQueryBuilder`**| **条件批量更新**。通过查询条件筛选出一批数据并执行 Painless 脚本进行批量更新。 | `POST /{index}/_update_by_query`|
+| **`DeleteByQueryBuilder`**| **条件批量删除**。通过查询条件筛选出一批数据并批量删除。 | `POST /{index}/_delete_by_query`|
+
+> 💡 **进阶/运维 Builder**：如果你需要处理集群维度的运维任务，库中还提供了 `ClusterBuilder` (集群状态与节点)、`AliasesBuilder` (索引别名)、`ILMBuilder` (生命周期策略)、`SnapshotBuilder` (快照备份)、`RolloverBuilder` (滚动索引)、`DataStreamBuilder` (数据流) 等。
+
+---
+
 ## 核心功能示例
 
-### 1. 索引管理
+### 1. 索引管理 (`IndexBuilder`)
 
 ```go
 import esconst "github.com/Kirby980/go-es/const"
@@ -125,7 +145,7 @@ err := s.AutoMigrate(&Product{})
 
 [查看完整索引管理文档](docs/index.md)
 
-### 2. 文档操作
+### 2. 文档操作 (`DocumentBuilder` 与 Sugar 扩展)
 
 本库支持两种 API 风格：**简洁风格**（类似 GORM）和 **Builder 风格**（更灵活）。
 
@@ -204,7 +224,7 @@ delResp, err := builder.NewDocumentBuilder(esClient, "products").
 
 [查看完整文档操作文档](docs/document.md)
 
-### 3. 搜索
+### 3. 搜索 (`SearchBuilder`)
 
 ```go
 // 基础搜索
@@ -272,7 +292,7 @@ resp, err := builder.NewSearchBuilder(esClient, "articles").
 
 [查看完整搜索文档](docs/search.md)
 
-### 4. 聚合分析
+### 4. 聚合分析 (`AggregationBuilder`)
 
 ```go
 // 统计聚合
@@ -296,7 +316,7 @@ dateHistResp, _ := builder.NewAggregationBuilder(esClient, "orders").
 
 [查看完整聚合文档](docs/aggregation.md)
 
-### 5. 批量操作
+### 5. 批量操作 (`BulkBuilder`)
 
 ```go
 bulkResp, err := builder.NewBulkBuilder(esClient).
@@ -315,7 +335,7 @@ if bulkResp.HasErrors() {
 }
 ```
 
-### 6. 深度分页
+### 6. 深度分页 (`ScrollBuilder` 与 `SearchAfterBuilder`)
 
 ```go
 // Scroll 遍历（适合大数据导出）
